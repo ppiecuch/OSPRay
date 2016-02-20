@@ -18,7 +18,7 @@
 
 #include <ospray/ospray.h>
 #include "ospray/common/OSPCommon.h"
-#include <QtGui>
+#include <QtWidgets>
 
 class IsosurfaceEditor;
 

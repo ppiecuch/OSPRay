@@ -60,6 +60,10 @@ namespace ospray {
     }
   }
 
+  Renderer *Renderer::registerRenderer(const char *identifier, Renderer *renderer)
+  {
+  }
+
   Renderer *Renderer::createRenderer(const char *_type)
   {
     std::string type = _type;
@@ -91,8 +95,9 @@ namespace ospray {
     }
 
     Renderer *renderer = (*creator)();
-    renderer->managedObjectType = OSP_RENDERER;
-    if (renderer == NULL && ospray::logLevel >= 1) {
+    if (renderer != NULL)
+    	renderer->managedObjectType = OSP_RENDERER;
+    else if (ospray::logLevel >= 1) {
       std::cout << "#osp:warning[ospNewRenderer(...)]: could not create renderer of that type." << endl;
       std::cout << "#osp:warning[ospNewRenderer(...)]: Note: Requested renderer type was '" << type << "'" << endl;
     }

@@ -32,7 +32,7 @@ IF (NOT THIS_IS_MIC)
     FIND_PACKAGE(FreeDDS REQUIRED) 
     INCLUDE_DIRECTORIES(${FreeDDS_INCLUDE_DIRS})
 
-    ADD_LIBRARY(ospray_module_seismic${OSPRAY_LIB_SUFFIX} SHARED
+    ADD_LIBRARY(ospray_module_seismic${OSPRAY_LIB_SUFFIX} STATIC
       SeismicHorizonFile.cpp
       SeismicVolumeFile.cpp
       SymbolRegistry.cpp

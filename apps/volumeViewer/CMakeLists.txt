@@ -33,9 +33,7 @@ IF (OSPRAY_MODULE_SEISMIC)
   SET(LIBS ${LIBS} ospray_module_seismic)
 ENDIF (OSPRAY_MODULE_SEISMIC)
 
-FIND_PACKAGE(Qt4 REQUIRED) 
-SET(QT_USE_QTOPENGL TRUE)
-INCLUDE(${QT_USE_FILE})
+FIND_PACKAGE(Qt5Widgets REQUIRED) 
 SET(LIBS ${LIBS} ${QT_LIBRARIES})
 
 FIND_PACKAGE(OpenGL REQUIRED)
@@ -57,9 +55,8 @@ SET(SRCS ${SRCS}
   SliceWidget.cpp
   TransferFunctionEditor.cpp
   VolumeViewer.cpp
-  )
-
-SET(MOC_HEADERS
+  
+  # moc headers
   IsosurfaceEditor.h
   IsovalueWidget.h
   LightEditor.h
@@ -74,10 +71,11 @@ SET(MOC_HEADERS
   VolumeViewer.h
   )
 
-QT4_WRAP_CPP(MOC_OUTFILES ${MOC_HEADERS})
+SET(CMAKE_AUTOMOC ON)
 
-ADD_EXECUTABLE(ospVolumeViewer ${SRCS} ${MOC_OUTFILES})
+ADD_EXECUTABLE(ospVolumeViewer ${SRCS})
 TARGET_LINK_LIBRARIES(ospVolumeViewer ${LIBS})
+QT5_USE_MODULES(ospVolumeViewer Widgets)
 # ------------------------------------------------------------
 INSTALL(TARGETS ospVolumeViewer DESTINATION bin)
 # ------------------------------------------------------------

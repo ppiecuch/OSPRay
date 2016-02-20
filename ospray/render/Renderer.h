@@ -29,7 +29,7 @@ namespace ospray {
 
   /*! \brief abstract base class for all ospray renderers.
 
-    \detailed Tthis base renderer abstraction only knows about
+    \detailed This base renderer abstraction only knows about
     'rendering a frame'; most actual renderers will be derived from a
     tile renderer, but this abstraction level also allows for frame
     compositing or even projection/splatting based approaches
@@ -44,6 +44,7 @@ namespace ospray {
       renderer types specified in special modules, make sure to call
       ospLoadModule first. */
     static Renderer *createRenderer(const char *identifier);
+    static Renderer *registerRenderer(const char *identifier, Renderer *renderer);
 
     virtual void commit();
 

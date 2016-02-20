@@ -103,7 +103,7 @@ namespace ospray {
         // -------------------------------------------------------
 
         // either select an existing point, or create a new one at this location
-        QPointF widgetClickPoint = event->posF();
+        QPointF widgetClickPoint = event->localPos(); // posF
       
         selectedPointIndex = getSelectedPointIndex(widgetClickPoint);
       
@@ -137,7 +137,7 @@ namespace ospray {
         // -------------------------------------------------------
         
         // delete a point if selected (except for first and last points!)
-        QPointF widgetClickPoint = event->posF();
+        QPointF widgetClickPoint = event->localPos(); // posF
         
         selectedPointIndex = getSelectedPointIndex(widgetClickPoint);
         
@@ -176,7 +176,7 @@ namespace ospray {
         // no point selected
         return;
 
-      QPointF widgetMousePoint = event->posF();
+      QPointF widgetMousePoint = event->localPos(); // posF
       ospray::vec2f mousePoint = widgetPointToPoint(widgetMousePoint);
 
       // clamp x value

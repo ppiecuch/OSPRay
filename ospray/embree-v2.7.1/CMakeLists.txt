@@ -62,7 +62,7 @@ include(package)
 # Embree configuration
 ##############################################################
 
-OPTION(ENABLE_STATIC_LIB "Build Embree as a static library." OFF)
+OPTION(ENABLE_STATIC_LIB "Build Embree as a static library." ON)
 IF (ENABLE_STATIC_LIB)
   SET(EMBREE_LIB_TYPE STATIC)
   ADD_DEFINITIONS(-DENABLE_STATIC_LIB)

@@ -200,7 +200,7 @@ void VolumeViewer::screenshot(std::string filename)
     filename += ".png";
 
   // Grab the image.
-  QImage image = osprayWindow->grabFrameBuffer();
+  QImage image = osprayWindow->grabFramebuffer();
 
   // Save the screenshot.
   bool success = image.save(filename.c_str());

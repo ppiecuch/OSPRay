@@ -21,8 +21,15 @@
 // ospray public api
 #include "ospray/ospray.h"
 // qt
-#include <QtGui>
-#include <QGLWidget>
+#include <QtWidgets>
+#if 1
+# include <QOpenGLWidget>
+# define GLWidget QOpenGLWidget
+# define updateGL update
+#else
+# include <QGLWidget>
+# define GLWidget QGLWidget
+#endif
 
 namespace ospray {
   namespace viewer {
@@ -51,7 +58,7 @@ namespace ospray {
       interest, etc.        
     */
     // ==================================================================
-    class QAffineSpaceManipulator : public QGLWidget {
+    class QAffineSpaceManipulator : public GLWidget {
       Q_OBJECT;
 
     public:

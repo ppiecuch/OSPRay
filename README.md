@@ -1,3 +1,8 @@
+====== Piecuch Pawel ======
+1. update qt to 5
+2. move to static libraries
+
+
 OSPRay
 ======
 

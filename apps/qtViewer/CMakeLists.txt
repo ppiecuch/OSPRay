@@ -26,9 +26,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
 SET(LIBS ${LIBS} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES})
 
-FIND_PACKAGE(Qt4 REQUIRED) 
-SET(QT_USE_QTOPENGL TRUE)
-INCLUDE(${QT_USE_FILE})
+FIND_PACKAGE(Qt5Widgets REQUIRED)
 SET(LIBS ${LIBS} ${QT_LIBRARIES})
 
 ADD_SUBDIRECTORY(sg)
@@ -44,23 +42,23 @@ SET(SRCS ${SRCS}
   ModelViewer.cpp
   FPSCounter.cpp
 
-  # the (th)ing to launch them all, and in darkness bind them...
-  main.cpp
-  )
-
-SET(MOC_HEADERS
+  # moc headers
   ModelViewer.h
   widgets/transferFunction/QTransferFunctionEditor.h
   widgets/affineSpaceManipulator/QAffineSpaceManipulator.h
   widgets/lightManipulator/QLightManipulator.h
+
+  # the (th)ing to launch them all, and in darkness bind them...
+  main.cpp
   )
 
-QT4_WRAP_CPP(MOC_OUTFILES ${MOC_HEADERS})
+SET(CMAKE_AUTOMOC ON)
 
-ADD_EXECUTABLE(ospQtViewer ${SRCS} ${MOC_OUTFILES})
+ADD_EXECUTABLE(ospQtViewer ${SRCS})
 TARGET_LINK_LIBRARIES(ospQtViewer ${LIBS} 
   ospray_sg${OSPRAY_LIB_SUFFIX}
   )
+QT5_USE_MODULES(ospQtViewer Widgets)
 # ------------------------------------------------------------
 INSTALL(TARGETS ospQtViewer DESTINATION bin)
 # ------------------------------------------------------------

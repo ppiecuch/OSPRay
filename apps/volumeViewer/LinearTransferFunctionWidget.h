@@ -17,7 +17,7 @@
 #pragma once
 
 #include <ospray/ospray.h>
-#include <QtGui>
+#include <QtWidgets>
 #include <stdexcept>
 
 class LinearTransferFunctionWidget : public QWidget

@@ -28,7 +28,7 @@ IF (NOT THIS_IS_MIC)
 
     LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/modules/opengl)
 
-    ADD_LIBRARY(ospray_module_opengl_util${OSPRAY_LIB_SUFFIX} SHARED
+    ADD_LIBRARY(ospray_module_opengl_util${OSPRAY_LIB_SUFFIX} STATIC
       util.cpp
     )
 

@@ -18,7 +18,7 @@ SET(ISPC_VERSION_REQUIRED "1.8.2")
 
 # warn about recommended ISPC version on KNC
 IF (OSPRAY_MIC AND NOT OSPRAY_WARNED_MIC_ISPC_VERSION)
-  MESSAGE("Warning: use of ISPC v1.8.1 is recommended on KNC.")
+  MESSAGE("Warning: use of ISPC v1.8.2 is recommended on KNC.")
   SET(OSPRAY_WARNED_MIC_ISPC_VERSION ON CACHE INTERNAL "Warned about recommended ISPC version with KNC.")
 ENDIF()
 
@@ -31,9 +31,9 @@ IF (NOT ISPC_EXECUTABLE)
   ELSE()
     SET(ISPC_DIR_SUFFIX "linux")
   ENDIF()
-  SET(ISPC_DIR_HINT ${PROJECT_SOURCE_DIR}/../ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX})
+  SET(ISPC_DIR_HINT ${PROJECT_SOURCE_DIR}/deps/ispc ${PROJECT_SOURCE_DIR}/../ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX})
 
-  FIND_PROGRAM(ISPC_EXECUTABLE ispc PATHS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
+  FIND_PROGRAM(ISPC_EXECUTABLE ispc ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX} PATHS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
   IF (NOT ISPC_EXECUTABLE)
     MESSAGE("********************************************")
     MESSAGE("Could not find ISPC (looked in PATH and ${ISPC_DIR_HINT})")

@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 // qt
-#include <QtGui>
+#include <QtWidgets>
 // scene graph
 #include "sg/SceneGraph.h"
 

@@ -108,7 +108,7 @@ void LinearTransferFunctionWidget::mousePressEvent(QMouseEvent * event)
   if(event->button() == Qt::LeftButton) {
 
     // Either select an existing point, or create a new one at this location.
-    QPointF widgetClickPoint = event->posF();
+    QPointF widgetClickPoint = event->localPos(); // posF
 
     selectedPointIndex = getSelectedPointIndex(widgetClickPoint);
 
@@ -135,7 +135,7 @@ void LinearTransferFunctionWidget::mousePressEvent(QMouseEvent * event)
   else if(event->button() == Qt::RightButton) {
 
     // Delete a point if selected (except for first and last points!).
-    QPointF widgetClickPoint = event->posF();
+    QPointF widgetClickPoint = event->localPos(); // posF
 
     selectedPointIndex = getSelectedPointIndex(widgetClickPoint);
 
@@ -172,7 +172,7 @@ void LinearTransferFunctionWidget::mouseMoveEvent(QMouseEvent * event)
   QWidget::mouseMoveEvent(event);
 
   if(selectedPointIndex != -1) {
-    QPointF widgetMousePoint = event->posF();
+    QPointF widgetMousePoint = event->localPos(); // posF
     QPointF mousePoint = widgetPointToPoint(widgetMousePoint);
 
     // Clamp x value.

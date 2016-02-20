@@ -26,7 +26,7 @@ IF (NOT THIS_IS_MIC)
 
     LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/modules/loaders)
 
-    ADD_LIBRARY(ospray_module_loaders${OSPRAY_LIB_SUFFIX} SHARED
+    ADD_LIBRARY(ospray_module_loaders${OSPRAY_LIB_SUFFIX} STATIC
       ObjectFile.cpp
       OSPObjectFile.cpp
       PLYTriangleMeshFile.cpp

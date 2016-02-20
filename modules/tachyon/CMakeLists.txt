@@ -70,7 +70,7 @@ IF (OSPRAY_MODULE_TACHYON)
   YACC_FILE(parser.yy)
   LEX_FILE(lexer.ll)
 
-  OSPRAY_ADD_LIBRARY(ospray_module_tachyon${OSPRAY_LIB_SUFFIX} SHARED
+  OSPRAY_ADD_LIBRARY(ospray_module_tachyon${OSPRAY_LIB_SUFFIX} STATIC
     TachyonRenderer.cpp
     TachyonRenderer.ispc
     )

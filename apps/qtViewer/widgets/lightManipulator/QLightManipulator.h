@@ -21,7 +21,7 @@
 // ospray public api
 #include "ospray/ospray.h"
 // qt
-#include <QtGui>
+#include <QtWidgets>
 //sg
 #include "sg/Renderer.h"
 

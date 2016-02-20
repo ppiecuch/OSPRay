@@ -51,6 +51,7 @@ ELSE ()
     DOC "Root of TBB installation"
     PATHS
       ${PROJECT_SOURCE_DIR}/tbb
+      ${PROJECT_SOURCE_DIR}/deps/tbb44_20151115oss
       /opt/intel/composerxe/tbb
       /opt/intel/compilers_and_libraries/tbb
       $ENV{TBBROOT}

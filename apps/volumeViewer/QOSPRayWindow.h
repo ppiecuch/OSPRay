@@ -18,8 +18,15 @@
 
 #include <ospray/ospray.h>
 #include "ospray/common/OSPCommon.h"
-#include <QtGui>
-#include <QGLWidget>
+#include <QtWidgets>
+#if 1
+# include <QOpenGLWidget>
+# define GLWidget QOpenGLWidget
+# define updateGL update
+#else
+# include <QGLWidget>
+# define GLWidget QGLWidget
+#endif
 
 struct Viewport
 {
@@ -75,7 +82,7 @@ struct Viewport
 std::ostream &operator<<(std::ostream &o, const Viewport &viewport);
 
 
-class QOSPRayWindow : public QGLWidget
+class QOSPRayWindow : public GLWidget
 {
 Q_OBJECT
 
