@@ -57,6 +57,7 @@ namespace ospray {
       material types specified in special modules, make sure to call
       ospLoadModule first. */
     static Material *createMaterial(const char *identifier);
+    static void registerMaterial(const char *identifier, Material *(*creator)());
   };
 
 
@@ -74,5 +75,9 @@ namespace ospray {
   {                                                                 \
     return new InternalClassName;                                   \
   }                                                                 \
+  extern "C" void register_plugin_instance_##external_name() {		\
+    Material::registerMaterial(#external_name, 						\
+		ospray_create_material__##external_name);					\
+  }
 
 } // ::ospray

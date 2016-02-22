@@ -64,6 +64,7 @@ namespace ospray {
       geometry types specified in special modules, make sure to call
       ospLoadModule first. */
     static Geometry *createGeometry(const char *type); 
+    static void registerGeometry(const char *type, Geometry *(*creator)()); 
 
     box3f bounds;
 
@@ -88,5 +89,9 @@ namespace ospray {
   {                                                                 \
     return new InternalClassName;                                   \
   }                                                                 \
-  
+  extern "C" void register_plugin_instance_##external_name() { 		\
+    Geometry::registerGeometry(#external_name, 						\
+		ospray_create_geometry__##external_name);					\
+  }
+
 } // ::ospray

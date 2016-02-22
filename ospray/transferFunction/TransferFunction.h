@@ -27,9 +27,13 @@
 //!  at build time.  Rather, the subclass can be defined in an external
 //!  module and registered with OSPRay using this macro.
 //!
-#define OSP_REGISTER_TRANSFER_FUNCTION(InternalClass, ExternalName)     \
+#define OSP_REGISTER_TRANSFER_FUNCTION(InternalClass, ExternalName) \
   extern "C" OSPRAY_INTERFACE TransferFunction *ospray_create_transfer_function_##ExternalName() \
-  { return(new InternalClass()); }
+  { return(new InternalClass()); }									\
+  extern "C" void register_plugin_instance_##ExternalName() {		\
+    TransferFunction::registerInstance(#ExternalName, 		\
+		ospray_create_transfer_function_##ExternalName);			\
+  }
 
 namespace ospray {
 
@@ -56,6 +60,7 @@ namespace ospray {
 
     //! Create a transfer function of the given type.
     static TransferFunction *createInstance(std::string type);
+    static void registerInstance(std::string type, TransferFunction *(*creationFunction)());
 
     //! A string description of this class.
     virtual std::string toString() const { return("ospray::TransferFunction"); }

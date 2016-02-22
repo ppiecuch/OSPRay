@@ -27,25 +27,37 @@ namespace ospray {
 
   std::map<std::string, creatorFct> cameraRegistry;
 
+  void Camera::registerCamera(const char *identifier, creatorFct creator)
+  {
+    cameraRegistry[identifier] = creator;  	
+  }
+
   Camera *Camera::createCamera(const char *type)
   {
     std::map<std::string, Camera *(*)()>::iterator it = cameraRegistry.find(type);
     if (it != cameraRegistry.end())
-      return it->second ? (it->second)() : NULL;
+    {
+      Camera *camera = it->second ? (it->second)() : NULL;
+      if (camera)
+      	camera->managedObjectType = OSP_CAMERA;
+      return camera;
+    }
     
     if (ospray::logLevel >= 2) 
       std::cout << "#ospray: trying to look up camera type '" 
                 << type << "' for the first time" << std::endl;
 
     std::string creatorName = "ospray_create_camera__"+std::string(type);
-    creatorFct creator = (creatorFct)getSymbol(creatorName); //dlsym(RTLD_DEFAULT,creatorName.c_str());
+    creatorFct creator = (creatorFct)getSymbol(creatorName); // dlsym(RTLD_DEFAULT,creatorName.c_str());
     cameraRegistry[type] = creator;
     if (creator == NULL) {
       if (ospray::logLevel >= 1) 
         std::cout << "#ospray: could not find camera type '" << type << "'" << std::endl;
       return NULL;
     }
-    Camera *camera = (*creator)();  camera->managedObjectType = OSP_CAMERA;
+    Camera *camera = (*creator)();
+    if (camera)
+    	camera->managedObjectType = OSP_CAMERA;
     return(camera);
   }
 

@@ -30,6 +30,7 @@ namespace ospray {
     virtual std::string toString() const { return "ospray::Camera (base class)"; }
     virtual void commit();
     static Camera *createCamera(const char *identifier);
+    static void registerCamera(const char *identifier, Camera *(*creator)());
 
   public:
     // ------------------------------------------------------------------
@@ -51,9 +52,13 @@ namespace ospray {
       of this camera.
   */
 #define OSP_REGISTER_CAMERA(InternalClassName,external_name)        \
-  extern "C" OSPRAY_INTERFACE Camera *ospray_create_camera__##external_name()        \
+  extern "C" OSPRAY_INTERFACE Camera *ospray_create_camera__##external_name() \
   {                                                                 \
     return new InternalClassName;                                   \
   }                                                                 \
+  extern "C" void register_plugin_instance_##external_name() {		\
+    Camera::registerCamera(#external_name, 							\
+		ospray_create_camera__##external_name);						\
+  }
 
 } // ::ospray

@@ -26,12 +26,22 @@ namespace ospray {
   typedef std::map<std::string, creatorFct> LightRegistry;
   LightRegistry lightRegistry;
 
+  void Light::registerLight(const char *type, creatorFct creator)
+  {
+    lightRegistry[type] = creator;
+  }
+
   //! Create a new Light object of given type
   Light *Light::createLight(const char *type) {
     LightRegistry::const_iterator it = lightRegistry.find(type);
 
     if (it != lightRegistry.end())
-      return it->second ? (it->second)() : NULL;
+    {
+      Light *light = it->second ? (it->second)() : NULL;
+      if (light)
+    	light->managedObjectType = OSP_LIGHT;
+      return light;
+    }
 
     if (ospray::logLevel >= 2)
       std::cout << "#ospray: trying to look up light type '" << type << "' for the first time" << std::endl;

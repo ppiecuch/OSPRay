@@ -24,6 +24,7 @@ namespace ospray {
   struct Light : public ManagedObject {
     //! Create a light of the given type
     static Light *createLight(const char *type);
+    static void registerLight(const char *type, Light *(*creator)());
 
     //! Copy understood parameters into class members
     virtual void commit() {}
@@ -36,6 +37,10 @@ namespace ospray {
   extern "C" OSPRAY_INTERFACE ospray::Light *ospray_create_light__##external_name()  \
   {                                                                 \
     return new InternalClassName;                                   \
+  }																	\
+  extern "C" void register_plugin_instance_##external_name() {		\
+    Light::registerLight(#external_name, 							\
+		ospray_create_light__##external_name);						\
   }
 
 }

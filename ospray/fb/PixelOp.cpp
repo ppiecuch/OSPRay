@@ -27,6 +27,11 @@ namespace ospray {
   std::map<std::string, creatorFct> pixelOpRegistry;
 
 
+  void registerPixelOp(const char *identifier, creatorFct creator)
+  {
+    pixelOpRegistry[identifier] = creator;
+  }
+
   PixelOp *PixelOp::createPixelOp(const char *_type)
   {
     PING; PRINT(_type);
@@ -44,14 +49,19 @@ namespace ospray {
     
     std::map<std::string, PixelOp *(*)()>::iterator it = pixelOpRegistry.find(type);
     if (it != pixelOpRegistry.end())
-      return it->second ? (it->second)() : NULL;
+    {
+      PixelOp *pixelOp = it->second ? (it->second)() : NULL;
+      if (pixelOp)
+    	pixelOp->managedObjectType = OSP_PIXEL_OP;
+      return pixelOp;
+    }
     
     if (ospray::logLevel >= 2) 
       std::cout << "#ospray: trying to look up pixelOp type '" 
                 << type << "' for the first time" << std::endl;
 
     std::string creatorName = "ospray_create_pixel_op__"+std::string(type);
-    creatorFct creator = (creatorFct)getSymbol(creatorName); //dlsym(RTLD_DEFAULT,creatorName.c_str());
+    creatorFct creator = (creatorFct)getSymbol(creatorName); // dlsym(RTLD_DEFAULT,creatorName.c_str());
     pixelOpRegistry[type] = creator;
     if (creator == NULL) {
       PING;
@@ -63,7 +73,8 @@ namespace ospray {
     PING;
     PRINT(pixelOp);
     PRINT(pixelOp->toString());
-    pixelOp->managedObjectType = OSP_PIXEL_OP;
+    if (pixelOp)
+    	pixelOp->managedObjectType = OSP_PIXEL_OP;
     return(pixelOp);
   }
 

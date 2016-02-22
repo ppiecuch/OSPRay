@@ -198,6 +198,13 @@ SET(OSPRAY_SOURCES
   api/LocalDevice.cpp
   )
 
+IF (ENABLE_STATIC_LIB)
+  SET(OSPRAY_SOURCES
+  	${OSPRAY_SOURCES}
+  	static_plugins_instance.cpp
+  )
+ENDIF()
+
 # -------------------------------------------------------
 # MPI components
 # -------------------------------------------------------

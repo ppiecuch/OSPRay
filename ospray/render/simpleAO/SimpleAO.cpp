@@ -79,26 +79,17 @@ namespace ospray {
   /*! \note Reintroduce aoX renderers for compatibility, they should be
             depricated!*/
 
-#ifdef ENABLE_STATIC_LIB
-#define OSP_REGISTER_AO_RENDERER(external_name, nSamples)		\
-	extern Renderer *render_plugin_instance_##external_name;	\
-        class Static##external_name##PluginInstance {			\
-        public:													\
-        	Static##external_name##PluginInstance() {			\
-                Renderer::registerRenderer(#external_name, 		\
-                	render_plugin_instance_##external_name);	\
-        	}													\
-        };														\
-       static Static##external_name##PluginInstance static##external_name##Instance;
-#else
-#define OSP_REGISTER_AO_RENDERER(external_name, nSamples)  		\
-  extern "C" OSPRAY_INTERFACE                                   \
-  Renderer *ospray_create_renderer__##external_name()           \
-  {                                                             \
-    SimpleAO *renderer = new SimpleAO(nSamples);                \
-    return renderer;                                            \
+#define OSP_REGISTER_AO_RENDERER(external_name, nSamples)	\
+  extern "C" OSPRAY_INTERFACE                              	\
+  Renderer *ospray_create_renderer__##external_name()       \
+  {                                                         \
+    SimpleAO *renderer = new SimpleAO(nSamples);            \
+    return renderer;                                        \
+  }															\
+  extern "C" void register_plugin_instance_##external_name() { \
+    Renderer::registerRenderer(#external_name, 				\
+		ospray_create_renderer__##external_name);			\
   }
-#endif
 
   OSP_REGISTER_AO_RENDERER(ao,   4 );
   OSP_REGISTER_AO_RENDERER(ao1,  1 );

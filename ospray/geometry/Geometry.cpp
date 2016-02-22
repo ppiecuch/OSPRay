@@ -45,6 +45,11 @@ namespace ospray {
   }
 
 
+  void Geometry::registerGeometry(const char *type, creatorFct creator)
+  {
+    geometryRegistry[type] = creator;
+  }
+
   /*! \brief creates an abstract geometry class of given type 
     
     The respective geometry type must be a registered geometry type
@@ -55,7 +60,12 @@ namespace ospray {
   {
     std::map<std::string, Geometry *(*)()>::iterator it = geometryRegistry.find(type);
     if (it != geometryRegistry.end())
-      return it->second ? (it->second)() : NULL;
+    {
+      Geometry *geometry = it->second ? (it->second)() : NULL;
+      if (geometry)
+    	geometry->managedObjectType = OSP_GEOMETRY;
+      return geometry;
+    }
     
     if (ospray::logLevel >= 2) 
       std::cout << "#ospray: trying to look up geometry type '" 
@@ -69,7 +79,9 @@ namespace ospray {
         std::cout << "#ospray: could not find geometry type '" << type << "'" << std::endl;
       return NULL;
     }
-    Geometry *geometry = (*creator)();  geometry->managedObjectType = OSP_GEOMETRY;
+    Geometry *geometry = (*creator)();
+    if (geometry)
+    	geometry->managedObjectType = OSP_GEOMETRY;
     return(geometry);
   }
 

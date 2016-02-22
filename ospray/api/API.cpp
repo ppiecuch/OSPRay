@@ -78,8 +78,17 @@ namespace ospray {
 
   using namespace ospray;
 
+  namespace ospray
+  {
+  	void staticInit();
+  }
+
   extern "C" void ospInit(int *_ac, const char **_av)
   {
+#ifdef ENABLE_STATIC_LIB
+	ospray::staticInit();
+#endif
+
     if (ospray::api::Device::current)
       throw std::runtime_error("OSPRay error: device already exists "
                                "(did you call ospInit twice?)");

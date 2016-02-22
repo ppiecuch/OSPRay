@@ -27,6 +27,11 @@ namespace ospray {
   std::map<std::string, creatorFct> materialRegistry;
 
 
+    void Material::registerMaterial(const char *identifier, creatorFct creator)
+    {
+    	materialRegistry[identifier] = creator;
+    }
+
   /*! \brief creates an abstract material class of given type 
     
     The respective material type must be a registered material type
@@ -41,7 +46,12 @@ namespace ospray {
 
     std::map<std::string, Material *(*)()>::iterator it = materialRegistry.find(type);
     if (it != materialRegistry.end())
-      return it->second ? (it->second)() : NULL;
+    {
+      Material *material = it->second ? (it->second)() : NULL;
+      if (material)
+      	material->managedObjectType = OSP_MATERIAL;
+      return material;
+    }
     
     if (ospray::logLevel >= 2) 
       std::cout << "#ospray: trying to look up material type '" 
@@ -56,7 +66,8 @@ namespace ospray {
       return NULL;
     }
     Material *material = (*creator)();
-    material->managedObjectType = OSP_MATERIAL;
+    if (material)
+    	material->managedObjectType = OSP_MATERIAL;
     return material;
   }
 

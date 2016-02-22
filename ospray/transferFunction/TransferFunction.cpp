@@ -22,16 +22,26 @@
 
 namespace ospray {
 
+  // Function pointer type for creating a concrete instance of a subtype of this class.
+  typedef TransferFunction *(*creationFunctionPointer)();
+
+  // Function pointers corresponding to each subtype.
+  std::map<std::string, creationFunctionPointer> symbolRegistry;
+
+  void TransferFunction::registerInstance(std::string type, creationFunctionPointer creationFunction)
+  {
+    symbolRegistry[type] = creationFunction;
+  }
+
   TransferFunction *TransferFunction::createInstance(std::string type) {
 
-    // Function pointer type for creating a concrete instance of a subtype of this class.
-    typedef TransferFunction *(*creationFunctionPointer)();
-
-    // Function pointers corresponding to each subtype.
-    std::map<std::string, creationFunctionPointer> symbolRegistry;
-
     // Return a concrete instance of the requested subtype if the creation function is already known.
-    if (symbolRegistry.count(type) > 0 && symbolRegistry[type] != NULL) return((*symbolRegistry[type])());
+    if (symbolRegistry.count(type) > 0 && symbolRegistry[type] != NULL)
+    {
+    	TransferFunction *transferFunction = (*symbolRegistry[type])();
+    	if (transferFunction) transferFunction->managedObjectType = OSP_TRANSFER_FUNCTION;
+    	return transferFunction;
+    }
 
     // Otherwise construct the name of the creation function to look for.
     std::string creationFunctionName = "ospray_create_transfer_function_" + type;

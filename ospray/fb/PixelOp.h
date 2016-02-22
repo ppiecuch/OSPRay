@@ -83,6 +83,7 @@ namespace ospray {
       renderer types specified in special modules, make sure to call
       ospLoadModule first. */
     static PixelOp *createPixelOp(const char *identifier);
+    static void registerPixelOp(const char *identifier, PixelOp *(*creator)());
   };
 
   /*! \brief registers a internal ospray::<ClassName> renderer under
@@ -99,5 +100,9 @@ namespace ospray {
   {                                                                 \
     return new InternalClassName;                                   \
   }                                                                 \
-  
+  extern "C" void register_plugin_instance_##external_name() { 		\
+    PixelOp::registerPixelOp(#external_name, 						\
+		ospray_create_pixel_op__##external_name);					\
+  }
+
 }

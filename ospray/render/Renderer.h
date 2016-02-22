@@ -44,7 +44,7 @@ namespace ospray {
       renderer types specified in special modules, make sure to call
       ospLoadModule first. */
     static Renderer *createRenderer(const char *identifier);
-    static Renderer *registerRenderer(const char *identifier, Renderer *renderer);
+    static void registerRenderer(const char *identifier, Renderer *(*creator)());
 
     virtual void commit();
 
@@ -115,6 +115,10 @@ namespace ospray {
   extern "C" OSPRAY_INTERFACE Renderer *ospray_create_renderer__##external_name()    \
   {                                                                 \
     return new InternalClassName;                                   \
+  }																	\
+  extern "C" void register_plugin_instance_##external_name() {		\
+    Renderer::registerRenderer(#external_name, 						\
+		ospray_create_renderer__##external_name);					\
   }
 
 } // ::ospray

@@ -60,8 +60,9 @@ namespace ospray {
     }
   }
 
-  Renderer *Renderer::registerRenderer(const char *identifier, Renderer *renderer)
+  void Renderer::registerRenderer(const char *identifier, creatorFct creator)
   {
+	rendererRegistry[identifier] = creator;
   }
 
   Renderer *Renderer::createRenderer(const char *_type)
@@ -76,7 +77,10 @@ namespace ospray {
 
     std::map<std::string, Renderer *(*)()>::iterator it = rendererRegistry.find(type);
     if (it != rendererRegistry.end()) {
-      return it->second ? (it->second)() : NULL;
+      Renderer *renderer = it->second ? (it->second)() : NULL;
+      if (renderer != NULL)
+    	renderer->managedObjectType = OSP_RENDERER;
+      return renderer;
     }
 
     if (ospray::logLevel >= 2) {

@@ -1,0 +1,56 @@
+#ifdef OSP_PLUGIN_INSTANCE
+	OSP_PLUGIN_INSTANCE(ao);
+	OSP_PLUGIN_INSTANCE(ao1);
+	OSP_PLUGIN_INSTANCE(ao2);
+	OSP_PLUGIN_INSTANCE(ao4);
+	OSP_PLUGIN_INSTANCE(ao8);
+	OSP_PLUGIN_INSTANCE(ao16);
+
+	OSP_PLUGIN_INSTANCE(orthographic);
+	OSP_PLUGIN_INSTANCE(panoramic);
+	OSP_PLUGIN_INSTANCE(perspective);
+	OSP_PLUGIN_INSTANCE(thinlens);
+
+	OSP_PLUGIN_INSTANCE(AmbientLight);
+	OSP_PLUGIN_INSTANCE(ambient);
+	OSP_PLUGIN_INSTANCE(DirectionalLight);
+	OSP_PLUGIN_INSTANCE(DistantLight);
+	OSP_PLUGIN_INSTANCE(distant);
+	OSP_PLUGIN_INSTANCE(directional);
+	OSP_PLUGIN_INSTANCE(PointLight);
+	OSP_PLUGIN_INSTANCE(SphereLight);
+	OSP_PLUGIN_INSTANCE(sphere);
+	OSP_PLUGIN_INSTANCE(QuadLight);
+	OSP_PLUGIN_INSTANCE(quad);
+	OSP_PLUGIN_INSTANCE(SpotLight);
+	OSP_PLUGIN_INSTANCE(ExtendedSpotLight);
+	OSP_PLUGIN_INSTANCE(spot);
+	
+	OSP_PLUGIN_INSTANCE(OBJMaterial);
+	OSP_PLUGIN_INSTANCE(PathTracer_Glass);
+	OSP_PLUGIN_INSTANCE(PathTracer_Matte);
+	OSP_PLUGIN_INSTANCE(PathTracer_Metal);		
+	OSP_PLUGIN_INSTANCE(PathTracer_MetallicPaint);		
+	OSP_PLUGIN_INSTANCE(PathTracer_OBJMaterial);		
+	OSP_PLUGIN_INSTANCE(PathTracer_default);		
+	OSP_PLUGIN_INSTANCE(PathTracer_Plastic);		
+	OSP_PLUGIN_INSTANCE(PathTracer_ThinGlass);		
+	OSP_PLUGIN_INSTANCE(PathTracer_Velvet);		
+	OSP_PLUGIN_INSTANCE(RaytraceMaterial);		
+	OSP_PLUGIN_INSTANCE(RaycastVolumeMaterial);
+
+#ifdef OSPRAY_DISPLAYCLUSTER
+	OSP_PLUGIN_INSTANCE(display_wall);
+#endif
+
+	OSP_PLUGIN_INSTANCE(cylinders);		
+	OSP_PLUGIN_INSTANCE(instance);		
+	OSP_PLUGIN_INSTANCE(isosurfaces);		
+	OSP_PLUGIN_INSTANCE(slices);		
+	OSP_PLUGIN_INSTANCE(spheres);		
+	OSP_PLUGIN_INSTANCE(streamlines);		
+	OSP_PLUGIN_INSTANCE(triangles);		
+	OSP_PLUGIN_INSTANCE(trianglemesh);
+	
+	OSP_PLUGIN_INSTANCE(piecewise_linear);
+#endif // OSP_PLUGIN_INSTANCE
