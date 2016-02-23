@@ -34,7 +34,10 @@
 //! 
 #define OSP_REGISTER_VOLUME_FILE(InternalClass, ExternalName)           \
   extern "C" OSPVolume ospray_import_volume_file_##ExternalName(const std::string &filename, OSPVolume volume) \
-  { InternalClass file(filename);  return(file.importVolume(volume)); }
+  { InternalClass file(filename);  return(file.importVolume(volume)); }	\
+  extern "C" void register_plugin_instance_##ExternalName() {			\
+    VolumeFile::registerVolume(#ExternalName, 							\
+		ospray_import_volume_file_##ExternalName); }
 
 /*! helper function to help build voxel ranges during parsing */
 template<typename T>
@@ -68,6 +71,7 @@ public:
 
   //! Create a VolumeFile object of the subtype given by the file extension and import the volume.
   static OSPVolume importVolume(const std::string &filename, OSPVolume volume);
+  static void registerVolume(const std::string &type, OSPVolume (*creationFunction)(const std::string &filename, OSPVolume volume));
 
   //! Import the volume specification and voxel data.
   virtual OSPVolume importVolume(OSPVolume volume) = 0;

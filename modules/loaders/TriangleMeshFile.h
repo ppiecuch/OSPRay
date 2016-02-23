@@ -29,9 +29,12 @@
 //!  at build time.  Rather, the subclass can be defined in an external
 //!  module and registered with OSPRay using this macro.
 //! 
-#define OSP_REGISTER_TRIANGLEMESH_FILE(InternalClass, ExternalName)           \
+#define OSP_REGISTER_TRIANGLEMESH_FILE(InternalClass, ExternalName)			\
   extern "C" OSPTriangleMesh ospray_import_trianglemesh_file_##ExternalName(const std::string &filename, OSPTriangleMesh triangleMesh) \
-    { InternalClass file(filename);  return(file.importTriangleMesh(triangleMesh)); }
+    { InternalClass file(filename);  return(file.importTriangleMesh(triangleMesh)); } \
+  extern "C" void register_plugin_instance_##ExternalName() {				\
+    TriangleMeshFile::registerTriangleMesh(#ExternalName, 					\
+		ospray_import_trianglemesh_file_##ExternalName); }
 
 //! \brief The TriangleMeshFile class is an abstraction for the concrete
 //!  object which is used to load triangle mesh data from a file.
@@ -53,6 +56,7 @@ public:
 
   //! Create a TriangleMeshFile object of the subtype given by the file extension and import the triangle mesh.
   static OSPTriangleMesh importTriangleMesh(const std::string &filename, OSPTriangleMesh triangleMesh);
+  static void registerTriangleMesh(const std::string &type, OSPTriangleMesh (*creationFunction)(const std::string &filename, OSPTriangleMesh triangleMesh));
 
   //! Import the triangle mesh specification and data.
   virtual OSPTriangleMesh importTriangleMesh(OSPTriangleMesh triangleMesh) = 0;

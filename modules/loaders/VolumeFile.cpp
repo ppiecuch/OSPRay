@@ -18,16 +18,21 @@
 #include "ospray/common/Library.h"
 #include "modules/loaders/VolumeFile.h"
 
+// Function pointer type for creating a concrete instance of a subtype of this class.
+typedef OSPVolume (*creationFunctionPointer)(const std::string &filename, OSPVolume volume);
+
+// Function pointers corresponding to each subtype.
+static std::map<std::string, creationFunctionPointer> symbolRegistry;
+
+void VolumeFile::registerVolume(const std::string &type, creationFunctionPointer creationFunction)
+{
+	symbolRegistry[type] = creationFunction;
+}
+
 OSPVolume VolumeFile::importVolume(const std::string &filename, OSPVolume volume)
 {
   // Attempt to get the absolute file path.
   std::string fullfilename = getFullFilePath(filename);
-
-  // Function pointer type for creating a concrete instance of a subtype of this class.
-  typedef OSPVolume (*creationFunctionPointer)(const std::string &filename, OSPVolume volume);
-
-  // Function pointers corresponding to each subtype.
-  static std::map<std::string, creationFunctionPointer> symbolRegistry;
 
   // The subtype string is the file extension.
   std::string type = filename.substr(filename.find_last_of(".") + 1);

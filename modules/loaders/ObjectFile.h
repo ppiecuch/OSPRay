@@ -29,9 +29,12 @@
 //!  at build time.  Rather, the subclass can be defined in an external
 //!  module and registered with OSPRay using this macro.
 //! 
-#define OSP_REGISTER_OBJECT_FILE(InternalClass, ExternalName)           \
+#define OSP_REGISTER_OBJECT_FILE(InternalClass, ExternalName)     		\
   extern "C" OSPObject *ospray_import_object_file_##ExternalName(const std::string &filename) \
-    { InternalClass file(filename);  return(file.importObjects()); }
+    { InternalClass file(filename);  return(file.importObjects()); }	\
+  extern "C" void register_plugin_instance_##ExternalName() {			\
+    ObjectFile::registerObjects(#ExternalName, 							\
+		ospray_import_object_file_##ExternalName); }
 
 //! \brief An ObjectFile is an abstraction for the concrete objects
 //!  used to load files containing one or more OSPRay objects.
@@ -53,6 +56,7 @@ public:
 
   //! Create an ObjectFile object of the subtype given by the file extension and import the objects.
   static OSPObject *importObjects(const std::string &filename);
+  static void registerObjects(const std::string &type, OSPObject *(*creationFunction)(const std::string &filename));
 
   //! Import the object data.
   virtual OSPObject *importObjects() = 0;

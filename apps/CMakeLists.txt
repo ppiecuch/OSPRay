@@ -18,6 +18,13 @@ INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
 
 CONFIGURE_OSPRAY()
 
+IF (ENABLE_STATIC_LIB)
+  SET(SRCS
+  	${SRCS}
+  	${CMAKE_CURRENT_SOURCE_DIR}/static_plugins_instance.cpp
+  )
+ENDIF()
+
 IF(NOT THIS_IS_MIC)
 
   # common utility classes for 3D viewer widget

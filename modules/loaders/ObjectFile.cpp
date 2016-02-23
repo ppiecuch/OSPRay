@@ -18,16 +18,21 @@
 #include "ospray/common/Library.h"
 #include "modules/loaders/ObjectFile.h"
 
+// Function pointer type for creating a concrete instance of a subtype of this class.
+typedef OSPObject *(*creationFunctionPointer)(const std::string &filename);
+
+// Function pointers corresponding to each subtype.
+static std::map<std::string, creationFunctionPointer> symbolRegistry;
+
+void ObjectFile::registerObjects(const std::string &type, creationFunctionPointer creationFunction)
+{
+	symbolRegistry[type] = creationFunction;
+}
+
 OSPObject *ObjectFile::importObjects(const std::string &filename)
 {
   // Attempt to get the absolute file path.
   std::string fullfilename = getFullFilePath(filename);
-
-  // Function pointer type for creating a concrete instance of a subtype of this class.
-  typedef OSPObject *(*creationFunctionPointer)(const std::string &filename);
-
-  // Function pointers corresponding to each subtype.
-  static std::map<std::string, creationFunctionPointer> symbolRegistry;
 
   // The subtype string is the file extension.
   std::string type = filename.substr(filename.find_last_of(".") + 1);

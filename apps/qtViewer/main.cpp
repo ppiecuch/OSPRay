@@ -61,19 +61,13 @@ namespace ospray {
     /*! number of samples per pixel */
     int spp = 1;
 
+    /*! fullscreen display */
+    bool fullscreen = false;
+
     /*! @} */
 
-    void main(int argc, const char *argv[]) 
-    {
-      // init ospray
-      ospInit(&argc,argv);
-      // init qt
-      QApplication *app = new QApplication(argc, (char **)argv);
-      
-      Ref<sg::World> world = new sg::World;
-      Ref<sg::Renderer> renderer = new sg::Renderer;
-      bool fullscreen = false;
-
+	static void processCmdLine(Ref<sg::World> &world, int argc, const char *argv[])
+	{
       for (int argID=1;argID<argc;argID++) {
         const std::string arg = argv[argID];
         if (arg[0] == '-') {
@@ -147,6 +141,19 @@ namespace ospray {
           //world = sg::importRIVL(arg);
         }
       }
+	}
+
+    void main(int argc, const char *argv[]) 
+    {
+      // init ospray
+      ospInit(&argc,argv);
+      // init qt
+      QApplication *app = new QApplication(argc, (char **)argv);
+      
+      Ref<sg::World> world = new sg::World;
+      Ref<sg::Renderer> renderer = new sg::Renderer;
+
+      processCmdLine(world, argc, argv);
 
       if (!world) {
         std::cout << "#osp:qtv: no world defined. exiting." << std::endl;

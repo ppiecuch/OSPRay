@@ -18,16 +18,22 @@
 #include "ospray/common/Library.h"
 #include "modules/loaders/TriangleMeshFile.h"
 
+// Function pointer type for creating a concrete instance of a subtype of this class.
+typedef OSPTriangleMesh (*creationFunctionPointer)(const std::string &filename, OSPTriangleMesh triangleMesh);
+
+// Function pointers corresponding to each subtype.
+static std::map<std::string, creationFunctionPointer> symbolRegistry;
+
+
+void TriangleMeshFile::registerTriangleMesh(const std::string &type, creationFunctionPointer creationFunction)
+{
+	symbolRegistry[type] = creationFunction;
+}
+
 OSPTriangleMesh TriangleMeshFile::importTriangleMesh(const std::string &filename, OSPTriangleMesh triangleMesh)
 {
   // Attempt to get the absolute file path.
   std::string fullfilename = getFullFilePath(filename);
-
-  // Function pointer type for creating a concrete instance of a subtype of this class.
-  typedef OSPTriangleMesh (*creationFunctionPointer)(const std::string &filename, OSPTriangleMesh triangleMesh);
-
-  // Function pointers corresponding to each subtype.
-  static std::map<std::string, creationFunctionPointer> symbolRegistry;
 
   // The subtype string is the file extension.
   std::string type = filename.substr(filename.find_last_of(".") + 1);

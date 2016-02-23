@@ -96,8 +96,8 @@ endif(NOT EXISTS ${OSPRAY_INCLUDE_DIR}/ospray/version.h)
 set(OSPRAY_INCLUDE_DIRS
   ${OSPRAY_INCLUDE_DIR}
   ${OSPRAY_INCLUDE_DIR}/ospray
-  ${OSPRAY_INCLUDE_DIR}/ospray/embree-v2.7.1
-  ${OSPRAY_INCLUDE_DIR}/ospray/embree-v2.7.1/common
+  ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}
+  ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}/common
 )
 
 

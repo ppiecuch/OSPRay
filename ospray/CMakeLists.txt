@@ -59,7 +59,7 @@ ENDIF(USE_TBB)
 # -------------------------------------------------------
 
 #NOTE(jda) - Embree assumes that USE_TBB will be defined correctly (above)...
-INCLUDE(../cmake/build_embree_2.7.1.cmake)
+INCLUDE(../cmake/build_embree_${EMBREE_TREE}.cmake)
 
 # -------------------------------------------------------
 # Setup ospray source files
@@ -198,13 +198,6 @@ SET(OSPRAY_SOURCES
   api/LocalDevice.cpp
   )
 
-IF (ENABLE_STATIC_LIB)
-  SET(OSPRAY_SOURCES
-  	${OSPRAY_SOURCES}
-  	static_plugins_instance.cpp
-  )
-ENDIF()
-
 # -------------------------------------------------------
 # MPI components
 # -------------------------------------------------------
@@ -315,16 +308,18 @@ ENDIF()
 # ------------------------------------------------------------
 INSTALL(DIRECTORY include/ospray DESTINATION include FILES_MATCHING PATTERN "*.h")
 INSTALL(DIRECTORY common DESTINATION include/ospray FILES_MATCHING PATTERN "*.h")
-INSTALL(DIRECTORY embree-v2.7.1 DESTINATION include/ospray FILES_MATCHING PATTERN "*.h")
+INSTALL(DIRECTORY embree-v${EMBREE_TREE} DESTINATION include/ospray FILES_MATCHING PATTERN "*.h")
 SET_TARGET_PROPERTIES(ospray${OSPRAY_LIB_SUFFIX}
   PROPERTIES VERSION ${OSPRAY_VERSION} SOVERSION ${OSPRAY_SOVERSION})
-INSTALL(TARGETS ospray${OSPRAY_LIB_SUFFIX}
-  EXPORT ospray${OSPRAY_LIB_SUFFIX}Export
-  DESTINATION lib
-)
-INSTALL(EXPORT ospray${OSPRAY_LIB_SUFFIX}Export
-  DESTINATION ${CMAKE_DIR} FILE libospray${OSPRAY_LIB_SUFFIX}Targets.cmake
-)
+IF (NOT ENABLE_STATIC_LIB)
+  INSTALL(TARGETS ospray${OSPRAY_LIB_SUFFIX}
+    EXPORT ospray${OSPRAY_LIB_SUFFIX}Export
+    DESTINATION lib
+  )
+  INSTALL(EXPORT ospray${OSPRAY_LIB_SUFFIX}Export
+    DESTINATION ${CMAKE_DIR} FILE libospray${OSPRAY_LIB_SUFFIX}Targets.cmake
+  )
+ENDIF()
 ##############################################################
 
 

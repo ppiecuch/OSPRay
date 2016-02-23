@@ -25,6 +25,7 @@ ADD_SUBDIRECTORY(miniSG)
 # main executable
 # --------------------------------------------
 ADD_EXECUTABLE(ospModelViewer
+  ${SRCS}
   # CPP sources
   modelViewer.cpp
   )
