@@ -14,6 +14,8 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
+
 CONFIGURE_OSPRAY()
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)

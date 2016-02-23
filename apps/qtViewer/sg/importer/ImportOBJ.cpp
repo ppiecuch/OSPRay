@@ -237,6 +237,8 @@ namespace ospray {
         return;
       }
 
+      std::cout << "loading material " << fileName.str() << std::endl;
+
       char line[10000];
       memset(line, 0, sizeof(line));
 

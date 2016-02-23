@@ -14,8 +14,6 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
-
 CONFIGURE_OSPRAY()
 
 IF (ENABLE_STATIC_LIB)
