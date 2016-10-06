@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,7 +14,7 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-SET(COMMON_CXX_FLAGS "/EHsc /MP /GR ")
+SET(COMMON_CXX_FLAGS "/EHsc /MP /GR /bigobj /D NOMINMAX ")
 
 SET(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} ${COMMON_CXX_FLAGS}")
 SET(CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE}        ${COMMON_CXX_FLAGS} /Ox /fp:fast /Oi /Gy ")
@@ -44,3 +44,4 @@ IF (MSVC_VERSION LESS 1700) # need at least MSVC 11.0 2012 for AVX2
 ELSE()
   SET(OSPRAY_COMPILER_SUPPORTS_AVX2 TRUE)
 ENDIF()
+SET(OSPRAY_COMPILER_SUPPORTS_AVX512 FALSE)

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,8 +17,13 @@
 #pragma once
 
 #include <ospray/ospray.h>
+<<<<<<< HEAD
 #include "ospray/common/OSPCommon.h"
 #include <QtWidgets>
+=======
+#include "ospcommon/vec.h"
+#include <QtGui>
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 #include <vector>
 
 class IsovalueWidget;
@@ -37,7 +42,7 @@ signals:
 
 public slots:
 
-  void setDataValueRange(ospray::vec2f dataValueRange);
+  void setDataValueRange(ospcommon::vec2f dataValueRange);
 
   void apply();
 
@@ -47,7 +52,7 @@ protected slots:
 
 protected:
 
-  ospray::vec2f dataValueRange;
+  ospcommon::vec2f dataValueRange;
 
   QVBoxLayout layout;
 

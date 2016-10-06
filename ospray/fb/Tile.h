@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,10 +16,13 @@
 
 #pragma once
 
-#include "ospray/common/OSPCommon.h"
-#include "ospray/render/util.h"
+#include "common/OSPCommon.h"
+#include "render/util.h"
 
 namespace ospray {
+
+  static_assert(TILE_SIZE > 0 && (TILE_SIZE & (TILE_SIZE - 1)) == 0,
+      "OSPRay config error: TILE_SIZE must be a positive power of two.");
 
   //! a tile of pixels used by any tile-based renderer
   /*! pixels in the tile are in a row-major TILE_SIZE x TILE_SIZE
@@ -35,6 +38,9 @@ namespace ospray {
       may actually use uchars, but the tile will always store
       floats. */
   struct __aligned(64) Tile {
+    // make sure this tile is 64-byte aligned when alloc'ed
+    ALIGNED_STRUCT;
+
     // 'red' component; in float.
     float r[TILE_SIZE*TILE_SIZE];
     // 'green' component; in float.
@@ -50,6 +56,19 @@ namespace ospray {
     vec2f    rcp_fbSize;
     int32    generation;
     int32    children;
+    int32    accumID; //!< how often has been accumulated into this tile
+
+    Tile() {}
+    Tile(const vec2i &tile, const vec2i &fbsize, const int32 accumId)
+      : fbSize(fbsize),
+        rcp_fbSize(rcp(vec2f(fbsize))),
+        generation(0),
+        children(0),
+        accumID(accumId)
+    {
+      region.lower = tile * TILE_SIZE;
+      region.upper = min(region.lower + TILE_SIZE, fbsize);
+    }
   };
 
 } // ::ospray

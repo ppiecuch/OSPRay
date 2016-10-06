@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,13 +18,9 @@
 
 // sg
 #include "sg/common/TransferFunction.h"
-// embree
-#include "common/sys/filename.h"
 
 namespace ospray {
   namespace sg {
-
-    using embree::FileName;
 
     /*! a geometry node - the generic geometry node */
     struct Volume : public sg::Node {
@@ -37,12 +33,7 @@ namespace ospray {
       virtual box3f getBounds() = 0;
 
       //! serialize into given serialization state 
-      virtual void serialize(sg::Serialization::State &state)
-      {
-        Node::serialize(state);
-        if (transferFunction) 
-          transferFunction->serialize(state);
-      }
+      virtual void serialize(sg::Serialization::State &state);
 
       static bool useDataDistributedVolume;
 
@@ -125,8 +116,8 @@ namespace ospray {
       SG_NODE_DECLARE_MEMBER(vec2i,sliceResolution,SliceResolution);    
       /*! base path name for the slices, in "printf format" (e.g., "/mydir/slice%04i.raw") */
       SG_NODE_DECLARE_MEMBER(std::string,baseName,BaseName);    
-      SG_NODE_DECLARE_MEMBER(int32,firstSliceID,FirstSliceID);    
-      SG_NODE_DECLARE_MEMBER(int32,numSlices,numSlices);    
+      SG_NODE_DECLARE_MEMBER(int32_t,firstSliceID,FirstSliceID);    
+      SG_NODE_DECLARE_MEMBER(int32_t,numSlices,numSlices);    
       SG_NODE_DECLARE_MEMBER(std::string,voxelType,ScalarType);    
 
       //! actual dimensions after the data is loaded in - to be computed from sliceResolutiona nd numSlices

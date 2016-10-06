@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -56,7 +56,7 @@ void Plastic_Constructor(uniform Plastic* uniform self,
                          uniform float roughness,
                          uniform float thickness)
 {
-  PathTraceMaterial_Constructor(&self->super, Plastic_getBSDF, NULL, NULL);
+  PathTraceMaterial_Constructor(&self->super, Plastic_getBSDF, NULL, NULL, NULL);
   self->pigmentColor = pigmentColor;
   self->eta = rcp(ior);
   self->roughness = roughness;

@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,6 +14,7 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
+<<<<<<< HEAD
 CONFIGURE_OSPRAY()
 
 IF (ENABLE_STATIC_LIB)
@@ -23,51 +24,73 @@ IF (ENABLE_STATIC_LIB)
   )
 ENDIF()
 
+=======
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 IF(NOT THIS_IS_MIC)
 
-  # common utility classes for 3D viewer widget
-  ADD_SUBDIRECTORY(common/widgets)
+  INCLUDE_DIRECTORIES(
+    ${CMAKE_SOURCE_DIR}/ospray/include
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
+    common
+  )
 
-  # common xml utility classes
+  # common utilities
+  ADD_SUBDIRECTORY(common/commandline)
+  ADD_SUBDIRECTORY(common/importer)
+  ADD_SUBDIRECTORY(common/ospray_cpp)
+  ADD_SUBDIRECTORY(common/tfn_lib)
+  ADD_SUBDIRECTORY(common/miniSG)
   ADD_SUBDIRECTORY(common/xml)
 
-  # mini-scene graph viewer for _geometry_ (intentionally simple)
-  OPTION(OSPRAY_APPS_MODELVIEWER "Build ospModelViewer application." ON)
-  IF (OSPRAY_APPS_MODELVIEWER)
-    ADD_SUBDIRECTORY(modelViewer)
+  # benchmark application which has no windowing framework dependencies
+  OPTION(OSPRAY_APPS_BENCHMARK "Build ospBenchmark application." ON)
+
+  IF(OSPRAY_APPS_BENCHMARK)
+    ADD_SUBDIRECTORY(bench)
   ENDIF()
 
- IF(NOT WIN32)
-  # mini-scene graph viewer for _geometry_ (intentionally simple)
-  OPTION(OSPRAY_APPS_QTVIEWER "Build ospQtViewer (Qt-based model viewer)" ON)
-  IF (OSPRAY_APPS_QTVIEWER)
-    ADD_SUBDIRECTORY(qtViewer)
+  # determine if we can enable scripting features (can't with icc)
+  IF(NOT OSPRAY_COMPILER_ICC)
+    OPTION(OSPRAY_APPS_ENABLE_SCRIPTING
+           "Enable scripting features in viewer apps."
+           ON)
+    MARK_AS_ADVANCED(OSPRAY_APPS_ENABLE_SCRIPTING)
+  ELSE()
+    SET(OSPRAY_APPS_ENABLE_SCRIPTING OFF)
   ENDIF()
 
-  # stream line viewer for NASA Stream Line Demo
-  OPTION(OSPRAY_APPS_STREAMLINEVIEWER "Build ospStreamLineViewer application." OFF)
-  MARK_AS_ADVANCED(OSPRAY_APPS_STREAMLINEVIEWER)
-  IF(OSPRAY_APPS_STREAMLINEVIEWER)
-    ADD_SUBDIRECTORY(streamLineViewer)
+  IF(OSPRAY_APPS_ENABLE_SCRIPTING)
+    ADD_DEFINITIONS(-DOSPRAY_APPS_ENABLE_SCRIPTING)
+    INCLUDE_DIRECTORIES(common/script/chaiscript)
+    ADD_SUBDIRECTORY(common/script)
   ENDIF()
 
-  # xyz atom model viewer (one sphere per atom)
-  OPTION(OSPRAY_APPS_PARTICLEVIEWER "Build ospParticleViewer application." OFF)
-  IF(OSPRAY_APPS_PARTICLEVIEWER)
-    ADD_SUBDIRECTORY(particleViewer)
+  # mini-scene graph viewer implemented with GLUT
+  OPTION(OSPRAY_APPS_GLUTVIEWER "Build ospGlutViewer application." ON)
+
+  IF(OSPRAY_APPS_GLUTVIEWER)
+    INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
+    # common utility classes for GLUT-based 3D viewer widget
+    ADD_SUBDIRECTORY(common/widgets)
+    ADD_SUBDIRECTORY(glutViewer)
+  ENDIF()
+
+  # NOTE(jda) - Disable Qt based viewers when on OS X using ICC due to
+  #             unresolved issues
+  # qt-based viewer for geometry (and soon volumes)
+  IF(NOT (APPLE AND OSPRAY_COMPILER_ICC))
+    OPTION(OSPRAY_APPS_QTVIEWER "Build ospQtViewer (Qt-based model viewer)" ON)
+    IF (OSPRAY_APPS_QTVIEWER)
+      ADD_SUBDIRECTORY(qtViewer)
+    ENDIF()
   ENDIF()
 
   # volume viewer application
-  OPTION(OSPRAY_APPS_VOLUMEVIEWER "Build ospVolumeViewer application." ON)
-  IF(OSPRAY_APPS_VOLUMEVIEWER)
-    ADD_SUBDIRECTORY(volumeViewer)
+  IF(NOT (APPLE AND (${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")))
+    OPTION(OSPRAY_APPS_VOLUMEVIEWER "Build ospVolumeViewer application." ON)
+    IF(OSPRAY_APPS_VOLUMEVIEWER)
+      ADD_SUBDIRECTORY(volumeViewer)
+    ENDIF()
   ENDIF()
- ENDIF(NOT WIN32)
-
-  CONFIGURE_OSPRAY()
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
-
-#	ADD_EXECUTABLE(test1 test1.cpp) 
-#	TARGET_LINK_LIBRARIES(test1 ospray)
-
 ENDIF()

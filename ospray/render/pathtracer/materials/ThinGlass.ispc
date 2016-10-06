@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -47,8 +47,7 @@ vec3f ThinGlass_getTransparency(const uniform PathTraceMaterial* uniform materia
 {
   const uniform ThinGlass* uniform self = (const uniform ThinGlass* uniform)material;
 
-  float cosThetaO = max(dot(ray.dir, dg.Ns), 0.0f);
-  vec3f transmission = self->transmission;
+  float cosThetaO = max(-dot(ray.dir, dg.Ns), 0.0f);
   float alpha = self->thickness * rcp(cosThetaO);
   return powf(self->transmission, alpha) * (1.0f-fresnelDielectric(cosThetaO, self->eta));
 }
@@ -58,7 +57,7 @@ void ThinGlass_Constructor(uniform ThinGlass* uniform self,
                            const uniform vec3f& transmission,
                            uniform float thickness)
 {
-  PathTraceMaterial_Constructor(&self->super, ThinGlass_getBSDF, ThinGlass_getTransparency, NULL);
+  PathTraceMaterial_Constructor(&self->super, ThinGlass_getBSDF, ThinGlass_getTransparency, NULL, NULL);
   self->eta = rcp(ior);
   self->transmission = transmission;
   self->thickness = thickness;

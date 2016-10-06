@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -84,7 +84,7 @@ namespace ospray {
 
       /*! triangle with per-triangle material ID */
       struct Triangle {
-        uint32 vtxID[3], materialID;
+        uint32_t vtxID[3], materialID;
       };
 
       //! constructor
@@ -105,7 +105,7 @@ namespace ospray {
         Geometry::material no matter what Triangle::materialID is set
        */
       std::vector<Ref<sg::Material> > materialList;
-      std::vector<uint32> materialIDs;
+      std::vector<uint32_t> materialIDs;
 
       // to allow memory-mapping triangle arrays (or in general,
       // sharing data with an application) we use data arrays, not std::vector's

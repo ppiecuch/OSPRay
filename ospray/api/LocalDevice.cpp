@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,62 +15,59 @@
 // ======================================================================== //
 
 #include "LocalDevice.h"
-#include "ospray/common/Model.h"
-#include "ospray/common/Data.h"
-#include "ospray/geometry/TriangleMesh.h"
-#include "ospray/render/Renderer.h"
-#include "ospray/camera/Camera.h"
-#include "ospray/volume/Volume.h"
-#include "ospray/transferFunction/TransferFunction.h"
-#include "ospray/render/LoadBalancer.h"
-#include "ospray/common/Material.h"
-#include "ospray/common/Library.h"
-#include "ospray/texture/Texture2D.h"
-#include "ospray/lights/Light.h"
-#include "ospray/fb/LocalFB.h"
-
+#include "common/Model.h"
+#include "common/Data.h"
+#include "geometry/TriangleMesh.h"
+#include "render/Renderer.h"
+#include "camera/Camera.h"
+#include "volume/Volume.h"
+#include "transferFunction/TransferFunction.h"
+#include "render/LoadBalancer.h"
+#include "common/Material.h"
+#include "common/Library.h"
+#include "texture/Texture2D.h"
+#include "lights/Light.h"
+#include "fb/LocalFB.h"
 // stl
 #include <algorithm>
 
 namespace ospray {
+  extern RTCDevice g_embreeDevice;
+
   namespace api {
 
     void embreeErrorFunc(const RTCError code, const char* str)
     {
-      std::cerr << "#osp: embree internal error " << code << " : " << str << std::endl;
-      throw std::runtime_error("embree internal error '"+std::string(str)+"'");
+      std::cerr << "#osp: embree internal error " << code << " : " << str
+                << std::endl;
+      throw std::runtime_error("embree internal error '" +std::string(str)+"'");
     }
 
-    LocalDevice::LocalDevice(int *_ac, const char **_av)
+    LocalDevice::LocalDevice(int */*_ac*/, const char **/*_av*/)
     {
-      char *logLevelFromEnv = getenv("OSPRAY_LOG_LEVEL");
-      if (logLevelFromEnv)
-        logLevel = atoi(logLevelFromEnv);
-      else
-        logLevel = 0;
+      auto logLevelFromEnv = getEnvVar<int>("OSPRAY_LOG_LEVEL");
+      if (logLevelFromEnv.first && logLevel == 0)
+        logLevel = logLevelFromEnv.second;
 
-      ospray::init(_ac,&_av);
-
+      // -------------------------------------------------------
       // initialize embree. (we need to do this here rather than in
       // ospray::init() because in mpi-mode the latter is also called
       // in the host-stubs, where it shouldn't.
-
-      rtcSetErrorFunction(embreeErrorFunc);
-
       // -------------------------------------------------------
-      // initialize embree
-      // -------------------------------------------------------
-     std::stringstream embreeConfig;
+      std::stringstream embreeConfig;
       if (debugMode)
         embreeConfig << " threads=1,verbose=2";
       else if(numThreads > 0)
         embreeConfig << " threads=" << numThreads;
-      rtcInit(embreeConfig.str().c_str());
+      g_embreeDevice = rtcNewDevice(embreeConfig.str().c_str());
 
-      RTCError erc = rtcGetError();
+      rtcDeviceSetErrorFunction(g_embreeDevice, embreeErrorFunc);
+
+      RTCError erc = rtcDeviceGetError(g_embreeDevice);
       if (erc != RTC_NO_ERROR) {
         // why did the error function not get called !?
-        std::cerr << "#osp:init: embree internal error number " << (int)erc << std::endl;
+        std::cerr << "#osp:init: embree internal error number " << (int)erc
+                  << std::endl;
         assert(erc == RTC_NO_ERROR);
       }
 
@@ -79,7 +76,7 @@ namespace ospray {
 
     LocalDevice::~LocalDevice()
     {
-      rtcExit();
+      rtcDeleteDevice(g_embreeDevice);
     }
 
     OSPFrameBuffer
@@ -87,18 +84,21 @@ namespace ospray {
                                    const OSPFrameBufferFormat mode,
                                    const uint32 channels)
     {
-      FrameBuffer::ColorBufferFormat colorBufferFormat = mode; //FrameBuffer::RGBA_UINT8;//FLOAT32;
+      FrameBuffer::ColorBufferFormat colorBufferFormat = mode;
       bool hasDepthBuffer = (channels & OSP_FB_DEPTH)!=0;
       bool hasAccumBuffer = (channels & OSP_FB_ACCUM)!=0;
+      bool hasVarianceBuffer = (channels & OSP_FB_VARIANCE)!=0;
 
       FrameBuffer *fb = new LocalFrameBuffer(size,colorBufferFormat,
-                                             hasDepthBuffer,hasAccumBuffer);
+                                             hasDepthBuffer,hasAccumBuffer,
+                                             hasVarianceBuffer);
       fb->refInc();
       return (OSPFrameBuffer)fb;
     }
 
 
-      /*! clear the specified channel(s) of the frame buffer specified in 'whichChannels'
+      /*! clear the specified channel(s) of the frame buffer specified in
+       *  'whichChannels'
 
         if whichChannel&OSP_FB_COLOR!=0, clear the color buffer to
         '0,0,0,0'.
@@ -125,7 +125,7 @@ namespace ospray {
       switch (channel) {
       case OSP_FB_COLOR: return fb->mapColorBuffer();
       case OSP_FB_DEPTH: return fb->mapDepthBuffer();
-      default: return NULL;
+      default: return nullptr;
       }
     }
 
@@ -133,7 +133,7 @@ namespace ospray {
     void LocalDevice::frameBufferUnmap(const void *mapped,
                                        OSPFrameBuffer _fb)
     {
-      Assert2(_fb != NULL, "invalid framebuffer");
+      Assert2(_fb != nullptr, "invalid framebuffer");
       FrameBuffer *fb = (FrameBuffer *)_fb;
       fb->unmap(mapped);
     }
@@ -171,14 +171,6 @@ namespace ospray {
       model->geometry.push_back(geometry);
     }
 
-    /*! remove an existing geometry from a model */
-    struct GeometryLocator {
-      bool operator()(const embree::Ref<ospray::Geometry> &g) const {
-        return ptr == &*g;
-      }
-      Geometry *ptr;
-    };
-
     void LocalDevice::removeGeometry(OSPModel _model, OSPGeometry _geometry)
     {
       Model *model = (Model *)_model;
@@ -187,9 +179,12 @@ namespace ospray {
       Geometry *geometry = (Geometry *)_geometry;
       Assert2(geometry, "null geometry in LocalDevice::removeGeometry");
 
-      GeometryLocator locator;
-      locator.ptr = geometry;
-      Model::GeometryVector::iterator it = std::find_if(model->geometry.begin(), model->geometry.end(), locator);
+      auto it = std::find_if(model->geometry.begin(),
+                             model->geometry.end(),
+                             [&](const Ref<ospray::Geometry> &g) {
+                               return geometry == &*g;
+                             });
+
       if(it != model->geometry.end()) {
         model->geometry.erase(it);
       }
@@ -207,16 +202,28 @@ namespace ospray {
       model->volume.push_back(volume);
     }
 
-    /*! create a new data buffer */
-    OSPTriangleMesh LocalDevice::newTriangleMesh()
+    void LocalDevice::removeVolume(OSPModel _model, OSPVolume _volume)
     {
-      TriangleMesh *triangleMesh = new TriangleMesh;
-      triangleMesh->refInc();
-      return (OSPTriangleMesh)triangleMesh;
+      Model *model = (Model *)_model;
+      Assert2(model, "null model in LocalDevice::removeVolume");
+
+      Volume *volume = (Volume *)_volume;
+      Assert2(volume, "null volume in LocalDevice::removeVolume");
+
+      auto it = std::find_if(model->volume.begin(),
+                             model->volume.end(),
+                             [&](const Ref<ospray::Volume> &g) {
+                               return volume == &*g;
+                             });
+
+      if(it != model->volume.end()) {
+        model->volume.erase(it);
+      }
     }
 
     /*! create a new data buffer */
-    OSPData LocalDevice::newData(size_t nitems, OSPDataType format, void *init, int flags)
+    OSPData LocalDevice::newData(size_t nitems, OSPDataType format,
+                                 void *init, int flags)
     {
       Data *data = new Data(nitems,format,init,flags);
       data->refInc();
@@ -224,38 +231,46 @@ namespace ospray {
     }
 
     /*! assign (named) string parameter to an object */
-    void LocalDevice::setString(OSPObject _object, const char *bufName, const char *s)
+    void LocalDevice::setString(OSPObject _object,
+                                const char *bufName,
+                                const char *s)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
       object->findParam(bufName,1)->set(s);
     }
 
     /*! assign (named) string parameter to an object */
-    void LocalDevice::setVoidPtr(OSPObject _object, const char *bufName, void *v)
+    void LocalDevice::setVoidPtr(OSPObject _object,
+                                 const char *bufName,
+                                 void *v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
       object->findParam(bufName,1)->set(v);
     }
 
     /*! assign (named) int parameter to an object */
-    void LocalDevice::setInt(OSPObject _object, const char *bufName, const int f)
+    void LocalDevice::setInt(OSPObject _object,
+                             const char *bufName,
+                             const int f)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName,1)->set(f);
     }
     /*! assign (named) float parameter to an object */
-    void LocalDevice::setFloat(OSPObject _object, const char *bufName, const float f)
+    void LocalDevice::setFloat(OSPObject _object,
+                               const char *bufName,
+                               const float f)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       ManagedObject::Param *param = object->findParam(bufName,1);
       param->set(f);
@@ -266,209 +281,96 @@ namespace ospray {
                                const vec3i &index, const vec3i &count)
     {
       Volume *volume = (Volume *) handle;
-      Assert(volume != NULL && "invalid volume object handle");
+      Assert(volume != nullptr && "invalid volume object handle");
       return(volume->setRegion(source, index, count));
     }
 
     /*! assign (named) vec2f parameter to an object */
-    void LocalDevice::setVec2f(OSPObject _object, const char *bufName, const vec2f &v)
+    void LocalDevice::setVec2f(OSPObject _object,
+                               const char *bufName,
+                               const vec2f &v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName, 1)->set(v);
     }
 
     /*! assign (named) vec3f parameter to an object */
-    void LocalDevice::setVec3f(OSPObject _object, const char *bufName, const vec3f &v)
+    void LocalDevice::setVec3f(OSPObject _object,
+                               const char *bufName,
+                               const vec3f &v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName,1)->set(v);
     }
 
     /*! assign (named) vec3f parameter to an object */
-    void LocalDevice::setVec4f(OSPObject _object, const char *bufName, const vec4f &v)
+    void LocalDevice::setVec4f(OSPObject _object,
+                               const char *bufName,
+                               const vec4f &v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName,1)->set(v);
     }
 
     /*! assign (named) vec2f parameter to an object */
-    void LocalDevice::setVec2i(OSPObject _object, const char *bufName, const vec2i &v)
+    void LocalDevice::setVec2i(OSPObject _object,
+                               const char *bufName,
+                               const vec2i &v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName, 1)->set(v);
     }
 
     /*! assign (named) vec3i parameter to an object */
-    void LocalDevice::setVec3i(OSPObject _object, const char *bufName, const vec3i &v)
+    void LocalDevice::setVec3i(OSPObject _object,
+                               const char *bufName,
+                               const vec3i &v)
     {
       ManagedObject *object = (ManagedObject *)_object;
-      Assert(object != NULL  && "invalid object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       object->findParam(bufName,1)->set(v);
     }
 
     /*! assign (named) data item as a parameter to an object */
-    void LocalDevice::setObject(OSPObject _target, const char *bufName, OSPObject _value)
+    void LocalDevice::setObject(OSPObject _target,
+                                const char *bufName,
+                                OSPObject _value)
     {
       ManagedObject *target = (ManagedObject *)_target;
       ManagedObject *value  = (ManagedObject *)_value;
 
-      Assert(target != NULL  && "invalid target object handle");
-      Assert(bufName != NULL && "invalid identifier for object parameter");
+      Assert(target != nullptr  && "invalid target object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
 
       target->setParam(bufName,value);
-    }
-
-    /*! Get the handle of the named data array associated with an object. */
-    int LocalDevice::getData(OSPObject handle, const char *name, OSPData *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_OBJECT && param->ptr->managedObjectType == OSP_DATA ? *value = (OSPData) param->ptr, true : false);
-    }
-
-    /*! Get a copy of the data in an array (the application is responsible for freeing this pointer). */
-    int LocalDevice::getDataValues(OSPData handle, void **pointer, size_t *count, OSPDataType *type)
-    {
-      Data *data = (Data *) handle;
-      Assert(data != NULL && "invalid data object handle");
-     *pointer = malloc(data->numBytes);  if (pointer == NULL) return(false);
-      return(memcpy(*pointer, data->data, data->numBytes), *count = data->numItems, *type = data->type, true);
-    }
-
-    /*! Get the named scalar floating point value associated with an object. */
-    int LocalDevice::getf(OSPObject handle, const char *name, float *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_FLOAT ? *value = param->f[0], true : false);
-    }
-
-    /*! Get the named scalar integer associated with an object. */
-    int LocalDevice::geti(OSPObject handle, const char *name, int *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_INT ? *value = param->i[0], true : false);
-    }
-
-    /*! Get the material associated with a geometry object. */
-    int LocalDevice::getMaterial(OSPGeometry handle, OSPMaterial *value)
-    {
-      Geometry *geometry = (Geometry *) handle;
-      Assert(geometry != NULL && "invalid source geometry handle");
-      return(*value = (OSPMaterial) geometry->getMaterial(), true);
-    }
-
-    /*! Get the named object associated with an object. */
-    int LocalDevice::getObject(OSPObject handle, const char *name, OSPObject *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_OBJECT ? *value = (OSPObject) param->ptr, true : false);
-    }
-
-    /*! Retrieve a NULL-terminated list of the parameter names associated with an object. */
-    int LocalDevice::getParameters(OSPObject handle, char ***value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      char **names = (char **) malloc((object->paramList.size() + 1) * sizeof(char *));
-
-      for (size_t i=0 ; i < object->paramList.size() ; i++)
-        names[i] = strdup(object->paramList[i]->name);
-      names[object->paramList.size()] = NULL;
-      return(*value = names, true);
-
-    }
-
-    /*! Get a pointer to a copy of the named character string associated with an object. */
-    int LocalDevice::getString(OSPObject handle, const char *name, char **value) {
-
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_STRING ? *value = strdup(param->s), true : false);
-    }
-
-    /*! Get the type of the named parameter or the given object (if 'name' is NULL). */
-    int LocalDevice::getType(OSPObject handle, const char *name, OSPDataType *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      if (name == NULL) return(*value = object->managedObjectType, true);
-
-      ManagedObject::Param *param = object->findParam(name);
-      if (param == NULL) return(false);
-      return(*value
-             = (param->type == OSP_OBJECT)
-             ?  param->ptr->managedObjectType
-             :  param->type, true);
-    }
-
-    /*! Get the named 2-vector floating point value associated with an object. */
-    int LocalDevice::getVec2f(OSPObject handle, const char *name, vec2f *value) {
-
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_FLOAT2 ? *value = ((vec2f *) param->f)[0], true : false);
-    }
-
-    /*! Get the named 3-vector floating point value associated with an object. */
-    int LocalDevice::getVec3f(OSPObject handle, const char *name, vec3f *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_FLOAT3 ? *value = ((vec3f *) param->f)[0], true : false);
-    }
-
-    /*! Get the named 4-vector floating point value associated with an object. */
-    int LocalDevice::getVec4f(OSPObject handle, const char *name, vec4f *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_FLOAT4 ? *value = ((vec4f *) param->f)[0], true : false);
-    }
-
-    /*! Get the named 3-vector integer value associated with an object. */
-    int LocalDevice::getVec3i(OSPObject handle, const char *name, vec3i *value)
-    {
-      ManagedObject *object = (ManagedObject *) handle;
-      Assert(object != NULL && "invalid source object handle");
-      ManagedObject::Param *param = object->findParam(name);
-      return(param && param->type == OSP_INT3 ? *value = ((vec3i *) param->i)[0], true : false);
     }
 
     /*! create a new pixelOp object (out of list of registered pixelOps) */
     OSPPixelOp LocalDevice::newPixelOp(const char *type)
     {
-      Assert(type != NULL && "invalid render type identifier");
+      Assert(type != nullptr && "invalid render type identifier");
       PixelOp *pixelOp = PixelOp::createPixelOp(type);
       if (!pixelOp) {
-        if (ospray::debugMode)
-          throw std::runtime_error("unknown pixelOp type '"+std::string(type)+"'");
+        if (ospray::debugMode) {
+          throw std::runtime_error("unknown pixelOp type '" +
+                                   std::string(type) + "'");
+        }
         else
-          return NULL;
+          return nullptr;
       }
       pixelOp->refInc();
       return (OSPPixelOp)pixelOp;
@@ -487,13 +389,15 @@ namespace ospray {
     /*! create a new renderer object (out of list of registered renderers) */
     OSPRenderer LocalDevice::newRenderer(const char *type)
     {
-      Assert(type != NULL && "invalid render type identifier");
+      Assert(type != nullptr && "invalid render type identifier");
       Renderer *renderer = Renderer::createRenderer(type);
       if (!renderer) {
-        if (ospray::debugMode)
-          throw std::runtime_error("unknown renderer type '"+std::string(type)+"'");
+        if (ospray::debugMode) {
+          throw std::runtime_error("unknown renderer type '" +
+                                   std::string(type) + "'");
+        }
         else
-          return NULL;
+          return nullptr;
       }
       renderer->refInc();
       return (OSPRenderer)renderer;
@@ -502,20 +406,22 @@ namespace ospray {
     /*! create a new geometry object (out of list of registered geometrys) */
     OSPGeometry LocalDevice::newGeometry(const char *type)
     {
-      Assert(type != NULL && "invalid render type identifier");
+      Assert(type != nullptr && "invalid render type identifier");
       Geometry *geometry = Geometry::createGeometry(type);
-      if (!geometry) return NULL;
+      if (!geometry) return nullptr;
       geometry->refInc();
       return (OSPGeometry)geometry;
     }
 
       /*! have given renderer create a new material */
-    OSPMaterial LocalDevice::newMaterial(OSPRenderer _renderer, const char *type)
+    OSPMaterial LocalDevice::newMaterial(OSPRenderer _renderer,
+                                         const char *type)
     {
-      Assert2(type != NULL, "invalid material type identifier");
+      Assert2(type != nullptr, "invalid material type identifier");
 
       // -------------------------------------------------------
-      // first, check if there's a renderer that we can ask to create the material.
+      // first, check if there's a renderer that we can ask to create the
+      // material.
       //
       Renderer *renderer = (Renderer *)_renderer;
       if (renderer) {
@@ -527,10 +433,11 @@ namespace ospray {
       }
 
       // -------------------------------------------------------
-      // if there was no renderer, check if there's a loadable material by that name
+      // if there was no renderer, check if there's a loadable material by that
+      // name
       //
       Material *material = Material::createMaterial(type);
-      if (!material) return NULL;
+      if (!material) return nullptr;
       material->refInc();
       return (OSPMaterial)material;
     }
@@ -538,13 +445,15 @@ namespace ospray {
     /*! create a new camera object (out of list of registered cameras) */
     OSPCamera LocalDevice::newCamera(const char *type)
     {
-      Assert(type != NULL && "invalid camera type identifier");
+      Assert(type != nullptr && "invalid camera type identifier");
       Camera *camera = Camera::createCamera(type);
       if (!camera) {
-        if (ospray::debugMode)
-          throw std::runtime_error("unknown camera type '"+std::string(type)+"'");
+        if (ospray::debugMode) {
+          throw std::runtime_error("unknown camera type '"
+                                   + std::string(type) + "'");
+        }
         else
-          return NULL;
+          return nullptr;
       }
       camera->refInc();
       return (OSPCamera)camera;
@@ -553,13 +462,15 @@ namespace ospray {
     /*! create a new volume object (out of list of registered volumes) */
     OSPVolume LocalDevice::newVolume(const char *type)
     {
-      Assert(type != NULL && "invalid volume type identifier");
+      Assert(type != nullptr && "invalid volume type identifier");
       Volume *volume = Volume::createInstance(type);
       if (!volume) {
-        if (ospray::debugMode)
-          throw std::runtime_error("unknown volume type '"+std::string(type)+"'");
+        if (ospray::debugMode) {
+          throw std::runtime_error("unknown volume type '" +
+                                   std::string(type) + "'");
+        }
         else
-          return NULL;
+          return nullptr;
       }
       volume->refInc();
       return (OSPVolume)volume;
@@ -568,13 +479,15 @@ namespace ospray {
     /*! create a new volume object (out of list of registered volumes) */
     OSPTransferFunction LocalDevice::newTransferFunction(const char *type)
     {
-      Assert(type != NULL && "invalid transfer function type identifier");
-      TransferFunction *transferFunction = TransferFunction::createInstance(type);
+      Assert(type != nullptr && "invalid transfer function type identifier");
+      auto *transferFunction = TransferFunction::createInstance(type);
       if (!transferFunction) {
-        if (ospray::debugMode)
-          throw std::runtime_error("unknown transfer function type '"+std::string(type)+"'");
+        if (ospray::debugMode) {
+          throw std::runtime_error("unknown transfer function type '" +
+                                   std::string(type) + "'");
+        }
         else
-          return NULL;
+          return nullptr;
       }
       transferFunction->refInc();
       return (OSPTransferFunction)transferFunction;
@@ -591,18 +504,23 @@ namespace ospray {
         }
       }
 
-      //If there was no renderer try to see if there is a loadable light by that name
+      // If there was no renderer try to see if there is a loadable light by
+      // that name
       Light *light = Light::createLight(type);
-      if (!light) return NULL;
+      if (!light) return nullptr;
       light->refInc();
       return (OSPLight)light;
     }
 
     /*! create a new Texture2D object */
-    OSPTexture2D LocalDevice::newTexture2D(int width, int height, OSPDataType type, void *data, int flags) {
-      Assert(width > 0 && "Width must be greater than 0 in LocalDevice::newTexture2D");
-      Assert(height > 0 && "Height must be greater than 0 in LocalDevice::newTexture2D");
-      Texture2D *tx = Texture2D::createTexture(width, height, type, data, flags);
+    OSPTexture2D LocalDevice::newTexture2D(const vec2i &size,
+        const OSPTextureFormat type, void *data, const uint32 flags)
+    {
+      Assert(size.x > 0 &&
+             "Width must be greater than 0 in LocalDevice::newTexture2D");
+      Assert(size.y > 0 &&
+             "Height must be greater than 0 in LocalDevice::newTexture2D");
+      Texture2D *tx = Texture2D::createTexture(size, type, data, flags);
       if(tx) tx->refInc();
       return (OSPTexture2D)tx;
     }
@@ -610,52 +528,54 @@ namespace ospray {
     /*! load module */
     int LocalDevice::loadModule(const char *name)
     {
-      std::string libName = "ospray_module_"+std::string(name);
+      std::string libName = "ospray_module_" + std::string(name);
       loadLibrary(libName);
 
-      std::string initSymName = "ospray_init_module_"+std::string(name);
+      std::string initSymName = "ospray_init_module_" + std::string(name);
       void*initSym = getSymbol(initSymName);
-      if (!initSym)
-        throw std::runtime_error("#osp:api: could not find module initializer "+initSymName);
+      if (!initSym) {
+        throw std::runtime_error("#osp:api: could not find module initializer "
+                                 +initSymName);
+      }
+
       void (*initMethod)() = (void(*)())initSym;
+
+      //NOTE(jda) - don't use magic numbers!
       if (!initMethod)
         return 2;
+
       try {
         initMethod();
       } catch (...) {
         return 3;
       }
+
       return 0;
     }
 
 
     /*! call a renderer to render a frame buffer */
-    void LocalDevice::renderFrame(OSPFrameBuffer _fb,
-                                  OSPRenderer    _renderer,
-                                  const uint32 fbChannelFlags)
+    float LocalDevice::renderFrame(OSPFrameBuffer _fb,
+                                   OSPRenderer    _renderer,
+                                   const uint32   fbChannelFlags)
     {
       FrameBuffer *fb       = (FrameBuffer *)_fb;
-      // SwapChain *sc       = (SwapChain *)_sc;
-      Renderer  *renderer = (Renderer *)_renderer;
-      // Model *model = (Model *)_model;
+      Renderer    *renderer = (Renderer *)_renderer;
 
-      Assert(fb != NULL && "invalid frame buffer handle");
-      // Assert(sc != NULL && "invalid frame buffer handle");
-      Assert(renderer != NULL && "invalid renderer handle");
+      Assert(fb != nullptr && "invalid frame buffer handle");
+      Assert(renderer != nullptr && "invalid renderer handle");
 
-      // FrameBuffer *fb = sc->getBackBuffer();
       try {
-        renderer->renderFrame(fb,fbChannelFlags);
-      } catch (std::runtime_error e) {
-        std::cerr << "=======================================================" << std::endl;
-        std::cerr << "# >>> ospray fatal error <<< " << std::endl << e.what() << std::endl;
-        std::cerr << "=======================================================" << std::endl;
+        return renderer->renderFrame(fb, fbChannelFlags);
+      } catch (const std::runtime_error &e) {
+        std::cerr << "======================================================="
+                  << std::endl;
+        std::cerr << "# >>> ospray fatal error <<< " << std::endl << e.what()
+                  << std::endl;
+        std::cerr << "======================================================="
+                  << std::endl;
         exit(1);
       }
-      // WARNING: I'm doing an *im*plicit swapbuffers here at the end
-      // of renderframe, but to be more opengl-conform we should
-      // actually have the user call an *ex*plicit ospSwapBuffers call...
-      // sc->advance();
     }
 
     //! release (i.e., reduce refcount of) given object
@@ -683,15 +603,19 @@ namespace ospray {
       geometry->setMaterial(material);
     }
 
-    OSPPickResult LocalDevice::pick(OSPRenderer _renderer, const vec2f &screenPos)
+    OSPPickResult LocalDevice::pick(OSPRenderer _renderer,
+                                    const vec2f &screenPos)
     {
-      Assert(_renderer != NULL && "invalid renderer handle");
+      Assert(_renderer != nullptr && "invalid renderer handle");
       Renderer *renderer = (Renderer*)_renderer;
 
       return renderer->pick(screenPos);
     }
 
-    void LocalDevice::sampleVolume(float **results, OSPVolume _volume, const vec3f *worldCoordinates, const size_t &count)
+    void LocalDevice::sampleVolume(float **results,
+                                   OSPVolume _volume,
+                                   const vec3f *worldCoordinates,
+                                   const size_t &count)
     {
       Volume *volume = (Volume *)_volume;
 

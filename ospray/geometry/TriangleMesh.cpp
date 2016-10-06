@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -19,13 +19,12 @@
 #endif
 
 #if OSP_COMPOSITING_TEST
-# include "ospray/mpi/MPICommon.h"
+# include "mpi/MPICommon.h"
 #endif
-
 
 // ospray
 #include "TriangleMesh.h"
-#include "ospray/common/Model.h"
+#include "common/Model.h"
 #include "../include/ospray/ospray.h"
 // embree 
 #include "embree2/rtcore.h"
@@ -186,7 +185,7 @@ namespace ospray {
                  (void*)this->index,0,
                  sizeOf(indexData->type));
 
-    bounds = embree::empty;
+    bounds = empty;
     
     for (int i=0;i<numVerts*numCompsInVtx;i+=numCompsInVtx) 
       bounds.extend(*(vec3f*)(vertex + i));

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -65,9 +65,7 @@ namespace ospray {
 
     inline void FrameBuffer::createFB() 
     {
-      ospFrameBuffer = ospNewFrameBuffer((const osp::vec2i&)size,OSP_RGBA_I8,OSP_FB_COLOR|OSP_FB_ACCUM);
-      ospSet1f(ospFrameBuffer, "gamma", 2.2f);
-      ospCommit(ospFrameBuffer);
+      ospFrameBuffer = ospNewFrameBuffer((const osp::vec2i&)size, OSP_FB_SRGBA, OSP_FB_COLOR | OSP_FB_ACCUM);
     }
     
     inline void FrameBuffer::destroyFB() 

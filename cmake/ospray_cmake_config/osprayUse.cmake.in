@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -19,3 +19,6 @@
 #             to automatically have an add_definitions(...) call for clients
 #             which need certain preprocessor definitions based on how ospray
 #             was built.
+
+include(${CMAKE_CURRENT_LIST_DIR}/ispc.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/ospray.cmake)

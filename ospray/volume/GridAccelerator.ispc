@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,9 +15,9 @@
 // ======================================================================== //
 
 // ospray
-#include "ospray/volume/GridAccelerator.ih"
-#include "ospray/volume/StructuredVolume.ih"
-#include "ospray/math/box.ih"
+#include "volume/GridAccelerator.ih"
+#include "volume/StructuredVolume.ih"
+#include "math/box.ih"
 
 //! Bit count used to represent the brick width.
 #define BRICK_WIDTH_BITCOUNT (4)

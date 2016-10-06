@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and      //
 // limitations under the License.                                           //
 // ======================================================================== //
+
+#include <string>
 
 #include "QOSPRayWindow.h"
 #include "modules/opengl/util.h"
@@ -99,13 +101,15 @@ void QOSPRayWindow::setRotationRate(float rotationRate)
   this->rotationRate = rotationRate;
 }
 
-void QOSPRayWindow::setBenchmarkParameters(int benchmarkWarmUpFrames, int benchmarkFrames)
+void QOSPRayWindow::setBenchmarkParameters(int benchmarkWarmUpFrames, int benchmarkFrames,
+  const std::string &benchmarkFilename)
 {
   this->benchmarkWarmUpFrames = benchmarkWarmUpFrames;
   this->benchmarkFrames = benchmarkFrames;
+  this->benchmarkFilename = benchmarkFilename;
 }
 
-void QOSPRayWindow::setWorldBounds(const ospray::box3f &worldBounds)
+void QOSPRayWindow::setWorldBounds(const ospcommon::box3f &worldBounds)
 {
   this->worldBounds = worldBounds;
 
@@ -131,7 +135,7 @@ void QOSPRayWindow::paintGL()
 
   // update OSPRay camera if viewport has been modified
   if(viewport.modified) {
-    const ospray::vec3f dir =  viewport.at - viewport.from;
+    const ospcommon::vec3f dir =  viewport.at - viewport.from;
     ospSetVec3f(camera,"pos" ,(const osp::vec3f&)viewport.from);
     ospSetVec3f(camera,"dir" ,(const osp::vec3f&)dir);
     ospSetVec3f(camera,"up", (const osp::vec3f&)viewport.up);
@@ -190,7 +194,10 @@ void QOSPRayWindow::paintGL()
   uint32_t *mappedFrameBuffer = (unsigned int *) ospMapFrameBuffer(frameBuffer);
 
   glDrawPixels(windowSize.x, windowSize.y, GL_RGBA, GL_UNSIGNED_BYTE, mappedFrameBuffer);
-  if (writeFramesFilename.length()) writeFrameBufferToFile(mappedFrameBuffer);
+  if (writeFramesFilename.length()) {
+    std::string filename = writeFramesFilename + std::to_string(static_cast<long long>(frameCount));
+    writeFrameBufferToFile(filename, mappedFrameBuffer);
+  }
 
   ospUnmapFrameBuffer(mappedFrameBuffer, frameBuffer);
 
@@ -208,7 +215,12 @@ void QOSPRayWindow::paintGL()
 
     float elapsedSeconds = float(benchmarkTimer.elapsed()) / 1000.f;
 
-    std::cout << "benchmark: " << elapsedSeconds << " elapsed seconds ==> " << float(benchmarkFrames) / elapsedSeconds << " fps" << std::endl;
+    std::cout << "benchmark: " << elapsedSeconds << " elapsed seconds ==> "
+      << float(benchmarkFrames) / elapsedSeconds << " fps" << std::endl;
+
+    uint32_t *mappedFrameBuffer = (unsigned int *) ospMapFrameBuffer(frameBuffer);
+
+    writeFrameBufferToFile(benchmarkFilename, mappedFrameBuffer);
 
     QCoreApplication::quit();
   }
@@ -216,17 +228,13 @@ void QOSPRayWindow::paintGL()
 
 void QOSPRayWindow::resizeGL(int width, int height)
 {
-  windowSize = ospray::vec2i(width, height);
+  windowSize = ospcommon::vec2i(width, height);
 
   // reallocate OSPRay framebuffer for new size
   if(frameBuffer)
     ospFreeFrameBuffer(frameBuffer);
 
-  frameBuffer = ospNewFrameBuffer((const osp::vec2i&)windowSize, OSP_RGBA_I8, OSP_FB_COLOR | OSP_FB_ACCUM);
-
-  // set gamma correction
-  ospSet1f(frameBuffer, "gamma", 1.0f);
-  ospCommit(frameBuffer);
+  frameBuffer = ospNewFrameBuffer((const osp::vec2i&)windowSize, OSP_FB_SRGBA, OSP_FB_COLOR | OSP_FB_ACCUM);
 
   resetAccumulationBuffer();
 
@@ -313,12 +321,12 @@ void QOSPRayWindow::mouseMoveEvent(QMouseEvent * event)
 
 void QOSPRayWindow::rotateCenter(float du, float dv)
 {
-  const ospray::vec3f pivot = viewport.at;
+  const ospcommon::vec3f pivot = viewport.at;
 
-  ospray::affine3f xfm = ospray::affine3f::translate(pivot)
-    * ospray::affine3f::rotate(viewport.frame.l.vx, -dv)
-    * ospray::affine3f::rotate(viewport.frame.l.vz, -du)
-    * ospray::affine3f::translate(-pivot);
+  ospcommon::affine3f xfm = ospcommon::affine3f::translate(pivot)
+    * ospcommon::affine3f::rotate(viewport.frame.l.vx, -dv)
+    * ospcommon::affine3f::rotate(viewport.frame.l.vz, -du)
+    * ospcommon::affine3f::translate(-pivot);
 
   viewport.frame = xfm * viewport.frame;
   viewport.from  = xfmPoint(xfm, viewport.from);
@@ -330,8 +338,8 @@ void QOSPRayWindow::rotateCenter(float du, float dv)
 
 void QOSPRayWindow::strafe(float du, float dv)
 {
-  ospray::affine3f xfm = ospray::affine3f::translate(dv * viewport.frame.l.vz)
-    * ospray::affine3f::translate(-du * viewport.frame.l.vx);
+  ospcommon::affine3f xfm = ospcommon::affine3f::translate(dv * viewport.frame.l.vz)
+    * ospcommon::affine3f::translate(-du * viewport.frame.l.vx);
 
   viewport.frame = xfm * viewport.frame;
   viewport.from = xfmPoint(xfm, viewport.from);
@@ -344,7 +352,7 @@ void QOSPRayWindow::strafe(float du, float dv)
 void QOSPRayWindow::renderGL()
 {
   // setup OpenGL state to match OSPRay view
-  const ospray::vec3f bgColor = ospray::vec3f(1.f);
+  const ospcommon::vec3f bgColor = ospcommon::vec3f(1.f);
   glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.f);
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -366,15 +374,16 @@ void QOSPRayWindow::renderGL()
   emit(renderGLComponents());
 }
 
-void QOSPRayWindow::writeFrameBufferToFile(const uint32_t *pixelData)
+void QOSPRayWindow::writeFrameBufferToFile(std::string filename, const uint32_t *pixelData)
 {
-  static uint32_t frameNumber = 0;
-  char filename[1024];
-  sprintf(filename, "%s_%05u.ppm", writeFramesFilename.c_str(), frameNumber++);
-  FILE *file = fopen(filename, "wb");  if (!file) { std::cerr << "unable to write to file '" << filename << "'" << std::endl;  return; }
-
+  filename += ".ppm";
+  FILE *file = fopen(filename.c_str(), "wb");
+  if (!file) {
+    std::cerr << "unable to write to file '" << filename << "'" << std::endl;
+    return;
+  }
   fprintf(file, "P6\n%i %i\n255\n", windowSize.x, windowSize.y);
-  unsigned char out[3 * windowSize.x];
+  unsigned char *out = (unsigned char *)alloca(3 * windowSize.x);
   for (int y=0 ; y < windowSize.y ; y++) {
     const unsigned char *in = (const unsigned char *) &pixelData[(windowSize.y - 1 - y) * windowSize.x];
     for (int x=0 ; x < windowSize.x ; x++) {
@@ -382,7 +391,7 @@ void QOSPRayWindow::writeFrameBufferToFile(const uint32_t *pixelData)
       out[3 * x + 1] = in[4 * x + 1];
       out[3 * x + 2] = in[4 * x + 2];
     }
-    fwrite(&out, 3 * windowSize.x, sizeof(char), file);
+    fwrite(out, 3 * windowSize.x, sizeof(char), file);
   }
   fprintf(file, "\n");
   fclose(file);

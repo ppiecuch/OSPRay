@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,18 +14,17 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
+#pragma once
+
 // ospray::sg
 #include "../common/World.h"
-// embree
-#include "common/sys/filename.h"
+#include "ospcommon/FileName.h"
 
 /*! \file sg/module/Importer.h Defines the interface for writing
     file importers for the ospray::sg */
 
 namespace ospray {
   namespace sg {
-
-    using embree::FileName;
 
     struct ImportState {
       Ref<sg::World> world;

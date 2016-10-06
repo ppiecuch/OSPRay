@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,14 +17,36 @@
 // viewer
 #include "QAffineSpaceManipulator.h"
 #include "HelperGeometry.h"
-#include <sys/times.h>
 #include <cmath>
 
-#if __APPLE__
-# include "glut.h"
-#else
-# include "GL/glut.h"
-#endif
+#include <QtOpenGL/qgl.h>
+
+static void gluPerspective (double fovy, double xy, double z0, double z1)
+{
+    fovy = tan(fovy*(M_PI/360.0))*z0; xy *= fovy; glFrustum(-xy,xy,-fovy,fovy,z0,z1);
+}
+static void gluLookAt (double px, double py, double pz, double fx, double fy, double fz, double ux, double uy, double uz)
+{
+	double t, r[3], d[3], f[3], mat[16];
+
+	f[0] = px-fx; f[1] = py-fy; f[2] = pz-fz;
+	t = 1.0/sqrt(f[0]*f[0] + f[1]*f[1] + f[2]*f[2]); f[0] *= t; f[1] *= t; f[2] *= t;
+
+	r[0] = f[2]*uy - f[1]*uz;
+	r[1] = f[0]*uz - f[2]*ux;
+	r[2] = f[1]*ux - f[0]*uy;
+	t = 1.0/sqrt(r[0]*r[0] + r[1]*r[1] + r[2]*r[2]); r[0] *= t; r[1] *= t; r[2] *= t;
+
+	d[0] = f[1]*r[2] - f[2]*r[1];
+	d[1] = f[2]*r[0] - f[0]*r[2];
+	d[2] = f[0]*r[1] - f[1]*r[0];
+
+	mat[0] = r[0]; mat[4] = r[1]; mat[ 8] = r[2]; mat[12] = -(mat[0]*px + mat[4]*py + mat[ 8]*pz);
+	mat[1] = d[0]; mat[5] = d[1]; mat[ 9] = d[2]; mat[13] = -(mat[1]*px + mat[5]*py + mat[ 9]*pz);
+	mat[2] = f[0]; mat[6] = f[1]; mat[10] = f[2]; mat[14] = -(mat[2]*px + mat[6]*py + mat[10]*pz);
+	mat[3] =  0.0; mat[7] =  0.0; mat[11] =  0.0; mat[15] = 1.0;
+	glLoadMatrixd(mat);
+}
 
 namespace ospray {
   namespace viewer {
@@ -54,7 +76,7 @@ namespace ospray {
       : sourcePoint(0,-4,0),
         targetPoint(0,0,0),
         upVector(0,1,0),
-        orientation(embree::one)
+        orientation(ospcommon::one)
     {}
         
     void QAffineSpaceManipulator::ReferenceFrame::snapUp()
@@ -344,7 +366,7 @@ namespace ospray {
 
         glBegin(GL_TRIANGLES);
         for (int i=0;i<mesh.index.size();i++) {
-          vec3f idx = mesh.index[i];
+          vec3i idx = mesh.index[i];
           glNormal3fv(&mesh.normal[idx.x].x);
           glVertex3fv(&mesh.vertex[idx.x].x);
           glNormal3fv(&mesh.normal[idx.y].x);

@@ -1,6 +1,6 @@
 
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,11 +15,6 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-
-// enable the "mpi distributed" part of the ospray api
-#ifndef OSPRAY_MPI_DISTRIBUTED
-#  define OSPRAY_MPI_DISTRIBUTED
-#endif
 
 #include <mpi.h>
 #include <ospray/ospray.h>

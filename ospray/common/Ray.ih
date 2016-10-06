@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,16 +17,8 @@
 #pragma once
 
 // ospray 
-#include "ospray/math/vec.ih"
-#include "ospray/math/box.ih"
-
-#ifdef OSPRAY_INTERSECTION_FILTER
-struct Geometry;
-struct Ray;
-
-typedef void (*IntersectionFilterFunc)(uniform Geometry *uniform THIS,
-                                       varying Ray &ray);
-#endif
+#include "../math/vec.ih"
+#include "../math/box.ih"
 
 /*! \brief ospray ray class 
 
@@ -75,10 +67,6 @@ struct Ray {
   int primID_hi64;
 
   void *uniform userData;
-#ifdef OSPRAY_INTERSECTION_FILTER
-  uniform IntersectionFilterFunc intersectionFilter;
-#endif
-
 };
 
 #define infinity (1e20f)
@@ -106,9 +94,6 @@ inline void setRay(Ray &ray, const vec3f &ray_org, const vec3f &ray_dir)
   ray.geomID = -1;
   ray.primID = -1;
   ray.instID = -1;
-#ifdef OSPRAY_INTERSECTION_FILTER
-  ray.intersectionFilter = NULL;
-#endif
 }
 
 /*! initialize a new ray with given parameters */
@@ -127,9 +112,6 @@ inline void setRay(Ray &ray, const vec3f &ray_org, const vec3f &ray_dir,
   ray.geomID = -1;
   ray.primID = -1;
   ray.instID = -1;
-#ifdef OSPRAY_INTERSECTION_FILTER
-  ray.intersectionFilter = NULL;
-#endif
 }
 
 /*! helper function that performs a ray-box test */

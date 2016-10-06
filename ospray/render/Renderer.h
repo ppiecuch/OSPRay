@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,9 +18,9 @@
 
 /*! \file Renderer.h Defines the base renderer class */
 
-#include "ospray/common/Model.h"
-#include "ospray/fb/FrameBuffer.h"
-#include "ospray/texture/Texture2D.h"
+#include "common/Model.h"
+#include "fb/FrameBuffer.h"
+#include "texture/Texture2D.h"
 
 namespace ospray {
 
@@ -35,7 +35,7 @@ namespace ospray {
     compositing or even projection/splatting based approaches
    */
   struct Renderer : public ManagedObject {
-    Renderer() : spp(1) {}
+    Renderer() : spp(1), errorThreshold(0.0f) {}
 
     /*! \brief creates an abstract renderer class of given type
 
@@ -45,6 +45,7 @@ namespace ospray {
       ospLoadModule first. */
     static Renderer *createRenderer(const char *identifier);
     static void registerRenderer(const char *identifier, Renderer *(*creator)());
+    static std::vector<std::string> registeredRenderers();
 
     virtual void commit();
 
@@ -52,7 +53,7 @@ namespace ospray {
     virtual std::string toString() const { return "ospray::Renderer"; }
 
     /*! \brief render one frame, and put it into given frame buffer */
-    virtual void renderFrame(FrameBuffer *fb,
+    virtual float renderFrame(FrameBuffer *fb,
                              const uint32 fbChannelFlags);
 
     //! \brief called to initialize a new frame
@@ -88,7 +89,10 @@ namespace ospray {
     float epsilon;
 
     /*! \brief number of samples to be used per pixel in a tile */
-    int32        spp;
+    int32 spp;
+
+    /*! adaptive accumulation: variance-based error to reach */
+    float errorThreshold;
 
     /*! \brief whether the background should be rendered (e.g. for compositing the background may be disabled) */
     bool backgroundEnabled;

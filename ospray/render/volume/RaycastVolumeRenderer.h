@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "ospray/render/Renderer.h"
+#include "render/Renderer.h"
 
 namespace ospray {
 
@@ -34,18 +34,18 @@ namespace ospray {
     ~RaycastVolumeRenderer();
 
     //! Create a material of the given type.
-    Material* createMaterial(const char *type);
+    Material* createMaterial(const char *type) override;
 
     //! Initialize the renderer state, and create the equivalent ISPC volume
     //! renderer object.
-    void commit();
+    void commit() override;
 
     //! A string description of this class.
-    std::string toString() const;
+    std::string toString() const override;
 
 #if EXP_DATA_PARALLEL
     /*! per-frame data to describe the data-parallel components */
-    void renderFrame(FrameBuffer *fb, const uint32 channelFlags);
+    float renderFrame(FrameBuffer *fb, const uint32 channelFlags) override;
 #endif
 
   private:

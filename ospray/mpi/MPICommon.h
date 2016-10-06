@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,8 +17,12 @@
 #pragma once
 
 #include <mpi.h>
-#include "ospray/common/OSPCommon.h"
+#include "common/OSPCommon.h"
 
+// IMPI on Windows defines MPI_CALL already, erroneously
+#ifdef MPI_CALL
+# undef MPI_CALL
+#endif
 /*! helper macro that checks the return value of all MPI_xxx(...)
     calls via MPI_CALL(xxx(...)).  */
 #define MPI_CALL(a) { int rc = MPI_##a; if (rc != MPI_SUCCESS) throw std::runtime_error("MPI call returned error"); }
@@ -69,16 +73,16 @@ namespace ospray {
       void barrier() { MPI_CALL(Barrier(comm)); }
     };
 
-    extern Group world; //! MPI_COMM_WORLD
-    extern Group app; /*! for workers: intracommunicator to app
+    OSPRAY_INTERFACE extern Group world; //! MPI_COMM_WORLD
+    OSPRAY_INTERFACE extern Group app; /*! for workers: intracommunicator to app
                         for app: intercommunicator among app processes
                       */
-    extern Group worker; /*!< group of all ospray workers (often the
+    OSPRAY_INTERFACE extern Group worker; /*!< group of all ospray workers (often the
                            world root is reserved for either app or
                            load balancing, and not part of the worker
                            group */
 
-    void init(int *ac, const char **av);
-  };
+    OSPRAY_INTERFACE void init(int *ac, const char **av);
+  }
 
 } // ::ospray

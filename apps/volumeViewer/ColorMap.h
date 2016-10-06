@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,8 +16,11 @@
 
 #pragma once
 
+// ospray public
 #include <ospray/ospray.h>
-#include "ospray/common/OSPCommon.h"
+// ospcommon
+#include "ospcommon/vec.h"
+// std
 #include <string>
 #include <vector>
 #include <QtGui>
@@ -26,15 +29,15 @@ class ColorMap
 {
 public:
 
-  ColorMap(std::string name, std::vector<ospray::vec3f> colors);
+  ColorMap(std::string name, std::vector<ospcommon::vec3f> colors);
 
-  std::string getName();
-  std::vector<ospray::vec3f> getColors();
+  std::string getName() const;
+  std::vector<ospcommon::vec3f> getColors() const;
 
   QImage getImage();
 
 protected:
 
   std::string name;
-  std::vector<ospray::vec3f> colors;
+  std::vector<ospcommon::vec3f> colors;
 };

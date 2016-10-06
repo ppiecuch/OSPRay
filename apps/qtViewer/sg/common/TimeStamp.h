@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,6 +17,7 @@
 #pragma once
 
 #include "sg/common/Common.h"
+#include "ospcommon/intrinsics.h"
 
 namespace ospray {
   namespace sg {
@@ -26,17 +27,17 @@ namespace ospray {
       node's last 'lastupdated' and /lastmodified' time stamps */
     struct TimeStamp {
       //! \brief constructor 
-      TimeStamp(uint64 t) : t(t) {};
+      TimeStamp(uint64_t t) : t(t) {};
       
       //! \brief returns global time(stamp) at time of calling
-      static inline TimeStamp now() { return ospray::rdtsc(); }
+      static inline TimeStamp now() { return ospcommon::rdtsc(); }
 
-      //! \brief Allows ot typecast to a uint64 (so times can be compared)
-      inline operator uint64 () const { return t; }
+      //! \brief Allows ot typecast to a uint64_t (so times can be compared)
+      inline operator uint64_t () const { return t; }
       
     private:
-      //! \brief the uint64 that stores the time value
-      uint64 t;
+      //! \brief the uint64_t that stores the time value
+      uint64_t t;
     };
 
   } // ::ospray::sg

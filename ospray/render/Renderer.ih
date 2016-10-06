@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include "ospray/common/OSPCommon.ih"
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/fb/Tile.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/texture/Texture2D.ih"
+#include "../common/OSPCommon.ih"
+#include "../fb/FrameBuffer.ih"
+#include "../fb/Tile.ih"
+#include "../common/Ray.ih"
+#include "../texture/Texture2D.ih"
 
 struct Renderer;
 struct Model;
@@ -56,15 +56,14 @@ typedef void (*Renderer_RenderSampleFct)(uniform Renderer *uniform self,
 typedef void (*Renderer_ToneMapFct)(uniform Renderer *uniform self,
                                  varying vec3f &color,
                                  const varying vec2i &pixelID);
-typedef void (*Renderer_RenderTileFct)(uniform Renderer *uniform self,
+typedef unmasked void (*Renderer_RenderTileFct)(uniform Renderer *uniform self,
                                        void *uniform perFrameData,
                                        uniform Tile &tile,
                                        uniform int taskIndex);
-typedef void *uniform (*Renderer_BeginFrameFct)(uniform Renderer *uniform self,
+typedef unmasked void *uniform (*Renderer_BeginFrameFct)(uniform Renderer *uniform self,
                                        uniform FrameBuffer *uniform fb);
-typedef void (*Renderer_EndFrameFct)(uniform Renderer *uniform self,
-                                     void *uniform perFrameData,
-                                     const uniform int32 newAccumID);
+typedef unmasked void (*Renderer_EndFrameFct)(uniform Renderer *uniform self,
+                                     void *uniform perFrameData);
 
 struct Renderer {
   Renderer_RenderSampleFct renderSample;
@@ -83,6 +82,7 @@ struct Renderer {
   float        epsilon; // parameter to prevent self-intersection issues, will be scaled with diameter of the scene
   int32        spp; // number of samples per pixel; negative values mean subsampling, i.e. render only every 2^-spp pixel in x and y for the first frame
   uniform bool backgroundEnabled; // whether the background should be rendered (e.g. for compositing the background may be disabled)
+  uniform vec3f bgColor;// background color
   uniform Texture2D *uniform maxDepthTexture; // optional maximum depth texture used for early ray termination
 };
 

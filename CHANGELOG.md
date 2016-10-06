@@ -1,6 +1,123 @@
 Version History
 ---------------
 
+### Changes in v1.0.0:
+
+-   New OSPRay 'SDK'
+    -   OSPRay internal headers are now installed, enabling applications
+        to extend OSPRay from a binary install
+    -   CMake macros for OSPRay and ISPC configuration now a part of
+        binary releases
+        -   CMake clients use them by calling
+            `include(${OSPRAY_USE_FILE})` in their CMake code after
+            calling `find_package(ospray)`
+    -   New OSPRay C++ wrapper classes
+        -   These act as a thin layer on top of OSPRay object handles,
+            where multiple wrappers will share the same underlying
+            handle when assigned, copied, or moved
+        -   New OSPRay objects are only created when a class instance is
+            explicity constructed
+        -   C++ users are encouraged to use these over the `ospray.h`
+            API
+-   Complete rework of sample applications
+    -   New shared code for parsing the `commandline`
+    -   Save/load of transfer functions now handled through a separate
+        library which does not depend on Qt
+    -   Added `ospCvtParaViewTfcn` utility, which enables
+        `ospVolumeViewer` to load color maps from ParaView
+    -   GLUT based sample viewer updates
+        -   Rename of `ospModelViewer` to `ospGlutViewer`
+        -   GLUT viewer now supports volume rendering
+        -   Command mode with preliminary scripting capabilities,
+            enabled by pressing '`:`' key (not available when using
+            Intel C++ compiler (icc))
+    -   Enhanced support of sample applications on Windows
+-   New minimum ISPC version is 1.9.0
+-   Support of Intel® AVX-512 for second generation Intel® Xeon Phi™
+    processor (codename Knights Landing) is now a part of the
+    `OSPRAY_BUILD_ISA` CMake build configuration
+    -   Compiling AVX-512 requires icc to be enabled as a build option
+-   Enhanced error messages when `ospLoadModule()` fails
+-   Added `OSP_FB_RGBA32F` support in the `DistributedFrameBuffer`
+-   Updated Glass shader in the PathTracer
+-   Many miscellaneous cleanups, bugfixes, and improvements
+
+### Changes in v0.10.1:
+
+-   Fixed support of first generation Intel Xeon Phi coprocessor
+    (codename Knights Corner)
+-   Restored missing implementation of `ospRemoveVolume()`
+
+### Changes in v0.10.0:
+
+-   Added new tasking options: `Cilk`, `Internal`, and `Debug`
+    -   Provides more ways for OSPRay to interact with calling
+        application tasking systems
+        - `Cilk`: Use Intel® Cilk™ Plus language extensions (icc only)
+        - `Internal`: Use hand written OSPRay tasking system
+        - `Debug`: All tasks are run in serial (useful for debugging)
+    -   In most cases, Intel Threading Building Blocks (Intel `TBB`)
+        remains the fastest option
+-   Added support for adaptive accumulation and stopping
+    -   `ospRenderFrame` now returns an estimation of the variance in
+        the rendered image if the framebuffer was created with the
+        `OSP_FB_VARIANCE` channel
+    -   If the renderer parameter `varianceThreshold` is set,
+        progressive refinement concentrates on regions of the image with
+        a variance higher than this threshold
+-   Added support for volumes with voxelType `ushort` (16-bit unsigned
+    integers)
+-   `OSPTexture2D` now supports sRGB formats -- actually most images are
+    stored in sRGB. As a consequence the API call `ospNewTexture2D()`
+    needed to change to accept the new `OSPTextureFormat` parameter.
+-   Similarly, OSPRay's framebuffer types now also distinguishes between
+    linear and sRGB 8-bit formats. The new types are `OSP_FB_NONE`,
+    `OSP_FB_RGBA8`, `OSP_FB_SRGBA`, and `OSP_FB_RGBA32F`
+-   Changed "scivis" renderer parameter defaults
+    -   All shading (AO + shadows) must be explicitly enabled
+-   OSPRay can now use a newer, pre-installed Embree enabled by the new
+    `OSPRAY_USE_EXTERNAL_EMBREE` CMake option
+-   New `ospcommon` library used to separately provide math types and OS
+    abstractions for both OSPRay and sample apps
+    -   Removes extra dependencies on internal Embree math types and
+        utility functions
+    -   `ospray.h` header is now C99 compatible
+-   Removed loaders module, functionality remains inside of
+    `ospVolumeViewer`
+-   Many miscellaneous cleanups, bugfixes, and improvements:
+    -   Fixed data distributed volume rendering bugs when using less
+        blocks than workers
+    -   Fixes to CMake `find_package()` config
+    -   Fix bug in `GhostBlockBrickVolume` when using `double`s
+    -   Various robustness changes made in CMake to make it easier to
+        compile OSPRay
+
+### Changes in v0.9.1:
+
+-   Volume rendering now integrated into the "scivis" renderer
+    -   Volumes are rendered in the same way the "dvr" volume renderer
+        renders them
+    -   Ambient occlusion works with implicit isosurfaces, with a known
+        visual quality/performance trade-off
+-   Intel Xeon Phi coprocessor (codename Knights Corner) COI device and
+    build infrastructure restored (volume rendering is known to still be
+    broken)
+-   New support for CPack built OSPRay binary redistributable packages
+-   Added support for HDRI lighting in path tracer
+-   Added `ospRemoveVolume()` API call
+-   Added ability to render a subsection of the full view into the
+    entire framebuffer in the perspective camera
+-   Many miscellaneous cleanups, bugfixes, and improvements:
+    -   The depthbuffer is now correctly populated by in the "scivis"
+        renderer
+    -   Updated default renderer to be "ao1" in ospModelViewer
+    -   Trianglemesh postIntersect shading is now 64-bit safe
+    -   Texture2D has been reworked, with many improvements and bug fixes
+    -   Fixed bug where MPI device would freeze while rendering frames
+        with Intel TBB
+    -   Updates to CMake with better error messages when Intel TBB is
+        missing
+
 ### Changes in v0.9.0:
 
 The OSPRay v0.9.0 release adds significant new features as well as API
@@ -12,9 +129,9 @@ changes.
     functionality of "obj" and "ao" renderers
     -   Ambient occlusion is quite flexible: dynamic number of samples,
         maximum ray distance, and weight
--   Updated Embree version to v2.7.1 with native support for AVX512 for
-    triangle mesh surface rendering on the Intel® Xeon Phi™ processor
-    (codename Knights Landing)
+-   Updated Embree version to v2.7.1 with native support for Intel
+    AVX-512 for triangle mesh surface rendering on the Intel Xeon Phi
+    processor (codename Knights Landing)
 -   OSPRay now uses C++11 features, requiring up to date compiler and
     standard library versions (GCC v4.8.0)
 -   Optimization of volume sampling resulting in volume rendering
@@ -25,8 +142,8 @@ changes.
         material
     -   Support for alpha and depth components of framebuffer 
 -   Added thinlens camera, i.e. support for depth of field
--   Tasking system has been updated to use Intel® Threading Building
-    Blocks (TBB)
+-   Tasking system has been updated to use Intel Threading Building
+    Blocks (Intel TBB)
 -   The `ospGet*()` API calls have been deprecated and will be removed
     in a subsequent release
 
@@ -58,7 +175,7 @@ changes.
 
 ### Changes in v0.8.2:
 
--   Initial support for AVX512 and the Intel® Xeon Phi™ processor
+-   Initial support for Intel AVX-512 and the Intel Xeon Phi processor
     (codename Knights Landing)
 -   Performance improvements to the volume renderer
 -   Incorporated implicit slices and isosurfaces of volumes as core

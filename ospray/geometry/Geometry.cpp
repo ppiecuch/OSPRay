@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,11 +16,13 @@
 
 // ospray 
 #include "Geometry.h"
-#include "ospray/common/Library.h"
+#include "common/Library.h"
 // stl 
 #include <map>
 // ISPC exports
 #include "Geometry_ispc.h"
+
+#define creatorFct geoCreatorFct
 
 namespace ospray {
 
@@ -44,7 +46,7 @@ namespace ospray {
     }
   }
 
-
+  
   void Geometry::registerGeometry(const char *type, creatorFct creator)
   {
     geometryRegistry[type] = creator;
@@ -86,3 +88,5 @@ namespace ospray {
   }
 
 } // ::ospray
+
+#undef creatorFct

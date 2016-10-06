@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -24,7 +24,7 @@
   #include <GL/gl.h>
 #endif
 
-ProbeCoordinateWidget::ProbeCoordinateWidget(const std::string &label, ospray::vec2f range) : range(range)
+ProbeCoordinateWidget::ProbeCoordinateWidget(const std::string &label, ospcommon::vec2f range) : range(range)
 {
   QHBoxLayout *layout = new QHBoxLayout();
   setLayout(layout);
@@ -89,9 +89,9 @@ ProbeWidget::ProbeWidget(VolumeViewer *volumeViewer) : volumeViewer(volumeViewer
   coordinatesGroupBox->setLayout(coordinatesLayout);
   connect(this, SIGNAL(enabled(bool)), coordinatesGroupBox, SLOT(setEnabled(bool)));
 
-  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("x", ospray::vec2f(boundingBox.lower.x, boundingBox.upper.x)));
-  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("y", ospray::vec2f(boundingBox.lower.y, boundingBox.upper.y)));
-  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("z", ospray::vec2f(boundingBox.lower.z, boundingBox.upper.z)));
+  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("x", ospcommon::vec2f(boundingBox.lower.x, boundingBox.upper.x)));
+  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("y", ospcommon::vec2f(boundingBox.lower.y, boundingBox.upper.y)));
+  probeCoordinateWidgets.push_back(new ProbeCoordinateWidget("z", ospcommon::vec2f(boundingBox.lower.z, boundingBox.upper.z)));
 
   for (int i=0; i<3; i++) {
     coordinatesLayout->addWidget(probeCoordinateWidgets[i]);
@@ -132,12 +132,12 @@ void ProbeWidget::updateProbe()
     return;
   }
 
-  coordinate = ospray::vec3f(probeCoordinateWidgets[0]->getValue(), probeCoordinateWidgets[1]->getValue(), probeCoordinateWidgets[2]->getValue());
+  coordinate = osp::vec3f{probeCoordinateWidgets[0]->getValue(), probeCoordinateWidgets[1]->getValue(), probeCoordinateWidgets[2]->getValue()};
 
   if (volume) {
 
     float *results = NULL;
-    ospSampleVolume(&results, volume, (osp::vec3f*)&coordinate, 1);
+    ospSampleVolume(&results, volume, coordinate, 1);
 
     if (!results)
       std::cout << "error calling ospSampleVolume()" << std::endl;

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,12 +15,12 @@
 // ======================================================================== //
 
 // ospray
-#include "ospray/math/vec.ih"
-#include "ospray/math/box.ih"
-#include "ospray/math/AffineSpace.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/geometry/Geometry.ih"
+#include "math/vec.ih"
+#include "math/box.ih"
+#include "math/AffineSpace.ih"
+#include "common/Ray.ih"
+#include "common/Model.ih"
+#include "geometry/Geometry.ih"
 // embree
 #include "embree2/rtcore.isph"
 #include "embree2/rtcore_scene.isph"

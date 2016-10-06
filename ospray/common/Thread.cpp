@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,7 +18,7 @@
 
 #include "Thread.h"
 // embree
-# include "common/sys/thread.h"
+# include "ospcommon/thread.h"
 
 namespace ospray {
 
@@ -27,22 +27,25 @@ namespace ospray {
     Thread *t = (Thread *)arg;
     if (t->desiredThreadID >= 0) {
       printf("pinning to thread %i\n",t->desiredThreadID);
-      embree::setAffinity(t->desiredThreadID);
+      ospcommon::setAffinity(t->desiredThreadID);
     }
+
+    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
     t->run();
   }
 
   void Thread::join() 
   { 
-    embree::join(tid); 
+    ospcommon::join(tid); 
   }
 
   /*!  start thread execution */
   void Thread::start(int threadID)
   {
     desiredThreadID = threadID;
-    this->tid = embree::createThread(&ospray_Thread_runThread,this);
+    this->tid = ospcommon::createThread(&ospray_Thread_runThread,this);
   }
 
 }

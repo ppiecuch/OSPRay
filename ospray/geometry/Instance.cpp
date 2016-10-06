@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,7 +18,7 @@
 
 // ospray
 #include "Instance.h"
-#include "ospray/common/Model.h"
+#include "common/Model.h"
 // ispc exports
 #include "Instance_ispc.h"
 
@@ -69,7 +69,7 @@ namespace ospray {
     const vec3f v110(b.lower.x,b.upper.y,b.upper.z);
     const vec3f v111(b.upper.x,b.upper.y,b.upper.z);
 
-    bounds = embree::empty;
+    bounds = empty;
     bounds.extend(xfmPoint(xfm,v000));
     bounds.extend(xfmPoint(xfm,v001));
     bounds.extend(xfmPoint(xfm,v010));

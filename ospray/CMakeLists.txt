@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,12 +14,8 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-# configure this dir for the proper "OSPRAY_LIB_SUFFIX" etc (depending
-# on which target we build for )
-CONFIGURE_OSPRAY()
-
 IF(OSPRAY_BUILD_MPI_DEVICE)
-  OPTION(OSPRAY_EXP_DATA_PARALLEL "Experimental data-parallel compositing mode")
+  OPTION(OSPRAY_EXP_DATA_PARALLEL "Experimental data-parallel compositing mode" ON)
   OPTION(OSPRAY_PIN_ASYNC "Pin async mpi comm threads?" OFF)
   MARK_AS_ADVANCED(OSPRAY_PIN_ASYNC)
 ENDIF()
@@ -27,67 +23,144 @@ ENDIF()
 OPTION(EXP_NEW_BB_VOLUME_KERNELS "Experimental new block/bricked volume layout" ON)
 MARK_AS_ADVANCED(EXP_NEW_BB_VOLUME_KERNELS)
 
+# NOTE(jda) - PThread hint used by both Embree and OSPRay
+SET(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+FIND_PACKAGE(Threads REQUIRED)
+
 # -------------------------------------------------------
-# Setup tasking system build configuration
+# Find or build Embree
 # -------------------------------------------------------
 
-SET(OSPRAY_TASKING_SYSTEM TBB CACHE STRING
-    "Use TBB or OpenMP as for per-node thread tasking system")
-SET_PROPERTY(CACHE OSPRAY_TASKING_SYSTEM PROPERTY STRINGS TBB OpenMP)
-MARK_AS_ADVANCED(OSPRAY_TASKING_SYSTEM)
+SET(REQUIRED_MINIMUM_EMBREE 2.7.1)
 
-IF(${OSPRAY_TASKING_SYSTEM} STREQUAL "TBB")
-  SET(USE_TBB TRUE)
-ELSE()
-  SET(USE_TBB FALSE)
+# Do a check to see if we can find the system Embree
+IF(NOT DEFINED LAST_CONFIG_USED_EXTERNAL_EMBREE)
+  FIND_PACKAGE(embree ${REQUIRED_MINIMUM_EMBREE} QUIET)
+  IF(NOT DEFINED EMBREE_INCLUDE_DIRS)
+    MESSAGE(WARNING
+            "We did not find Embree installed on your system. If you would"
+            " like to use a newer version of Embree than the one in the"
+            " OSPRay source tree (v2.7.1), please download and extract or"
+            " compile Embree from source, set the 'embree_DIR' environment"
+            " variable to where it is installed, and re-enable the"
+            " OSPRAY_USE_EXTERNAL_EMBREE CMake option.")
+    SET(OSPRAY_USE_EXTERNAL_EMBREE OFF CACHE BOOL "" FORCE)
+  ENDIF()
 ENDIF()
 
-IF(USE_TBB)
-  FIND_PACKAGE(TBB REQUIRED)
-  ADD_DEFINITIONS(-DOSPRAY_USE_TBB)
-  INCLUDE_DIRECTORIES(${TBB_INCLUDE_DIRS})
-ELSE(USE_TBB)
-  FIND_PACKAGE(OpenMP)#NOTE(jda) - intentionally optional (fallback w/o TBB)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  SET(CMAKE_EXE_LINKER_FLAGS
-      "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-ENDIF(USE_TBB)
+IF(OSPRAY_USE_EXTERNAL_EMBREE)
+  # Clear out embree directories if they were previously populated by an
+  # internal build
+  IF(NOT ${LAST_CONFIG_USED_EXTERNAL_EMBREE})
+    UNSET(EMBREE_INCLUDE_DIRS)
+    UNSET(EMBREE_LIBRARIES)
+    UNSET(EMBREE_LIBRARY)
+    UNSET(EMBREE_LIBRARY_XEONPHI)
+  ENDIF()
 
-# -------------------------------------------------------
-# Build and configure embree
-# -------------------------------------------------------
+  # Find existing Embree on the machine
+  FIND_PACKAGE(embree ${REQUIRED_MINIMUM_EMBREE} REQUIRED)
+  SET(LAST_CONFIG_USED_EXTERNAL_EMBREE ON CACHE INTERNAL "" FORCE)
+
+  # NOTE(jda) - EMBREE_LIBRARIES is not defined until at lest v2.10.0, for now
+  #             create a "faked" EMBREE_LIBRARIES until we set our min version
+  #             to >= 2.10.0 of Embree
+  IF(NOT DEFINED EMBREE_LIBRARIES)
+    SET(EMBREE_LIBRARIES ${EMBREE_LIBRARY})
+  ELSE()
+    # NOTE(jda) - We are using the updated Embree find_package() config, check
+    #             if we need to add TBB to EMBREE_LIBRARIES
+    IF(${EMBREE_TASKING_TBB} AND NOT ${EMBREE_USE_PACKAGED_TBB})
+      OSPRAY_WARN_ONCE(EMBREE_FORCE_TBB
+        "WARNING: You *MUST* have TBB installed based on the Embree we found!")
+      FIND_PACKAGE(TBB REQUIRED)
+      SET(EMBREE_LIBRARIES ${EMBREE_LIBRARIES} ${TBB_LIBRARIES})
+    ENDIF()
+  ENDIF()
+ELSE()
+  # Clear out embree directories if they were previously populated by an
+  # external find_package() call
+  IF(${LAST_CONFIG_USED_EXTERNAL_EMBREE})
+    UNSET(EMBREE_INCLUDE_DIRS)
+    UNSET(EMBREE_LIBRARIES)
+    UNSET(EMBREE_LIBRARY)
+    UNSET(EMBREE_LIBRARY_XEONPHI)
+  ENDIF()
+  # Build Embree included in the OSPRay tree
+
+  # NOTE(jda) - Embree assumes that OSPRAY_TASKING_TBB will be defined correctly
+  #             in CONFIGURE_OSPRAY().CONFIGURE_TASKING_SYSTEM()
+  # NOTE(jda) - Only do the Embree include once (Xeon), it will build both
+  #             Xeon and MIC code if both are enabled.
+  IF (NOT THIS_IS_MIC)
+    INCLUDE(../cmake/build_embree.cmake)
+  ENDIF()
+  SET(EMBREE_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/ospray/embree-v2.7.1/include)
+  SET(EMBREE_LIBRARY embree)
+  SET(EMBREE_LIBRARIES ${EMBREE_LIBRARY})
+  SET(EMBREE_LIBRARY_XEONPHI embree_xeonphi)
+  SET(LAST_CONFIG_USED_EXTERNAL_EMBREE OFF CACHE INTERNAL "" FORCE)
+ENDIF()
+
+INCLUDE_DIRECTORIES(
+  ${CMAKE_SOURCE_DIR}/ospray/include
+  ${CMAKE_SOURCE_DIR}/ospray
+  ${CMAKE_SOURCE_DIR}
+  ${PROJECT_BINARY_DIR}
+  ${EMBREE_INCLUDE_DIRS}
+)
+INCLUDE_DIRECTORIES_ISPC(
+  ${CMAKE_SOURCE_DIR}/ospray/include
+  ${CMAKE_SOURCE_DIR}/ospray
+  ${CMAKE_SOURCE_DIR}
+  ${PROJECT_BINARY_DIR}
+  ${EMBREE_INCLUDE_DIRS}
+)
 
 #NOTE(jda) - Embree assumes that USE_TBB will be defined correctly (above)...
-INCLUDE(../cmake/build_embree_${EMBREE_TREE}.cmake)
+#INCLUDE(../cmake/build_embree_${EMBREE_TREE}.cmake)
+SET(EMBREE_INCLUDE_DIRS    ${EMBREE_INCLUDE_DIRS}    PARENT_SCOPE)
+SET(EMBREE_LIBRARIES       ${EMBREE_LIBRARIES}       PARENT_SCOPE)
+SET(EMBREE_LIBRARY         ${EMBREE_LIBRARY}         PARENT_SCOPE)
+SET(EMBREE_LIBRARY_XEONPHI ${EMBREE_LIBRARY_XEONHPI} PARENT_SCOPE)
 
 # -------------------------------------------------------
 # Setup ospray source files
 # -------------------------------------------------------
 
 SET(OSPRAY_SOURCES
-  device/nwlayer.cpp
+  include/ospray/ospray.h
+  include/ospray/OSPDataType.h
+  include/ospray/OSPTexture.h
 
   math/box.ispc
+  math/Distribution2D.ispc
 
+  common/ospray.rc
   common/OSPCommon.ispc
   common/OSPCommon.cpp
   common/Core.cpp
+  common/ISPC_KNC_Backend.h
+  common/ISPC_KNL_Backend.h
   common/Managed.cpp
   common/ObjectHandle.cpp
   common/Data.cpp
   common/Model.ispc
   common/Model.cpp
   common/Material.cpp
-  common/Library.cpp
   common/Thread.cpp
-  common/parallel_for.h
+
+  common/tasking/parallel_for.h
+  common/tasking/async.h
+  common/tasking/TaskingTypeTraits.h
+  common/tasking/TaskSys.cpp
 
   fb/FrameBuffer.ispc
   fb/FrameBuffer.cpp
   fb/LocalFB.ispc
   fb/LocalFB.cpp
   fb/PixelOp.cpp
+  fb/Tile.h
 
   camera/Camera.cpp
   camera/PerspectiveCamera.ispc
@@ -146,6 +219,8 @@ SET(OSPRAY_SOURCES
   lights/SpotLight.ispc
   lights/QuadLight.cpp
   lights/QuadLight.ispc
+  lights/HDRILight.cpp
+  lights/HDRILight.ispc
 
   texture/Texture2D.cpp
   texture/Texture2D.ispc
@@ -158,20 +233,19 @@ SET(OSPRAY_SOURCES
   render/raycast/RaycastRenderer.ispc
   render/simpleAO/SimpleAO.cpp
   render/simpleAO/SimpleAO.ispc
-  render/obj/OBJRenderer.ispc
-  render/obj/OBJMaterial.ispc
-  render/obj/OBJRenderer.cpp
-  render/obj/OBJMaterial.cpp
-  render/raytracer/RaytraceRenderer.ispc
-  render/raytracer/RaytraceMaterial.ispc
-  render/raytracer/RaytraceMaterial.ih
-  render/raytracer/RaytraceRenderer.cpp
-  render/raytracer/RaytraceMaterial.cpp
+  render/simpleAO/SimpleAOMaterial.cpp
+  render/simpleAO/SimpleAOMaterial.ih
+  render/simpleAO/SimpleAOMaterial.ispc
+  render/scivis/SciVisRenderer.ispc
+  render/scivis/SciVisMaterial.ispc
+  render/scivis/SciVisMaterial.ih
+  render/scivis/SciVisRenderer.cpp
+  render/scivis/SciVisMaterial.cpp
   render/volume/RaycastVolumeMaterial.cpp
+  render/volume/RaycastVolumeMaterial.ih
+  render/volume/RaycastVolumeMaterial.ispc
   render/volume/RaycastVolumeRenderer.cpp
   render/volume/RaycastVolumeRenderer.ispc
-  render/volume/RaycastVolumeRendererMaterial.ih
-  render/volume/RaycastVolumeRendererMaterial.ispc
 
   render/pathtracer/PathTracer.ispc
   render/pathtracer/PathTracer.cpp
@@ -196,7 +270,141 @@ SET(OSPRAY_SOURCES
   api/API.cpp
   api/Device.cpp
   api/LocalDevice.cpp
-  )
+)
+
+# -------------------------------------------------------
+# Install API headers
+# -------------------------------------------------------
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  camera/Camera.h
+  camera/Camera.ih
+  camera/OrthographicCamera.h
+  camera/OrthographicCamera.ih
+  camera/PanoramicCamera.h
+  camera/PanoramicCamera.ih
+  camera/PerspectiveCamera.h
+  camera/PerspectiveCamera.ih
+  DESTINATION camera
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  common/Core.h
+  common/Data.h
+  common/DifferentialGeometry.ih
+  common/Library.h
+  common/Managed.h
+  common/Material.h
+  common/Material.ih
+  common/Model.h
+  common/Model.ih
+  common/ObjectHandle.h
+  common/OSPCommon.h
+  common/OSPCommon.ih
+  common/Ray.h
+  common/Ray.ih
+  common/Texture.h
+  common/Thread.h
+  DESTINATION common
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  common/tasking/async.h
+  common/tasking/parallel_for.h
+  common/tasking/TaskingTypeTraits.h
+  common/tasking/TaskSys.h
+  DESTINATION common/tasking
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  fb/FrameBuffer.h
+  fb/FrameBuffer.ih
+  fb/PixelOp.h
+  fb/Tile.h
+  fb/Tile.ih
+  DESTINATION fb
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  geometry/Cylinders.h
+  geometry/Geometry.h
+  geometry/Geometry.ih
+  geometry/Instance.h
+  geometry/Isosurfaces.h
+  geometry/Slices.h
+  geometry/Spheres.h
+  geometry/StreamLines.h
+  geometry/TriangleMesh.h
+  geometry/TriangleMesh.ih
+  DESTINATION geometry
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  lights/AmbientLight.h
+  lights/DirectionalLight.h
+  lights/HDRILight.h
+  lights/Light.h
+  lights/Light.ih
+  lights/PointLight.h
+  lights/QuadLight.h
+  lights/SpotLight.h
+  DESTINATION lights
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  #FIXME: check if all of these are used...
+  math/AffineSpace.ih
+  math/box.ih
+  math/Distribution2D.ih
+  math/LinearSpace.ih
+  math/math.ih
+  math/random.ih
+  math/region.ih
+  math/sampling.ih
+  math/vec.ih
+  DESTINATION math
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  render/LoadBalancer.h
+  render/Renderer.h
+  render/Renderer.ih
+  render/util.h
+  render/util.ih
+  DESTINATION render
+)
+
+#TODO: all the specific renderer headers...
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  texture/Texture2D.h
+  texture/Texture2D.ih
+  texture/TextureParam.ih
+  DESTINATION texture
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  transferFunction/LinearTransferFunction.h
+  transferFunction/LinearTransferFunction.ih
+  transferFunction/TransferFunction.h
+  transferFunction/TransferFunction.ih
+  DESTINATION transferFunction
+)
+
+OSPRAY_INSTALL_SDK_HEADERS(
+  volume/BlockBrickedVolume.h
+  volume/BlockBrickedVolume.ih
+  volume/GridAccelerator.ih
+  volume/GhostBlockBrickedVolume.h
+  volume/GhostBlockBrickedVolume.ih
+  volume/SharedStructuredVolume.h
+  volume/SharedStructuredVolume.ih
+  volume/StructuredVolume.h
+  volume/StructuredVolume.ih
+  volume/Volume.h
+  volume/Volume.ih
+  DESTINATION volume
+)
 
 # -------------------------------------------------------
 # MPI components
@@ -207,6 +415,9 @@ IF (OSPRAY_MPI)
   CONFIGURE_MPI()
 
   SET(OSPRAY_SOURCES ${OSPRAY_SOURCES}
+    mpi/buffers.h
+    mpi/command.h
+
     mpi/MPIDevice.cpp
     mpi/MPICommon.cpp
     mpi/MPILoadBalancer.cpp
@@ -220,28 +431,10 @@ IF (OSPRAY_MPI)
 
     mpi/DistributedFrameBuffer.cpp
     mpi/DistributedFrameBuffer.ispc
+    mpi/DistributedFrameBuffer_TileTypes.cpp
 
     fb/DisplayWall.cpp
     )
-
-  # ============================================
-  ADD_EXECUTABLE(ospCreateCompositeTestCubes${OSPRAY_EXE_SUFFIX}
-    mpi/testing/createCompositeTestCubes
-    )
-  TARGET_LINK_LIBRARIES(ospCreateCompositeTestCubes${OSPRAY_EXE_SUFFIX}
-    ospray${OSPRAY_LIB_SUFFIX}
-    )
-
-  # ============================================
-#  INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
-#  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
-#  ADD_EXECUTABLE(ospTestDistributedApp${OSPRAY_EXE_SUFFIX}
-#    mpi/testing/TestDistributedApp
-#    )
-#  TARGET_LINK_LIBRARIES(ospTestDistributedApp${OSPRAY_EXE_SUFFIX}
-#    ospray${OSPRAY_LIB_SUFFIX}
-#    )
-
 ENDIF()
 
 # -------------------------------------------------------
@@ -269,12 +462,11 @@ IF (OSPRAY_BUILD_COI_DEVICE)
     )
   MARK_AS_ADVANCED(LIBCOI_DEVICE)
   MARK_AS_ADVANCED(LIBCOI_HOST)
-  SET(OSPRAY_MIC_COI ON)
+  SET(OSPRAY_MIC_COI ON PARENT_SCOPE)
+  # NOTE(jda) - hardcoded paths (!)...use a find_package() here?
   INCLUDE_DIRECTORIES(/opt/intel/mic/coi/include)
   INCLUDE_DIRECTORIES(/usr/include/intel-coi)
-  IF (THIS_IS_MIC)
-    SET(OSPRAY_COI_COMPONENTS api/COIDeviceDev.cpp)
-  ELSE()
+  IF (NOT THIS_IS_MIC)
     SET(OSPRAY_COI_COMPONENTS api/COIDeviceHost.cpp)
   ENDIF()
   SET(OSPRAY_SOURCES ${OSPRAY_SOURCES} ${OSPRAY_COI_COMPONENTS})
@@ -284,27 +476,47 @@ ENDIF()
 # build the ospray library (using flags and compilers as configured by
 # CONFIGURE_OSPRAY() and/or CONFIGURE_MPI()
 ##############################################################
-SET(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-FIND_PACKAGE(Threads REQUIRED)
 
+<<<<<<< HEAD
 OSPRAY_ADD_LIBRARY(ospray${OSPRAY_LIB_SUFFIX} STATIC ${OSPRAY_SOURCES})
+=======
+IF (THIS_IS_MIC)
+  ADD_DEFINITIONS(-DOSPRAY_TARGET_MIC)
+ENDIF()
 
-TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX}
-  ospray_embree${OSPRAY_LIB_SUFFIX}
-  ${TBB_LIBRARIES}
+OSPRAY_ADD_LIBRARY(ospray SHARED ${OSPRAY_SOURCES})
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
+
+OSPRAY_LIBRARY_LINK_LIBRARIES(ospray
+  ospray_common
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
-	)
+)
+
+IF (THIS_IS_MIC)
+  OSPRAY_LIBRARY_LINK_LIBRARIES(ospray
+    ${EMBREE_LIBRARY_XEONPHI}
+    ${TASKING_SYSTEM_LIBS_MIC}
+  )
+ELSE()
+  OSPRAY_LIBRARY_LINK_LIBRARIES(ospray
+    ${EMBREE_LIBRARIES}
+    ${TASKING_SYSTEM_LIBS}
+  )
+ENDIF()
 
 IF (OSPRAY_DISPLAYCLUSTER)
-  TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX} ${DISPLAYCLUSTER_LIBRARIES})
+  OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ${DISPLAYCLUSTER_LIBRARIES})
 ENDIF()
 
 IF (WIN32)
-  TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX} ws2_32)
+  OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ws2_32)
 ENDIF()
 
+OSPRAY_SET_LIBRARY_VERSION(ospray)
+OSPRAY_INSTALL_LIBRARY(ospray)
 
+<<<<<<< HEAD
 # ------------------------------------------------------------
 INSTALL(DIRECTORY include/ospray DESTINATION include FILES_MATCHING PATTERN "*.h")
 INSTALL(DIRECTORY common DESTINATION include/ospray FILES_MATCHING PATTERN "*.h")
@@ -322,18 +534,31 @@ IF (NOT ENABLE_STATIC_LIB)
 ENDIF()
 ##############################################################
 
+=======
+IF(NOT THIS_IS_MIC)
+  # build ospTutorial, for testing
+  ADD_EXECUTABLE(ospTutorial ../apps/ospTutorial.cpp)
+  OSPRAY_EXE_LINK_LIBRARIES(ospTutorial ospray ospray_common)
+  # C version
+  ADD_EXECUTABLE(ospTutorialC ../apps/ospTutorial.c)
+  OSPRAY_EXE_LINK_LIBRARIES(ospTutorialC ospray ospray_common)
+ENDIF()
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
 
 ##############################################################
 # MPI DEVICE - mpi worker
 ##############################################################
 IF (OSPRAY_MPI)
-  TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX} ${MPI_CXX_LIBRARIES})
+  IF (THIS_IS_MIC)
+    OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ${MPI_LIBRARY_MIC})
+  ELSE()
+    OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ${MPI_CXX_LIBRARIES})
+  ENDIF()
 
-  ADD_EXECUTABLE(ospray_mpi_worker${OSPRAY_EXE_SUFFIX} mpi/MPIWorker.cpp)
-  TARGET_LINK_LIBRARIES(ospray_mpi_worker${OSPRAY_EXE_SUFFIX} ospray${OSPRAY_LIB_SUFFIX})
-  # ------------------------------------------------------------
-  INSTALL(TARGETS ospray_mpi_worker${OSPRAY_EXE_SUFFIX} DESTINATION bin)
+  OSPRAY_ADD_EXECUTABLE(ospray_mpi_worker mpi/MPIWorker.cpp)
+  OSPRAY_EXE_LINK_LIBRARIES(ospray_mpi_worker ospray ospray_common)
+  OSPRAY_INSTALL_EXE(ospray_mpi_worker)
 ENDIF()
 
 
@@ -345,25 +570,21 @@ IF (OSPRAY_BUILD_COI_DEVICE)
     # ------------------------------------------------------------
     # dev-side of COI device: lib dev-side libospray to coi dev libs,...
     # ------------------------------------------------------------
-    TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX}
-      ${LIBCOI_DEVICE}
-      )
+    OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ${LIBCOI_DEVICE})
     # ... and add the coi worker executable
-    ADD_EXECUTABLE(ospray_coi_worker.mic api/COIDeviceWorker.cpp)
-    TARGET_LINK_LIBRARIES(ospray_coi_worker.mic
-      ospray${OSPRAY_LIB_SUFFIX}
+    OSPRAY_ADD_EXECUTABLE(ospray_coi_worker api/COIDeviceWorker.cpp)
+    OSPRAY_EXE_LINK_LIBRARIES(ospray_coi_worker
+      ospray
+      ospray_common
       ${LIBCOI_DEVICE}
-      )
+    )
     # ------------------------------------------------------------
-    INSTALL(TARGETS ospray${OSPRAY_LIB_SUFFIX} DESTINATION lib)
-    INSTALL(TARGETS ospray_coi_worker.mic DESTINATION bin)
+    OSPRAY_INSTALL_EXE(ospray_coi_worker)
   ELSE()
     # ------------------------------------------------------------
     # host-side of COI device: just link libospray to coi host libs
     # ------------------------------------------------------------
-    TARGET_LINK_LIBRARIES(ospray${OSPRAY_LIB_SUFFIX}
-      ${LIBCOI_HOST}
-      )
+    OSPRAY_LIBRARY_LINK_LIBRARIES(ospray ${LIBCOI_HOST})
     # note: no need to add the host-side libcoi to the install
     # targets; it's already done above
   ENDIF()

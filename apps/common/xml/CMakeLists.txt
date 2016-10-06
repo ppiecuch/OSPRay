@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,6 +14,7 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
+<<<<<<< HEAD
 CONFIGURE_OSPRAY()
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray)
@@ -29,3 +30,6 @@ SET_TARGET_PROPERTIES(ospray_xml${OSPRAY_LIB_SUFFIX}
   PROPERTIES VERSION ${OSPRAY_VERSION} SOVERSION ${OSPRAY_SOVERSION})
 INSTALL(TARGETS ospray_xml${OSPRAY_LIB_SUFFIX} DESTINATION lib)
 
+=======
+OSPRAY_CREATE_LIBRARY(xml XML.cpp LINK ospray_common)
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708

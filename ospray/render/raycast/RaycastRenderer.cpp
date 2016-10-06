@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,7 +18,7 @@
 
 // ospray
 #include "RaycastRenderer.h"
-#include "ospray/camera/PerspectiveCamera.h"
+#include "camera/PerspectiveCamera.h"
 // ispc exports
 #include "RaycastRenderer_ispc.h"
 
@@ -110,6 +110,12 @@ namespace ospray {
   typedef RaycastRenderer<ispc::RaycastRenderer_create_testFrame>
   RaycastRenderer_testFrame;
   OSP_REGISTER_RENDERER(RaycastRenderer_testFrame,testFrame);
+
+  /*! \brief Instantion of Ray Cast Renderer that renders a simple
+      test frame, without even calling postIntersct */
+  typedef RaycastRenderer<ispc::RaycastRenderer_create_rayDir>
+  RaycastRenderer_rayDir;
+  OSP_REGISTER_RENDERER(RaycastRenderer_rayDir,rayDir);
 
 } // ::ospray
 

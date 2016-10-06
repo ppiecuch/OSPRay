@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -17,15 +17,10 @@
 IF (__XEON__)
   ADD_LIBRARY(simd STATIC sse.cpp)
   SET_PROPERTY(TARGET simd PROPERTY FOLDER common)
-  INSTALL(TARGETS simd
-    EXPORT simdExport
-    DESTINATION lib
-  )
-  INSTALL(EXPORT simdExport
-    DESTINATION ${CMAKE_DIR} FILE libsimdTargets.cmake
-  )
+  SET_TARGET_PROPERTIES(simd PROPERTIES COMPILE_FLAGS "-DDONT_WARN_INCLUDE_EMBREE_INTERNALS=1")
 ELSE ()
   INCLUDE(icc_xeonphi)
   ADD_LIBRARY(simd_xeonphi STATIC vboolf16_avx512.cpp)
+  SET_TARGET_PROPERTIES(simd_xeonphi PROPERTIES COMPILE_FLAGS "-DDONT_WARN_INCLUDE_EMBREE_INTERNALS=1")
 ENDIF ()
 

@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -18,9 +18,9 @@
 # unsets all public (designed to be used externally) variables and reports
 # error message at priority depending upon [REQUIRED/QUIET/<NONE>] argument.
 macro(OSPRAY_REPORT_NOT_FOUND REASON_MSG)
-  UNSET(OSPRAY_FOUND)
-  UNSET(OSPRAY_INCLUDE_DIRS)
-  UNSET(OSPRAY_LIBRARIES)
+  unset(OSPRAY_FOUND)
+  unset(OSPRAY_INCLUDE_DIRS)
+  unset(OSPRAY_LIBRARIES)
 
   # Reset the CMake module path to its state when this script was called.
   set(CMAKE_MODULE_PATH ${CALLERS_CMAKE_MODULE_PATH})
@@ -66,7 +66,7 @@ if(WIN32)
     )
 else(WIN32)
   get_filename_component(CURRENT_ROOT_INSTALL_DIR
-    ${CURRENT_CONFIG_INSTALL_DIR}/../../ ABSOLUTE
+    ${CURRENT_CONFIG_INSTALL_DIR}/../../../ ABSOLUTE
     )
 endif(WIN32)
 
@@ -96,9 +96,25 @@ endif(NOT EXISTS ${OSPRAY_INCLUDE_DIR}/ospray/version.h)
 set(OSPRAY_INCLUDE_DIRS
   ${OSPRAY_INCLUDE_DIR}
   ${OSPRAY_INCLUDE_DIR}/ospray
+<<<<<<< HEAD
   ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}
   ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}/common
+=======
+  ${OSPRAY_INCLUDE_DIR}/ospray/SDK
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 )
+
+
+###############################################################################
+# ospray build configuration
+
+
+SET(OSPRAY_COMPILER_ICC   @OSPRAY_COMPILER_ICC@  )
+SET(OSPRAY_COMPILER_GCC   @OSPRAY_COMPILER_GCC@  )
+SET(OSPRAY_COMPILER_CLANG @OSPRAY_COMPILER_CLANG@)
+SET(OSPRAY_COMPILER_MSVC  @OSPRAY_COMPILER_MSVC@ )
+
+SET(OSPRAY_USE_EXTERNAL_EMBREE @OSPRAY_USE_EXTERNAL_EMBREE@)
 
 
 ###############################################################################
@@ -113,18 +129,33 @@ set(OSPRAY_CURRENT_ROOT_INSTALL_DIR   ${CURRENT_ROOT_INSTALL_DIR})
 #             any ospray dependencies. A list of libs should be constructed
 #             and added to the OSPRAY_LIBRARIES variable below.
 
-if (@USE_TBB@)
+if (OSPRAY_TASKING_TBB)
   # Find tbb
   find_package(TBB)
   if(":${TBB_LIBRARY}" STREQUAL ":")
-    message(FATAL_ERROR "Missing required optional ospray dependency "
-      "tbb, please set TBB_ROOT to the root of your tbb install.")
+    message(FATAL_ERROR "Missing required optional OSPRay dependency "
+      "TBB, please set TBB_ROOT to the root of your TBB install.")
   else()
-    message(STATUS "Found required ospray dependency:  tbb in ${TBB_INCLUDE_DIRS}")
+    message(STATUS "Found required OSPRay dependency: TBB in ${TBB_INCLUDE_DIRS}")
   endif()
 
-  add_definitions(-DOSPRAY_USE_TBB)
+  add_definitions(-DOSPRAY_TASKING_TBB)
   list(APPEND OSPRAY_DEPENDENCIES ${TBB_LIBRARIES})
+endif()
+
+if (OSPRAY_TASKING_CILK)
+  add_definitions(-DOSPRAY_TASKING_CILK)
+endif()
+
+if(OSPRAY_USE_EXTERNAL_EMBREE)
+  # Find existing Embree on the machine
+  find_package(embree @REQUIRED_MINIMUM_EMBREE@ REQUIRED)
+else()
+  if (APPLE)
+    set(EMBREE_LIBRARY ${CURRENT_ROOT_INSTALL_DIR}/@CMAKE_INSTALL_LIBDIR@/${CMAKE_SHARED_LIBRARY_PREFIX}embree.2${CMAKE_SHARED_LIBRARY_SUFFIX})
+  else()
+    set(EMBREE_LIBRARY ${CURRENT_ROOT_INSTALL_DIR}/@CMAKE_INSTALL_LIBDIR@/${CMAKE_SHARED_LIBRARY_PREFIX}embree${CMAKE_SHARED_LIBRARY_SUFFIX}.2)
+  endif()
 endif()
 
 # Restore state
@@ -137,25 +168,30 @@ set(CURRENT_ROOT_INSTALL_DIR   ${OSPRAY_CURRENT_ROOT_INSTALL_DIR})
 # Finish ospray
 
 # Import exported ospray targets
-IF(NOT TARGET ospray AND NOT OSPRAY_BINARY_DIR)
-  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libsysTargets.cmake)
-  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/liblexersTargets.cmake)
-  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libsimdTargets.cmake)
-  IF (@OSPRAY_EMBREE_ENABLE_SSE@ OR @OSPRAY_EMBREE_ENABLE_AVX@ OR @OSPRAY_EMBREE_ENABLE_AVX2@)
-    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_sse42Targets.cmake)
-  ENDIF()
-  IF (@OSPRAY_EMBREE_ENABLE_AVX@ OR @OSPRAY_EMBREE_ENABLE_AVX2@)
-    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avxTargets.cmake)
-  ENDIF()
-  IF (@OSPRAY_EMBREE_ENABLE_AVX2@)
-    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avx2Targets.cmake)
-  ENDIF()
-  IF (@OSPRAY_EMBREE_ENABLE_AVX512@)
-    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avx512Targets.cmake)
-  ENDIF()
-  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embreeTargets.cmake)
-  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libosprayTargets.cmake)
-endif(NOT TARGET ospray AND NOT OSPRAY_BINARY_DIR)
+# NOTE(jda) - Order matters below: targets which depend on other targets need to
+#             be after the INCLUDE() of the targets they depend upon.
+# NOTE(jda) - Targets have been disabled now that we use Embree's root CMake
+#             list to configure and build Embree. When Embree exports targets,
+#             using them here should be re-enabled.
+#IF(NOT TARGET ospray AND NOT OSPRAY_BINARY_DIR)
+#  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libsysTargets.cmake)
+#  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/liblexersTargets.cmake)
+#  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libsimdTargets.cmake)
+#  IF (@OSPRAY_EMBREE_ENABLE_SSE@ OR @OSPRAY_EMBREE_ENABLE_AVX@ OR @OSPRAY_EMBREE_ENABLE_AVX2@)
+#    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_sse42Targets.cmake)
+#  ENDIF()
+#  IF (@OSPRAY_EMBREE_ENABLE_AVX@ OR @OSPRAY_EMBREE_ENABLE_AVX2@)
+#    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avxTargets.cmake)
+#  ENDIF()
+#  IF (@OSPRAY_EMBREE_ENABLE_AVX2@)
+#    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avx2Targets.cmake)
+#  ENDIF()
+#  IF (@OSPRAY_EMBREE_ENABLE_AVX512@)
+#    INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embree_avx512Targets.cmake)
+#  ENDIF()
+#  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libospray_embreeTargets.cmake)
+#  INCLUDE(${CURRENT_CONFIG_INSTALL_DIR}/libosprayTargets.cmake)
+#endif(NOT TARGET ospray AND NOT OSPRAY_BINARY_DIR)
 
 # Remove duplicate entries from OSPRAY_INCLUDE_DIRS
 list(REMOVE_DUPLICATES OSPRAY_INCLUDE_DIRS)
@@ -163,8 +199,11 @@ list(REMOVE_DUPLICATES OSPRAY_INCLUDE_DIRS)
 # Set expected OSPRAY_LIBRARIES variable for FindPackage().
 set(OSPRAY_LIBRARIES
   ${OSPRAY_DEPENDENCIES}
-  ospray
-  ospray_embree
+  #ospray# NOTE(jda) - target disabled (see above)
+  #ospray_embree# NOTE(jda) - target disabled (see above)
+  ${EMBREE_LIBRARY}
+  ${CURRENT_ROOT_INSTALL_DIR}/@CMAKE_INSTALL_LIBDIR@/${CMAKE_SHARED_LIBRARY_PREFIX}ospray${CMAKE_SHARED_LIBRARY_SUFFIX}
+  ${CURRENT_ROOT_INSTALL_DIR}/@CMAKE_INSTALL_LIBDIR@/${CMAKE_SHARED_LIBRARY_PREFIX}ospray_common${CMAKE_SHARED_LIBRARY_SUFFIX}
 )
 
 # Reset CMake module path to its state when this script was called.

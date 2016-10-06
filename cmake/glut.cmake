@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -39,12 +39,17 @@ ELSEIF (WIN32)
   ENDIF()
   FIND_LIBRARY(GLUT_glut_LIBRARY
     NAMES freeglut glut glut32
-    PATHS ${GLUT_INCLUDE_DIR}/../lib/${ARCH} ${FREEGLUT_ROOT_PATH}/lib/${ARCH} ${DEPRECIATED_WIN32_RELEASE}
+    HINTS ${GLUT_INCLUDE_DIR}/../lib/${ARCH} ${FREEGLUT_ROOT_PATH}/lib/${ARCH} ${DEPRECIATED_WIN32_RELEASE}
+  )
+  FIND_FILE(GLUT_DLL
+    NAMES freeglut.dll
+    HINTS ${GLUT_INCLUDE_DIR}/../bin/${ARCH} ${FREEGLUT_ROOT_PATH}/bin/${ARCH}
   )
   SET(GLUT_LIBRARIES ${GLUT_glut_LIBRARY})
   MARK_AS_ADVANCED(
     GLUT_INCLUDE_DIR
     GLUT_glut_LIBRARY
+    GLUT_DLL
   )
   IF (NOT GLUT_INCLUDE_DIR OR NOT GLUT_glut_LIBRARY)
     MESSAGE(FATAL_ERROR "Could not find GLUT library. You could fetch freeglut from http://www.transmissionzero.co.uk/software/freeglut-devel/ and set the FREEGLUT_ROOT_PATH variable in cmake.")
@@ -62,7 +67,16 @@ ELSE()
       )
     FIND_LIBRARY(GLUT_LIBRARIES NAMES libglut.so PATHS $ENV{TACC_FREEGLUT_LIB})
     IF (NOT GLUT_LIBRARIES)
-      MESSAGE(FATAL_ERROR "Could not find GLUT library, even after trying additional search dirs")
+      MESSAGE(FATAL_ERROR "Could not find GLUT library, even after trying"
+                          " additional search dirs."
+                          " Please disable the following to build without GLUT:"
+                          "\n"
+                          " OSPRAY_APPS_MODELVIEWER,"
+                          " OSPRAY_APPS_PARTICLEVIEWER,"
+                          " OSPRAY_APPS_QTVIEWER,"
+                          " OSPRAY_APPS_STREAMLINEVIEWER,"
+                          " OSPRAY_MODULE_TACHYON"
+                          "\n")
     ELSE()
       SET(GLUT_FOUND ON)
     ENDIF()

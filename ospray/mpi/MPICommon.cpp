@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,15 +14,15 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/mpi/MPICommon.h"
-#include "ospray/mpi/async/CommLayer.h"
+#include "mpi/MPICommon.h"
+#include "mpi/async/CommLayer.h"
 
 namespace ospray {
   namespace mpi {
 
-    Group world;
-    Group app;
-    Group worker;
+    OSPRAY_INTERFACE Group world;
+    OSPRAY_INTERFACE Group app;
+    OSPRAY_INTERFACE Group worker;
 
     void init(int *ac, const char **av)
     {

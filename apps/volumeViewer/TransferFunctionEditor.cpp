@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,6 +15,8 @@
 // ======================================================================== //
 
 #include "TransferFunctionEditor.h"
+#include <tfn_lib/tfn_lib.h>
+#include <algorithm>
 #include <iostream>
 
 TransferFunctionEditor::TransferFunctionEditor(OSPTransferFunction transferFunction)
@@ -118,43 +120,89 @@ TransferFunctionEditor::TransferFunctionEditor(OSPTransferFunction transferFunct
 void TransferFunctionEditor::load(std::string filename)
 {
   // Get filename if not specified.
-  if(filename.empty())
-    filename = QFileDialog::getOpenFileName(this, tr("Load transfer function"), ".", "Transfer function files (*.tfn)").toStdString();
+  if(filename.empty()) {
+    filename = QFileDialog::getOpenFileName(this, tr("Load transfer function"),
+        ".", "Transfer function files (*.tfn)").toStdString();
+  }
 
   if(filename.empty())
     return;
 
   // Get serialized transfer function state from file.
-  QFile file(filename.c_str());
-  bool success = file.open(QIODevice::ReadOnly);
+  bool invalidIdentificationHeader = false;
+  try {
+    tfn::TransferFunction loadedTfn{ospcommon::FileName(filename)};
 
-  if(!success) {
-    std::cerr << "unable to open " << filename << std::endl;
-    return;
+    // Update transfer function state. Update values of the UI elements directly to signal appropriate slots.
+    std::vector<ColorMap>::iterator fnd = std::find_if(colorMaps.begin(), colorMaps.end(),
+        [&](const ColorMap &m) {
+        return m.getName() == loadedTfn.name;
+        });
+    int index = 0;
+    if (fnd != colorMaps.end()) {
+      *fnd = ColorMap(loadedTfn.name, loadedTfn.rgbValues);
+      index = std::distance(colorMaps.begin(), fnd);
+    } else {
+      colorMaps.push_back(ColorMap(loadedTfn.name, loadedTfn.rgbValues));
+      colorMapComboBox.addItem(loadedTfn.name.c_str());
+      index = colorMaps.size() - 1;
+    }
+
+    // Commit and emit signal.
+    setDataValueRange(ospcommon::vec2f(loadedTfn.dataValueMin, loadedTfn.dataValueMax), true);
+    // Convert over to QPointF to pass to the widget
+    QVector<QPointF> points;
+    for (const auto &x : loadedTfn.opacityValues) {
+      points.push_back(QPointF(x.x, x.y));
+    }
+    opacityValuesWidget.setPoints(points);
+    opacityScalingSlider.setValue(loadedTfn.opacityScaling
+        * (opacityScalingSlider.maximum() - opacityScalingSlider.minimum()));
+    updateOpacityValues();
+
+    colorMapComboBox.setCurrentIndex(index);
+  } catch (const std::runtime_error &e) {
+    const std::string errMsg = e.what();
+    std::cout << "#ospVolumeViewer error loading transferfunction: " << errMsg << "\n";
+    // If it's an invalid identification header error we can try loading an old style
+    // transfer function, otherwise something else we can't handle is wrong.
+    if (errMsg.find("Read invalid identification header") != std::string::npos) {
+      // Get serialized transfer function state from file.
+      QFile file(filename.c_str());
+      bool success = file.open(QIODevice::ReadOnly);
+
+      if (!success) {
+        std::cerr << "unable to open " << filename << std::endl;
+        return;
+      }
+
+      QDataStream in(&file);
+      int colorMapIndex;
+      in >> colorMapIndex;
+      double dataValueMin, dataValueMax;
+      in >> dataValueMin >> dataValueMax;
+      QVector<QPointF> points;
+      in >> points;
+      int opacityScalingIndex;
+      in >> opacityScalingIndex;
+
+      // Update transfer function state. Update values of the UI elements directly to signal appropriate slots.
+      colorMapComboBox.setCurrentIndex(colorMapIndex);
+      setDataValueRange(ospcommon::vec2f(dataValueMin, dataValueMax), true);
+      opacityValuesWidget.setPoints(points);
+      opacityScalingSlider.setValue(opacityScalingIndex);
+
+      std::cout << "#ospVolumeViewer WARNING: using old-style transfer function, save the loaded function "
+        << "out to switch to the new format\n";
+    } else {
+      throw e;
+    }
   }
-
-  QDataStream in(&file);
-
-  int colorMapIndex;
-  in >> colorMapIndex;
-
-  double dataValueMin, dataValueMax;
-  in >> dataValueMin >> dataValueMax;
-
-  QVector<QPointF> points;
-  in >> points;
-
-  int opacityScalingIndex;
-  in >> opacityScalingIndex;
-
-  // Update transfer function state. Update values of the UI elements directly to signal appropriate slots.
-  colorMapComboBox.setCurrentIndex(colorMapIndex);
-  setDataValueRange(ospray::vec2f(dataValueMin, dataValueMax), true);
-  opacityValuesWidget.setPoints(points);
-  opacityScalingSlider.setValue(opacityScalingIndex);
+  ospCommit(transferFunction);
+  emit committed();
 }
 
-void TransferFunctionEditor::setDataValueRange(ospray::vec2f dataValueRange, bool force)
+void TransferFunctionEditor::setDataValueRange(ospcommon::vec2f dataValueRange, bool force)
 {
   // Only update widget values the first time.
   if(dataRangeSet && !force)
@@ -181,7 +229,8 @@ void TransferFunctionEditor::updateOpacityValues()
   std::vector<float> opacityValues = opacityValuesWidget.getInterpolatedValuesOverInterval(256);
 
   // Opacity scaling factor (normalized in [0, 1]).
-  const float opacityScalingNormalized = float(opacityScalingSlider.value() - opacityScalingSlider.minimum()) / float(opacityScalingSlider.maximum() - opacityScalingSlider.minimum());
+  const float opacityScalingNormalized = float(opacityScalingSlider.value() - opacityScalingSlider.minimum())
+    / float(opacityScalingSlider.maximum() - opacityScalingSlider.minimum());
 
   // Scale opacity values.
   for (unsigned int i=0; i < opacityValues.size(); i++)
@@ -208,31 +257,26 @@ void TransferFunctionEditor::save()
   if(filename.endsWith(".tfn") != true)
     filename += ".tfn";
 
-  // Serialize transfer function state to file.
-  QFile file(filename);
-  bool success = file.open(QIODevice::WriteOnly);
-
-  if(!success) {
-    std::cerr << "unable to open " << filename.toStdString() << std::endl;
-    return;
+  const std::vector<ospcommon::vec3f> colors = colorMaps[colorMapComboBox.currentIndex()].getColors();
+  const QVector<QPointF> opacityPts = opacityValuesWidget.getPoints();
+  std::vector<ospcommon::vec2f> opacityValues;
+  for (const auto &x : opacityPts) {
+    opacityValues.push_back(ospcommon::vec2f(x.x(), x.y()));
   }
-
-  // Data value scale.
-  float dataValueScale = powf(10.f, float(dataValueScaleSpinBox.value()));
-
-  QDataStream out(&file);
-
-  out << colorMapComboBox.currentIndex();
-  out << dataValueScale * dataValueMinSpinBox.value();
-  out << dataValueScale * dataValueMaxSpinBox.value();
-  out << opacityValuesWidget.getPoints();
-  out << opacityScalingSlider.value();
+  const float dataValueScale = powf(10.f, float(dataValueScaleSpinBox.value()));
+  const float valMin = dataValueScale * dataValueMinSpinBox.value();
+  const float valMax = dataValueScale * dataValueMaxSpinBox.value();
+  const float opacityScaling = opacityScalingSlider.value()
+    / float(opacityScalingSlider.maximum() - opacityScalingSlider.minimum());
+  ospcommon::FileName ospFname{filename.toStdString()};
+  tfn::TransferFunction saveTfn(ospFname.name(), colors, opacityValues, valMin, valMax, opacityScaling);
+  saveTfn.save(ospFname);
 }
 
 void TransferFunctionEditor::setColorMapIndex(int index)
 {
   // Set transfer function color properties for this color map.
-  std::vector<ospray::vec3f> colors = colorMaps[index].getColors();
+  std::vector<ospcommon::vec3f> colors = colorMaps[index].getColors();
 
   OSPData colorsData = ospNewData(colors.size(), OSP_FLOAT3, colors.data());
   ospSetData(transferFunction, "colors", colorsData);
@@ -251,7 +295,8 @@ void TransferFunctionEditor::updateDataValueRange()
   float dataValueScale = powf(10.f, float(dataValueScaleSpinBox.value()));
 
   // Set the minimum and maximum values in the domain for both color and opacity components of the transfer function.
-  ospSet2f(transferFunction, "valueRange", dataValueScale * float(dataValueMinSpinBox.value()), dataValueScale * float(dataValueMaxSpinBox.value()));
+  ospcommon::vec2f range(dataValueScale * float(dataValueMinSpinBox.value()), dataValueScale * float(dataValueMaxSpinBox.value()));
+  ospSet2f(transferFunction, "valueRange", range.x, range.y);
 
   // Commit and emit signal.
   ospCommit(transferFunction);
@@ -262,56 +307,56 @@ void TransferFunctionEditor::loadColorMaps()
 {
   // Color maps based on ParaView default color maps.
 
-  std::vector<ospray::vec3f> colors;
+  std::vector<ospcommon::vec3f> colors;
 
   // Jet.
   colors.clear();
-  colors.push_back(ospray::vec3f(0         , 0           , 0.562493   ));
-  colors.push_back(ospray::vec3f(0         , 0           , 1          ));
-  colors.push_back(ospray::vec3f(0         , 1           , 1          ));
-  colors.push_back(ospray::vec3f(0.500008  , 1           , 0.500008   ));
-  colors.push_back(ospray::vec3f(1         , 1           , 0          ));
-  colors.push_back(ospray::vec3f(1         , 0           , 0          ));
-  colors.push_back(ospray::vec3f(0.500008  , 0           , 0          ));
+  colors.push_back(ospcommon::vec3f(0         , 0           , 0.562493   ));
+  colors.push_back(ospcommon::vec3f(0         , 0           , 1          ));
+  colors.push_back(ospcommon::vec3f(0         , 1           , 1          ));
+  colors.push_back(ospcommon::vec3f(0.500008  , 1           , 0.500008   ));
+  colors.push_back(ospcommon::vec3f(1         , 1           , 0          ));
+  colors.push_back(ospcommon::vec3f(1         , 0           , 0          ));
+  colors.push_back(ospcommon::vec3f(0.500008  , 0           , 0          ));
   colorMaps.push_back(ColorMap("Jet", colors));
 
   // Ice / fire.
   colors.clear();
-  colors.push_back(ospray::vec3f(0         , 0           , 0           ));
-  colors.push_back(ospray::vec3f(0         , 0.120394    , 0.302678    ));
-  colors.push_back(ospray::vec3f(0         , 0.216587    , 0.524575    ));
-  colors.push_back(ospray::vec3f(0.0552529 , 0.345022    , 0.659495    ));
-  colors.push_back(ospray::vec3f(0.128054  , 0.492592    , 0.720287    ));
-  colors.push_back(ospray::vec3f(0.188952  , 0.641306    , 0.792096    ));
-  colors.push_back(ospray::vec3f(0.327672  , 0.784939    , 0.873426    ));
-  colors.push_back(ospray::vec3f(0.60824   , 0.892164    , 0.935546    ));
-  colors.push_back(ospray::vec3f(0.881376  , 0.912184    , 0.818097    ));
-  colors.push_back(ospray::vec3f(0.9514    , 0.835615    , 0.449271    ));
-  colors.push_back(ospray::vec3f(0.904479  , 0.690486    , 0           ));
-  colors.push_back(ospray::vec3f(0.854063  , 0.510857    , 0           ));
-  colors.push_back(ospray::vec3f(0.777096  , 0.330175    , 0.000885023 ));
-  colors.push_back(ospray::vec3f(0.672862  , 0.139086    , 0.00270085  ));
-  colors.push_back(ospray::vec3f(0.508812  , 0           , 0           ));
-  colors.push_back(ospray::vec3f(0.299413  , 0.000366217 , 0.000549325 ));
-  colors.push_back(ospray::vec3f(0.0157473 , 0.00332647  , 0           ));
+  colors.push_back(ospcommon::vec3f(0         , 0           , 0           ));
+  colors.push_back(ospcommon::vec3f(0         , 0.120394    , 0.302678    ));
+  colors.push_back(ospcommon::vec3f(0         , 0.216587    , 0.524575    ));
+  colors.push_back(ospcommon::vec3f(0.0552529 , 0.345022    , 0.659495    ));
+  colors.push_back(ospcommon::vec3f(0.128054  , 0.492592    , 0.720287    ));
+  colors.push_back(ospcommon::vec3f(0.188952  , 0.641306    , 0.792096    ));
+  colors.push_back(ospcommon::vec3f(0.327672  , 0.784939    , 0.873426    ));
+  colors.push_back(ospcommon::vec3f(0.60824   , 0.892164    , 0.935546    ));
+  colors.push_back(ospcommon::vec3f(0.881376  , 0.912184    , 0.818097    ));
+  colors.push_back(ospcommon::vec3f(0.9514    , 0.835615    , 0.449271    ));
+  colors.push_back(ospcommon::vec3f(0.904479  , 0.690486    , 0           ));
+  colors.push_back(ospcommon::vec3f(0.854063  , 0.510857    , 0           ));
+  colors.push_back(ospcommon::vec3f(0.777096  , 0.330175    , 0.000885023 ));
+  colors.push_back(ospcommon::vec3f(0.672862  , 0.139086    , 0.00270085  ));
+  colors.push_back(ospcommon::vec3f(0.508812  , 0           , 0           ));
+  colors.push_back(ospcommon::vec3f(0.299413  , 0.000366217 , 0.000549325 ));
+  colors.push_back(ospcommon::vec3f(0.0157473 , 0.00332647  , 0           ));
   colorMaps.push_back(ColorMap("Ice / Fire", colors));
 
   // Cool to warm.
   colors.clear();
-  colors.push_back(ospray::vec3f(0.231373  , 0.298039    , 0.752941    ));
-  colors.push_back(ospray::vec3f(0.865003  , 0.865003    , 0.865003    ));
-  colors.push_back(ospray::vec3f(0.705882  , 0.0156863   , 0.14902     ));
+  colors.push_back(ospcommon::vec3f(0.231373  , 0.298039    , 0.752941    ));
+  colors.push_back(ospcommon::vec3f(0.865003  , 0.865003    , 0.865003    ));
+  colors.push_back(ospcommon::vec3f(0.705882  , 0.0156863   , 0.14902     ));
   colorMaps.push_back(ColorMap("Cool to Warm", colors));
 
   // Blue to red rainbow.
   colors.clear();
-  colors.push_back(ospray::vec3f(0         , 0           , 1           ));
-  colors.push_back(ospray::vec3f(1         , 0           , 0           ));
+  colors.push_back(ospcommon::vec3f(0         , 0           , 1           ));
+  colors.push_back(ospcommon::vec3f(1         , 0           , 0           ));
   colorMaps.push_back(ColorMap("Blue to Red Rainbow", colors));
 
   // Grayscale.
   colors.clear();
-  colors.push_back(ospray::vec3f(0.));
-  colors.push_back(ospray::vec3f(1.));
+  colors.push_back(ospcommon::vec3f(0.));
+  colors.push_back(ospcommon::vec3f(1.));
   colorMaps.push_back(ColorMap("Grayscale", colors));
 }

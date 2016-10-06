@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -23,25 +23,24 @@ namespace ospray {
   FrameBuffer::FrameBuffer(const vec2i &size,
                            ColorBufferFormat colorBufferFormat,
                            bool hasDepthBuffer,
-                           bool hasAccumBuffer)
+                           bool hasAccumBuffer,
+                           bool hasVarianceBuffer)
     : size(size),
+      numTiles(divRoundUp(size, getTileSize())),
+      maxValidPixelID(size-vec2i(1)),
       colorBufferFormat(colorBufferFormat),
       hasDepthBuffer(hasDepthBuffer),
       hasAccumBuffer(hasAccumBuffer),
-      accumID(-1)
+      hasVarianceBuffer(hasVarianceBuffer)
   {
     managedObjectType = OSP_FRAMEBUFFER;
     Assert(size.x > 0 && size.y > 0);
   }
 
-  void FrameBuffer::commit()
-  {
-    const float gamma = getParam1f("gamma", 1.0f);
-    ispc::FrameBuffer_set_gamma(ispcEquivalent, gamma);
-  }
-
   /*! helper function for debugging. write out given pixels in PPM format */
-  void writePPM(const std::string &fileName, const vec2i &size, uint32 *pixels)
+  void writePPM(const std::string &fileName,
+                const vec2i &size,
+                const uint32 *pixels)
   {
     FILE *file = fopen(fileName.c_str(),"w");
     if (!file) {
@@ -55,5 +54,31 @@ namespace ospray {
     }
     fclose(file);
   }
+
+  // helper function to write a (float) image as (flipped) PFM file
+  void writePFM(const std::string &fileName,
+                const vec2i &size,
+                const int channel,
+                const float *pixel)
+  {
+    FILE *file = fopen(fileName.c_str(),"w");
+    if (!file) {
+      std::cout << "#osp:fb: could not open file " << fileName << std::endl;
+      return;
+    }
+    fprintf(file, "PF\n%i %i\n-1.0\n", size.x, size.y);
+    float *out = STACK_BUFFER(float, 3*size.x);
+    for (int y = 0; y < size.y; y++) {
+      const float *in = (const float *)&pixel[(size.y-1-y)*size.x*channel];
+      for (int x = 0; x < size.x; x++) {
+        out[3*x + 0] = in[channel*x + 0];
+        out[3*x + 1] = in[channel*x + 1];
+        out[3*x + 2] = in[channel*x + 2];
+      }
+      fwrite(out, 3*size.x, sizeof(float), file);
+    }
+    fclose(file);
+  }
+
 
 } // ::ospray

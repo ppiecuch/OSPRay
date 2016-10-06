@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,25 +16,12 @@
 
 #undef NDEBUG
 
-// O_LARGEFILE is a GNU extension.
-#ifdef __APPLE__
-#define  O_LARGEFILE  0
-#endif
-
 // header
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 // stl
 #include <map>
-// stdlib, for mmap
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 // xml
-#include "apps/common/xml/XML.h"
-#include "ospray/common/Library.h"
-// embree stuff
-#include "common/sys/library.h"
+#include "common/xml/XML.h"
 
 namespace ospray {
   namespace sg {
@@ -104,7 +91,7 @@ namespace ospray {
         return true;
       }
       if (node->name == "int") {
-        target->addParam(new ParamT<int32>(name,atoi(node->content.c_str())));
+        target->addParam(new ParamT<int32_t>(name,atoi(node->content.c_str())));
         return true;
       }
       if (node->name == "float") {
@@ -205,23 +192,7 @@ namespace ospray {
       cout << "#osp:sg: XML file read, starting to parse content..." << endl;
 
       const std::string binFileName = fileName+"bin";
-
-      const unsigned char *binBasePtr = NULL;
-      FILE *file = fopen(binFileName.c_str(),"r");
-      if (!file) {
-        std::cout << "#osp:sg:loadOSP: Warning - binary file '"+binFileName+"' could not be found" << std::endl;
-      } else {
-        fseek(file,0,SEEK_END);
-        size_t fileSize = ftell(file);
-        fclose(file);
-
-        int fd = ::open(binFileName.c_str(),O_LARGEFILE|O_RDWR);
-        if (fd == -1) {
-          std::cout << "#osp:sg:loadOSP: Warning - binary file '"+binFileName+"' could not be found" << std::endl;
-        } else {
-          binBasePtr = (const unsigned char *)mmap(NULL,fileSize,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
-        }
-      }
+      const unsigned char * const binBasePtr = mapFile(binFileName);
 
       if (!doc) 
         throw std::runtime_error("could not parse "+fileName);

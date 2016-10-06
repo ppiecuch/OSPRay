@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "ospray/common/Managed.h"
-#include "ospray/common/OSPCommon.h"
-#include "ospray/common/Material.h"
+#include "common/Managed.h"
+#include "common/OSPCommon.h"
+#include "common/Material.h"
 
 namespace ospray {
 
@@ -37,7 +37,7 @@ namespace ospray {
   struct Geometry : public ManagedObject
   {
     //! constructor
-    Geometry() : bounds(embree::empty) { managedObjectType = OSP_GEOMETRY; }
+    Geometry() : bounds(empty) { managedObjectType = OSP_GEOMETRY; }
 
     //! set given geometry's material. 
     /*! all material assignations should go through this function; the

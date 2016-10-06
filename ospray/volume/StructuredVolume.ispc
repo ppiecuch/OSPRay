@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,8 +14,8 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/volume/StructuredVolume.ih"
-#include "ospray/volume/GridAccelerator.ih"
+#include "volume/StructuredVolume.ih"
+#include "volume/GridAccelerator.ih"
 
 inline varying float StructuredVolume_computeSample(void *uniform _volume, const varying vec3f &worldCoordinates)
 {

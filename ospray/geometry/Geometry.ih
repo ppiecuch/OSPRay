@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "ospray/common/Material.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/common/DifferentialGeometry.ih"
+#include "../common/Material.ih"
+#include "../common/Ray.ih"
+#include "../common/DifferentialGeometry.ih"
 
 /*! Geometries are supposed to fill certain members of DifferentialGeometry:
     calculate Ng, Ns, st, color, and materialID if the respective bit DG_NG,

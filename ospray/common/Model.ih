@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,11 +17,12 @@
 #pragma once
 
 // ospray stuff
-#include "ospray/common/Ray.ih"
-#include "ospray/geometry/Geometry.ih"
-#include "ospray/volume/Volume.ih"
+#include "../common/Ray.ih"
+#include "../geometry/Geometry.ih"
+#include "../volume/Volume.ih"
 
 // embree stuff
+#include "embree2/rtcore.isph"
 #include "embree2/rtcore_scene.isph"
 
 struct Model {
@@ -37,7 +38,7 @@ struct Model {
   uniform int32 geometryCount;
 
   //! volumes contained in the model
-  Volume **uniform volumes;
+  uniform Volume *uniform *uniform volumes;
   uniform int32 volumeCount;
 
 };

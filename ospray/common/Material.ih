@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,9 +16,10 @@
 
 #pragma once
 
-#include "ospray/common/OSPCommon.ih"
+#include "../common/OSPCommon.ih"
 
 /*! ISPC-side abstraction for a material. */
 struct Material {
-  void *uniform cppEquivalent; //! pointer back to the C++-equivalent of this class
+  //! pointer back to the C++-equivalent of this class
+  void *uniform cppEquivalent; 
 };

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -37,9 +37,6 @@ struct FrameBuffer
 {
   vec2i size; /*!< size (width x height) of frame buffer, in pixels */
   vec2f rcpSize; /*! one over size (precomputed) */
-  vec2f rcpSize_1; /*! one over (size - 1) (precomputed) */
-  uniform float gamma; /*! gamma correction */
-  int32 accumID;
 
   FrameBuffer_ColorBufferFormat colorBufferFormat;
 
@@ -51,7 +48,7 @@ struct FrameBuffer
 /*! helper function to convert float-color into rgba-uint format */
 inline uint32 cvt_uint32(const float f)
 {
-  return (int32)(255.9f * max(min(f,1.f),0.f));
+  return (int32)(255.f * clamp(f, 0.f, 1.f));
 }
 
 /*! helper function to convert float-color into rgba-uint format */

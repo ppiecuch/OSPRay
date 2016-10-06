@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -41,7 +41,7 @@ namespace ospray {
     void CoordFrameGeometry::makeArrow(Mesh &mesh,const vec3f &axis) 
     {
       mesh.color = axis;
-      affine3f xfm = embree::frame(axis);
+      affine3f xfm = frame(axis);
       std::swap(xfm.l.vx,xfm.l.vz);
       Quad quad; 
       for (int i=0;i<numSegments;i++) {

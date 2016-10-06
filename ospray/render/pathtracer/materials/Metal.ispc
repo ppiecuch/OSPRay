@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -49,7 +49,7 @@ void Metal_Constructor(uniform Metal* uniform self,
                        const uniform vec3f& k,
                        uniform float roughness)
 {
-  PathTraceMaterial_Constructor(&self->super, Metal_getBSDF, NULL, NULL);
+  PathTraceMaterial_Constructor(&self->super, Metal_getBSDF, NULL, NULL, NULL);
   self->reflectance = reflectance;
   self->eta = eta;
   self->k = k;

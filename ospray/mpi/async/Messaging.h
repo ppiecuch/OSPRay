@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include "ospray/mpi/MPICommon.h"
-#include "ospray/common/Thread.h"
+#include "mpi/MPICommon.h"
+#include "common/Thread.h"
 
 namespace ospray {
-  using   embree::thread_t;
-
   namespace mpi {
     
     //! abstraction for any other peer node that we might want to communicate with

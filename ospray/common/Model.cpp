@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,7 +16,7 @@
 
 // ospray
 #include "Model.h"
-#include "ospray/geometry/TriangleMesh.h"
+#include "geometry/TriangleMesh.h"
 // embree
 #include "embree2/rtcore.h"
 #include "embree2/rtcore_scene.h"
@@ -29,6 +29,10 @@ namespace ospray {
 
   using std::cout;
   using std::endl;
+
+  extern RTCDevice g_embreeDevice;
+
+  extern "C" void *ospray_getEmbreeDevice() { return g_embreeDevice; }
 
   Model::Model()
   {
@@ -44,10 +48,10 @@ namespace ospray {
            << geometry.size() << " geometries and " << volume.size() << " volumes" << std::endl << std::flush;
     }
 
-    ispc::Model_init(getIE(), geometry.size(), volume.size());
+    ispc::Model_init(getIE(), g_embreeDevice, geometry.size(), volume.size());
     embreeSceneHandle = (RTCScene)ispc::Model_getEmbreeSceneHandle(getIE());
 
-    bounds = embree::empty;
+    bounds = empty;
 
     // for now, only implement triangular geometry...
     for (size_t i=0; i < geometry.size(); i++) {
@@ -61,9 +65,6 @@ namespace ospray {
 
       bounds.extend(geometry[i]->bounds);
       ispc::Model_setGeometry(getIE(), i, geometry[i]->getIE());
-    }
-    if (geometry.size() > 10) {
-      PING; PRINT(geometry.size());
     }
 
     for (size_t i=0; i<volume.size(); i++) 

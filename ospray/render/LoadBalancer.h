@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -19,12 +19,12 @@
 /*! \file LoadBalancer.h Implements the abstracion layer for a (tiled) load balancer */
 
 // ospray
-#include "ospray/common/OSPCommon.h"
-#include "ospray/fb/FrameBuffer.h"
-#include "ospray/render/Renderer.h"
+#include "common/OSPCommon.h"
+#include "fb/FrameBuffer.h"
+#include "render/Renderer.h"
 
 // tbb
-#ifdef OSPRAY_USE_TBB
+#ifdef OSPRAY_TASKING_TBB
 # include <tbb/task_scheduler_init.h>
 #endif
 
@@ -36,9 +36,16 @@ namespace ospray {
   {
     static TiledLoadBalancer *instance;
     virtual std::string toString() const = 0;
-    virtual void renderFrame(Renderer *tiledRenderer,
+    virtual float renderFrame(Renderer *tiledRenderer,
                              FrameBuffer *fb,
                              const uint32 channelFlags) = 0;
+
+    static size_t numJobs(const int spp, int accumID)
+    {
+      const int blocks = (accumID > 0 || spp > 0) ? 1 :
+        std::min(1 << -2 * spp, TILE_SIZE*TILE_SIZE);
+      return divRoundUp((TILE_SIZE*TILE_SIZE)/RENDERTILE_PIXELS_PER_JOB, blocks);
+    }
   };
 
   //! tiled load balancer for local rendering on the given machine
@@ -49,26 +56,14 @@ namespace ospray {
   struct LocalTiledLoadBalancer : public TiledLoadBalancer
   {
     LocalTiledLoadBalancer();
-    struct RenderTask
-    {
-      mutable Ref<FrameBuffer>  fb;
-      mutable Ref<Renderer>     renderer;
 
-      size_t                    numTiles_x;
-      size_t                    numTiles_y;
-      uint32                    channelFlags;
-      void                     *perFrameData;
-
-      void run(size_t jobID) const;
-      void finish() const;
-    };
-
-    void renderFrame(Renderer *tiledRenderer,
+    float renderFrame(Renderer *renderer,
                      FrameBuffer *fb,
-                     const uint32 channelFlags);
-    std::string toString() const;
+                     const uint32 channelFlags) override;
 
-#ifdef OSPRAY_USE_TBB
+    std::string toString() const override;
+
+#ifdef OSPRAY_TASKING_TBB
     tbb::task_scheduler_init tbb_init;
 #endif
   };
@@ -93,33 +88,11 @@ namespace ospray {
       }
     }
 
-    virtual std::string toString() const { return "ospray::InterleavedTiledLoadBalancer"; };
+    std::string toString() const override;
 
-    /*! \brief a task for rendering a frame using the global tiled load balancer
-
-      if derived from FrameBuffer::RenderFrameEvent to allow us for
-      attaching that as a sync primitive to the frame buffer
-    */
-    struct RenderTask
-    {
-      mutable Ref<FrameBuffer> fb;
-      mutable Ref<Renderer>    renderer;
-
-      size_t           numTiles_x;
-      size_t           numTiles_y;
-      size_t           numTiles_mine;
-      size_t           deviceID;
-      size_t           numDevices;
-      uint32           channelFlags;
-      void             *perFrameData;
-
-      void run(size_t jobID) const;
-      void finish() const;
-    };
-
-    void renderFrame(Renderer *tiledRenderer,
+    float renderFrame(Renderer *tiledRenderer,
                      FrameBuffer *fb,
-                     const uint32 channelFlags);
+                     const uint32 channelFlags) override;
   };
 
 } // ::ospray

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,16 +14,14 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
+// viewer
+#include "ModelViewer.h"
 // ospray
 #include "ospray/ospray.h"
 // qt
 #include <iostream>
 #include <QtGui>
 #include <ctype.h>
-// viewer
-#include "ModelViewer.h"
-// embree
-#include "common/sys/filename.h"
 // scene graph
 #include "sg/module/Module.h"
 #include "sg/importer/Importer.h"
@@ -33,7 +31,7 @@ namespace ospray {
     using std::cout;
     using std::endl;
 
-    static const std::string DEFAULT_INTEGRATOR_NAME = "ao2";
+    static const std::string DEFAULT_INTEGRATOR_NAME = "scivis"; //ao2";
     // static const std::string DEFAULT_INTEGRATOR_NAME = "eyeLight_geomID";
     
 
@@ -118,7 +116,7 @@ namespace ospray {
             throw std::runtime_error("#osp:qtv: unknown cmdline param '"+arg+"'");
           }
         } else {
-          embree::FileName fn = arg;
+          FileName fn = arg;
           if (fn.ext() == "osp" || fn.ext() == "pkd") {
             world = sg::loadOSP(fn.str());
             // } else if (fn.ext() == "atom") {

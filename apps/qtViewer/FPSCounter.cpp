@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -28,12 +28,12 @@ namespace ospray {
       
     void FPSCounter::startRender() 
     { 
-      frameStartTime = ospray::getSysTime(); 
+      frameStartTime = ospcommon::getSysTime(); 
     }
 
     void FPSCounter::doneRender() 
     { 
-      double seconds = ospray::getSysTime() - frameStartTime; 
+      double seconds = ospcommon::getSysTime() - frameStartTime; 
       fps = 1./seconds;
       smooth_nom = smooth_nom * 0.8 + seconds;
       smooth_den = smooth_den * 0.8 + 1.;

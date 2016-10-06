@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -29,7 +29,7 @@ Q_OBJECT
 
 public:
 
-  SliceEditor(ospray::box3f boundingBox);
+  SliceEditor(ospcommon::box3f boundingBox);
 
 signals:
 
@@ -44,7 +44,7 @@ public slots:
 protected:
 
   //! Bounding box of the volume.
-  ospray::box3f boundingBox;
+  ospcommon::box3f boundingBox;
 
   //! UI elements.
   QVBoxLayout layout;

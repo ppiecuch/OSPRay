@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -24,7 +24,7 @@ namespace ospray {
     , intensity(1.f)
     , radius(0.f)
   {
-    ispcEquivalent = ispc::PointLight_create(this);
+    ispcEquivalent = ispc::PointLight_create();
   }
 
   //! Commit parameters understood by the PointLight
@@ -40,6 +40,7 @@ namespace ospray {
   }
 
   OSP_REGISTER_LIGHT(PointLight, PointLight);
+  OSP_REGISTER_LIGHT(PointLight, point);
   OSP_REGISTER_LIGHT(PointLight, SphereLight);
   OSP_REGISTER_LIGHT(PointLight, sphere);
 }

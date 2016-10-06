@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "ospray/common/OSPCommon.ih"
-#include "ospray/math/region.ih"
+#include "../common/OSPCommon.ih"
+#include "../math/region.ih"
 
 /*! a screen tile. the memory layout of this class has to _exactly_
   match the (C++-)one in tile.h */
@@ -32,11 +32,12 @@ struct Tile {
   uniform vec2f    rcp_fbSize;
   uniform int32    generation;
   uniform int32    children;
+  uniform int32    accumID;
 };
 
 struct VaryingTile {
-  varying float  r[TILE_SIZE*TILE_SIZE/programCount]; /*! red */
-  varying float  g[TILE_SIZE*TILE_SIZE/programCount]; /*! green */
+  varying float  r[TILE_SIZE*TILE_SIZE/programCount]; /*!< red */
+  varying float  g[TILE_SIZE*TILE_SIZE/programCount]; /*!< green */
   varying float  b[TILE_SIZE*TILE_SIZE/programCount]; /*!< blue */
   varying float  a[TILE_SIZE*TILE_SIZE/programCount]; /*!< alpha */
   varying float  z[TILE_SIZE*TILE_SIZE/programCount]; /*!< depth */
@@ -45,6 +46,7 @@ struct VaryingTile {
   uniform vec2f    rcp_fbSize;
   uniform int32    generation;
   uniform int32    children;
+  uniform int32    accumID;
 };
 
 inline vec4f setRGBA(uniform Tile &tile, varying uint32 i, const varying vec4f rgba)

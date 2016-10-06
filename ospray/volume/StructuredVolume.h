@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,7 +17,8 @@
 #pragma once
 
 // ospray
-#include "ospray/volume/Volume.h"
+#include "common/tasking/parallel_for.h"
+#include "volume/Volume.h"
 // stl
 #include <algorithm>
 #include <string>
@@ -32,7 +33,8 @@ namespace ospray {
     type string passed to Volume::createInstance() specifies a
     particular concrete implementation.  This type string must be
     registered in OSPRay proper, or in a loaded module via
-    OSP_REGISTER_VOLUME.
+    OSP_REGISTER_VOLUME. To place the volume in world coordinates, 
+    modify the gridOrigin and gridSpacing to translate and scale the volume.
   */
   class StructuredVolume : public Volume {
   public:
@@ -44,16 +46,16 @@ namespace ospray {
     virtual ~StructuredVolume();
 
     //! A string description of this class.
-    virtual std::string toString() const;
+    virtual std::string toString() const override;
 
     //! Allocate storage and populate the volume, called through the OSPRay API.
-    virtual void commit();
+    virtual void commit() override;
 
     //! Copy voxels into the volume at the given index
     /*! \returns 0 on error, any non-zero value indicates success */
     virtual int setRegion(const void *source_pointer,
                           const vec3i &target_index,
-                          const vec3i &source_count) = 0;
+                          const vec3i &source_count) override = 0;
 
   protected:
 
@@ -61,27 +63,29 @@ namespace ospray {
     virtual void createEquivalentISPC() = 0;
 
     //! Complete volume initialization (only on first commit).
-    virtual void finish();
-
-    //! Get the OSPDataType enum corresponding to the voxel type string.
-    OSPDataType getVoxelType() const;
+    virtual void finish() override;
 
 #ifndef OSPRAY_VOLUME_VOXELRANGE_IN_APP
-    //! Compute the voxel value range for unsigned byte voxels.
-    void computeVoxelRange(const unsigned char *source, const size_t &count);
-
-    //! Compute the voxel value range for floating point voxels.
-    void computeVoxelRange(const float *source, const size_t &count);
-
-    //! Compute the voxel value range for double precision floating point voxels.
-    void computeVoxelRange(const double *source, const size_t &count);
-
+    template<typename T>
+    void computeVoxelRange(const T* source, const size_t &count);
 #endif
 
+    template<typename T>
+    void upsampleRegion(const T *source, T *out, const vec3i &regionSize, const vec3i &scaledRegionSize);
+
+    /*! Scale up the region we're setting in ospSetRegion. Will return the scaled region size and coordinates
+        through the regionSize and regionCoords passed for the unscaled region (from ospSetRegion),
+        and return true if we actually upsampled the data. If we upsample the data the caller
+        is responsible for calling free on the out data parameter to release the scaled volume data.
+     */
+    bool scaleRegion(const void *source, void *&out, vec3i &regionSize, vec3i &regionCoords);
 
     //! build the accelerator - allows child class (data distributed) to avoid
     //! building..
     virtual void buildAccelerator();
+
+    //! Get the OSPDataType enum corresponding to the voxel type string.
+    OSPDataType getVoxelType();
 
     //! Volume size in voxels per dimension.
     vec3i dimensions;
@@ -100,7 +104,56 @@ namespace ospray {
 
     //! Voxel type.
     std::string voxelType;
+
+    /*! Scale factor for the volume, mostly for internal use or data scaling benchmarking.
+       Note that this must be set **before** calling 'ospSetRegion' on the volume as the
+       scaling is applied in that function.
+     */
+    vec3f scaleFactor;
   };
 
+// Inlined member functions ///////////////////////////////////////////////////
+
+#ifndef OSPRAY_VOLUME_VOXELRANGE_IN_APP
+  template<typename T>
+  inline void StructuredVolume::computeVoxelRange(const T* source,
+                                                  const size_t &count)
+  {
+    const size_t blockSize = 1000000;
+    int numBlocks = divRoundUp(count, blockSize);
+    vec2f* blockRange = STACK_BUFFER(vec2f, numBlocks);
+
+    //NOTE(jda) - shouldn't this be a simple reduction (TBB/OMP)?
+    parallel_for(numBlocks, [&](int taskIndex){
+      size_t myBegin = taskIndex *blockSize;
+      size_t myEnd   = std::min(myBegin+blockSize,count);
+      vec2f myVoxelRange(source[myBegin]);
+
+      for (size_t i = myBegin; i < myEnd ; i++) {
+        myVoxelRange.x = std::min(myVoxelRange.x, (float)source[i]);
+        myVoxelRange.y = std::max(myVoxelRange.y, (float)source[i]);
+      }
+
+      blockRange[taskIndex] = myVoxelRange;
+    });
+
+    for (int i = 0; i < numBlocks; i++) {
+      voxelRange.x = std::min(voxelRange.x, blockRange[i].x);
+      voxelRange.y = std::max(voxelRange.y, blockRange[i].y);
+    }
+  }
+#endif
+  template<typename T>
+  void StructuredVolume::upsampleRegion(const T *source, T *out, const vec3i &regionSize, const vec3i &scaledRegionSize){
+    for (size_t z = 0; z < scaledRegionSize.z; ++z){
+      parallel_for(scaledRegionSize.x * scaledRegionSize.y, [&](int taskID){
+        int x = taskID % scaledRegionSize.x;
+        int y = taskID / scaledRegionSize.x;
+        const int idx = static_cast<int>(z / scaleFactor.z) * regionSize.x * regionSize.y
+            + static_cast<int>(y / scaleFactor.y) * regionSize.x + static_cast<int>(x / scaleFactor.x);
+        out[z * scaledRegionSize.y * scaledRegionSize.x + y * scaledRegionSize.x + x] = source[idx];
+      });
+    }
+  }
 } // ::ospray
 

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "ospray/render/Renderer.h"
-#include "ospray/common/Material.h"
+#include "render/Renderer.h"
+#include "common/Material.h"
 
 namespace ospray {
   struct PathTracer : public Renderer {

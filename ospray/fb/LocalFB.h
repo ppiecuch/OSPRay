@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,7 +17,7 @@
 #pragma once
 
 // ospray
-#include "ospray/fb/FrameBuffer.h"
+#include "fb/FrameBuffer.h"
 
 namespace ospray {
 
@@ -28,25 +28,32 @@ namespace ospray {
                                NULL */
     float     *depthBuffer; /*!< one float per pixel, may be NULL */
     vec4f     *accumBuffer; /*!< one RGBA per pixel, may be NULL */
+    vec4f     *varianceBuffer; /*!< one RGBA per pixel, may be NULL, accumulates every other sample, for variance estimation / stopping */
+    int32     *tileAccumID; //< holds accumID per tile, for adaptive accumulation
+    float     *tileErrorBuffer; /*!< holds error per tile, for variance estimation / stopping */
+    std::vector<box2i> errorRegion; // image regions (in #tiles) which do not yet estimate the error on tile base
 
     LocalFrameBuffer(const vec2i &size,
                      ColorBufferFormat colorBufferFormat,
                      bool hasDepthBuffer,
-                     bool hasAccumBuffer, 
+                     bool hasAccumBuffer,
+                     bool hasVarianceBuffer,
                      void *colorBufferToUse=NULL);
     virtual ~LocalFrameBuffer();
-    
-    //! \brief common function to help printf-debugging 
+
+    //! \brief common function to help printf-debugging
     /*! \detailed Every derived class should overrride this! */
-    virtual std::string toString() const
-    { return "ospray::LocalFrameBuffer"; }
+    std::string toString() const override;
 
-    virtual void setTile(Tile &tile);
+    void setTile(Tile &tile) override;
+    int32 accumID(const vec2i &tile) override;
+    float tileError(const vec2i &tile) override;
+    float endFrame(const float errorThreshold) override;
 
-    virtual const void *mapColorBuffer();
-    virtual const void *mapDepthBuffer();
-    virtual void unmap(const void *mappedMem);
-    virtual void clear(const uint32 fbChannelFlags);
+    const void *mapColorBuffer() override;
+    const void *mapDepthBuffer() override;
+    void unmap(const void *mappedMem) override;
+    void clear(const uint32 fbChannelFlags) override;
   };
 
 } // ::ospray

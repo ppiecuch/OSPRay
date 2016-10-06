@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,17 +14,22 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/fb/Tile.ih"
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/render/util.ih"
+#pragma once
+
+#include "fb/Tile.ih"
+#include "fb/FrameBuffer.ih"
+#include "render/util.ih"
 
 /*! a Local FrameBuffer that stores all pixel values (color, depth,
     accum) in a plain 2D array of pixels (one array per component) */
-struct LocalFB 
+struct LocalFB
 {
   FrameBuffer    super; /*!< superclass that we inherit from */
   void          *colorBuffer;
   uniform float *depthBuffer;
   uniform vec4f *accumBuffer;
+  uniform vec4f *varianceBuffer; // accumulates every other sample, for variance estimation / stopping
+  uniform int32 *tileAccumID; //< holds accumID per tile, for adaptive accumulation
+  uniform float *tileErrorBuffer; // store error per tile
+  vec2i          numTiles;
 };
-

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "ospray/common/OSPCommon.h"
-#include "ospray/include/ospray/ospray.h"
+#include "common/OSPCommon.h"
+#include "ospray/ospray.h"
 
 /*! \file device.h Defines the abstract base class for OSPRay
     "devices" that implement the OSPRay API */
@@ -27,9 +27,9 @@ namespace ospray {
   namespace api {
 
     /*! abstract base class of all 'devices' that implement the ospray API */
-    struct Device {
+    struct Device : public RefCount {
       /*! singleton that points to currently active device */
-      static Device *current;
+      static Ref<Device> current;
 
       Device();
 
@@ -43,7 +43,7 @@ namespace ospray {
       
       /*! map frame buffer */
       virtual const void *frameBufferMap(OSPFrameBuffer fb, 
-                                         OSPFrameBufferChannel) = 0;
+                                         const OSPFrameBufferChannel) = 0;
 
       /*! unmap previously mapped frame buffer */
       virtual void frameBufferUnmap(const void *mapped,
@@ -66,6 +66,9 @@ namespace ospray {
 
       /*! add a new volume to a model */
       virtual void addVolume(OSPModel _model, OSPVolume _volume) = 0;
+
+      /*! remove an existing volume from a model */
+      virtual void removeVolume(OSPModel _model, OSPVolume _volume) = 0;
 
       /*! create a new data buffer */
       virtual OSPData newData(size_t nitems, OSPDataType format, void *init, int flags) = 0;
@@ -104,48 +107,6 @@ namespace ospray {
       /*! add untyped void pointer to object - this will *ONLY* work in local rendering!  */
       virtual void setVoidPtr(OSPObject object, const char *bufName, void *v) = 0;
 
-      /*! Get the handle of the named data array associated with an object. */
-      virtual int getData(OSPObject object, const char *name, OSPData *value) = 0;
-
-      /*! Get a copy of the data in an array (the application is responsible for freeing this pointer). */
-      virtual int getDataValues(OSPData object, void **pointer, size_t *count, OSPDataType *type) = 0;
-
-      /*! Get the named scalar floating point value associated with an object. */
-      virtual int getf(OSPObject object, const char *name, float *value) = 0;
-
-      /*! Get the named scalar integer associated with an object. */
-      virtual int geti(OSPObject object, const char *name, int *value) = 0;
-
-      /*! Get the material associated with a geometry object. */
-      virtual int getMaterial(OSPGeometry geometry, OSPMaterial *value) = 0;
-
-      /*! Get the named object associated with an object. */
-      virtual int getObject(OSPObject object, const char *name, OSPObject *value) = 0;
-
-      /*! Retrieve a NULL-terminated list of the parameter names associated with an object. */
-      virtual int getParameters(OSPObject object, char ***value) = 0;
-
-      /*! Get a pointer to a copy of the named character string associated with an object. */
-      virtual int getString(OSPObject object, const char *name, char **value) = 0;
-
-      /*! Get the type of the named parameter or the given object (if 'name' is NULL). */
-      virtual int getType(OSPObject object, const char *name, OSPDataType *value) = 0;
-
-      /*! Get the named 2-vector floating point value associated with an object. */
-      virtual int getVec2f(OSPObject object, const char *name, vec2f *value) = 0;
-
-      /*! Get the named 3-vector floating point value associated with an object. */
-      virtual int getVec3f(OSPObject object, const char *name, vec3f *value) = 0;
-
-      /*! Get the named 4-vector floating point value associated with an object. */
-      virtual int getVec4f(OSPObject object, const char *name, vec4f *value) = 0;
-
-      /*! Get the named 3-vector integer value associated with an object. */
-      virtual int getVec3i(OSPObject object, const char *name, vec3i *value) = 0;
-
-      /*! create a new triangle mesh geometry */
-      virtual OSPTriangleMesh newTriangleMesh() = 0;
-
       /*! create a new renderer object (out of list of registered renderers) */
       virtual OSPRenderer newRenderer(const char *type) = 0;
 
@@ -171,7 +132,8 @@ namespace ospray {
       virtual OSPMaterial newMaterial(OSPRenderer _renderer, const char *type) = 0;
 
       /*! create a new Texture2D object */
-      virtual OSPTexture2D newTexture2D(int width, int height, OSPDataType type, void *data, int flags) = 0;
+      virtual OSPTexture2D newTexture2D(const vec2i &size,
+          const OSPTextureFormat, void *data, const uint32 flags) = 0;
 
       /*! have given renderer create a new Light */
       virtual OSPLight newLight(OSPRenderer _renderer, const char *type) = 0;
@@ -191,7 +153,7 @@ namespace ospray {
                                     const uint32 fbChannelFlags) = 0; 
 
       /*! call a renderer to render a frame buffer */
-      virtual void renderFrame(OSPFrameBuffer _sc, 
+      virtual float renderFrame(OSPFrameBuffer _sc,
                                OSPRenderer _renderer, 
                                const uint32 fbChannelFlags) = 0;
 
@@ -225,7 +187,7 @@ namespace ospray {
       virtual OSPPickResult pick(OSPRenderer renderer, const vec2f &screenPos) 
       { 
         throw std::runtime_error("pick() not impelemnted for this device"); 
-      };
+      }
 
       /*! switch API mode for distriubted API extensions */
       virtual void apiMode(OSPDApiMode mode)
@@ -238,7 +200,6 @@ namespace ospray {
       {
         throw std::runtime_error("sampleVolume() not implemented for this device");
       }
-
     };
   } // ::ospray::api
 } // ::ospray

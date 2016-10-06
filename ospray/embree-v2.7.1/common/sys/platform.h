@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,6 +15,10 @@
 // ======================================================================== //
 
 #pragma once
+
+#ifndef DONT_WARN_INCLUDE_EMBREE_INTERNALS
+#  error "warning: including embree internals (common/sys/platform.h) from outside of embree/ directory!"
+#endif
 
 #define _CRT_SECURE_NO_WARNINGS
 

@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -16,11 +16,13 @@
 
 OPTION(OSPRAY_MODULE_OPENGL_UTIL "Build OpenGL utility functionality" ON)
 
-CONFIGURE_OSPRAY()
+IF(NOT THIS_IS_MIC AND OSPRAY_MODULE_OPENGL_UTIL)
+  FIND_PACKAGE(OpenGL REQUIRED)
 
-IF (NOT THIS_IS_MIC)
-  IF (OSPRAY_MODULE_OPENGL_UTIL)
+  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray)
+  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
 
+<<<<<<< HEAD
     FIND_PACKAGE(OpenGL REQUIRED)
 
     INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray)
@@ -40,4 +42,10 @@ IF (NOT THIS_IS_MIC)
 
   ENDIF (OSPRAY_MODULE_OPENGL_UTIL)
 ENDIF (NOT THIS_IS_MIC)
+=======
+  LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/modules/opengl)
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
+  OSPRAY_CREATE_LIBRARY(module_opengl_util util.cpp
+    LINK ospray ${OPENGL_LIBRARIES})
+ENDIF()

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -30,6 +30,13 @@ namespace ospray {
     /*! \brief returns a std::string with the c++ name of this class */
     std::string Volume::toString() const
     { return "ospray::sg::Volume"; }
+
+    void Volume::serialize(sg::Serialization::State &state)
+    {
+      Node::serialize(state);
+      if (transferFunction) 
+        transferFunction->serialize(state);
+    }
     
     // =======================================================
     // structured volume class
@@ -82,7 +89,7 @@ namespace ospray {
                             ? "data_distributed_volume"
                             : "block_bricked_volume");
       if (!volume)
-        THROW_SG_ERROR(__PRETTY_FUNCTION__,"could not allocate volume");
+        THROW_SG_ERROR("could not allocate volume");
 
       ospSetString(volume,"voxelType",voxelType.c_str());
       ospSetVec3i(volume,"dimensions",(const osp::vec3i&)dimensions);
@@ -162,7 +169,7 @@ namespace ospray {
       else
         volume = ospNewVolume(useBlockBricked ? "block_bricked_volume" : "shared_structured_volume");
       if (!volume)
-        THROW_SG_ERROR(__PRETTY_FUNCTION__,"could not allocate volume");
+        THROW_SG_ERROR("could not allocate volume");
       
       PING; PRINT(voxelType);
       ospSetString(volume,"voxelType",voxelType.c_str());
@@ -193,9 +200,9 @@ namespace ospray {
           }
           delete[] slice;
         } else {
-          uint8 *slice = new uint8[nPerSlice];
+          uint8_t *slice = new uint8_t[nPerSlice];
           for (int z=0;z<dimensions.z;z++) {
-            size_t nRead = fread(slice,sizeof(uint8),nPerSlice,file);
+            size_t nRead = fread(slice,sizeof(uint8_t),nPerSlice,file);
             if (nRead != nPerSlice)
               throw std::runtime_error("StructuredVolume::render(): read incomplete slice data ... partial file or wrong format!?");
             const vec3i region_lo(0,0,z), region_sz(dimensions.x,dimensions.y,1);
@@ -210,7 +217,7 @@ namespace ospray {
         float *voxels = new float[nVoxels];
         size_t nRead = fread(voxels,sizeof(float),nVoxels,file);
         if (nRead != nVoxels)
-          THROW_SG_ERROR(__PRETTY_FUNCTION__,"read incomplete data (truncated file or wrong format?!)");
+          THROW_SG_ERROR("read incomplete data (truncated file or wrong format?!)");
         OSPData data = ospNewData(nVoxels,OSP_FLOAT,voxels,OSP_DATA_SHARED_BUFFER);
         ospSetData(volume,"voxelData",data);
       }
@@ -235,7 +242,7 @@ namespace ospray {
 
     //! constructor
     StackedRawSlices::StackedRawSlices()
-      : dimensions(-1), baseName(""), voxelType("uint8"), volume(NULL)
+      : dimensions(-1), baseName(""), voxelType("uint8_t"), volume(NULL)
     {}
 
     /*! \brief returns a std::string with the c++ name of this class */
@@ -254,8 +261,8 @@ namespace ospray {
       baseName = node->getProp("baseName");
       firstSliceID = node->getPropl("firstSliceID");
       numSlices = node->getPropl("numSlices");
-      if (voxelType != "uint8") 
-        throw std::runtime_error("unknown StackedRawSlices.voxelType (currently only supporting 'uint8')");
+      if (voxelType != "uint8_t") 
+        throw std::runtime_error("unknown StackedRawSlices.voxelType (currently only supporting 'uint8_t')");
           
       if (!transferFunction) 
         setTransferFunction(new TransferFunction);
@@ -275,15 +282,15 @@ namespace ospray {
       
       volume = ospNewVolume("block_bricked_volume");
       if (!volume)
-        THROW_SG_ERROR(__PRETTY_FUNCTION__,"could not allocate volume");
+        THROW_SG_ERROR("could not allocate volume");
 
       ospSetString(volume,"voxelType",voxelType.c_str());
       ospSetVec3i(volume,"dimensions",(const osp::vec3i&)dimensions);
       size_t nPerSlice = dimensions.x*dimensions.y;
-      uint8 *slice = new uint8[nPerSlice];
+      uint8_t *slice = new uint8_t[nPerSlice];
       for (int sliceID=0;sliceID<numSlices;sliceID++) {
-        char sliceName[strlen(baseName.c_str())+20];
-        sprintf(sliceName,baseName.c_str(),firstSliceID+sliceID);
+        char *sliceName = (char*)alloca(strlen(baseName.c_str()) + 20);
+        sprintf(sliceName, baseName.c_str(), firstSliceID + sliceID);
         PRINT(sliceName);
         FILE *file = fopen(sliceName,"rb");
         if (!file) 

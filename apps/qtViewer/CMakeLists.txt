@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,16 +14,10 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-CONFIGURE_OSPRAY()
-
-#MESSAGE("EXTERNAL_EMBREE_DIR ${EXTERNAL_EMBREE_DIR}")
-#MESSAGE("OSPRAY_EMBREE_SOURCE_DIR ${OSPRAY_EMBREE_SOURCE_DIR}")
-
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
 SET(LIBS ${LIBS} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES})
 
 FIND_PACKAGE(Qt5Widgets REQUIRED)
@@ -58,9 +52,10 @@ ADD_EXECUTABLE(ospQtViewer ${SRCS})
 TARGET_LINK_LIBRARIES(ospQtViewer
   ${LIBS} 
   ospray_sg${OSPRAY_LIB_SUFFIX}
+  ${TBB_LIBRARY_MALLOC}
+  ${TBB_LIBRARY}
   )
 QT5_USE_MODULES(ospQtViewer Widgets)
 # ------------------------------------------------------------
 INSTALL(TARGETS ospQtViewer DESTINATION bin)
 # ------------------------------------------------------------
-

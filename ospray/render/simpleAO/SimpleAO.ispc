@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,19 +14,18 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/camera/Camera.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/render/util.ih"
-#include "ospray/math/math.ih"
-#include "ospray/math/random.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/render/Renderer.ih"
-#include "ospray/texture/Texture2D.ih"
+#include "fb/FrameBuffer.ih"
+#include "camera/Camera.ih"
+#include "common/Ray.ih"
+#include "render/util.ih"
+#include "math/math.ih"
+#include "math/random.ih"
+#include "common/Model.ih"
+#include "render/Renderer.ih"
+#include "render/simpleAO/SimpleAOMaterial.ih"
 
 struct SimpleAO {
   uniform Renderer super;
-  uniform vec3f bgColor;
   uniform int samplesPerFrame;
   uniform float aoRayLength;
 };
@@ -46,30 +45,6 @@ void getBinormals(vec3f &biNorm0, vec3f &biNorm1, const vec3f &gNormal)
     biNorm0 = make_vec3f(0.f,1.f,0.f);
   biNorm1 = normalize(cross(biNorm0,gNormal));
   biNorm0 = normalize(cross(biNorm1,gNormal));
-}
-
-struct SimpleAOMaterial {
-  Material super;
-  vec3f Kd;
-  uniform Texture2D *uniform map_Kd;
-};
-
-export void *uniform SimpleAOMaterial_create(void *uniform cppE)
-{
-  uniform SimpleAOMaterial *uniform mat = uniform new uniform SimpleAOMaterial;
-  mat->super.cppEquivalent = cppE;
-  return mat;
-}
-
-export void SimpleAOMaterial_set(void *uniform _mat, 
-                             const uniform vec3f &Kd,
-                             void *uniform _map_Kd
-                             )
-{
-  uniform SimpleAOMaterial *uniform mat =
-      (uniform SimpleAOMaterial *uniform)_mat;
-  mat->Kd = Kd;
-  mat->map_Kd = (uniform Texture2D *uniform)_map_Kd;
 }
 
 inline float rotate(float x, float dx)
@@ -107,15 +82,17 @@ inline vec3f getRandomDir(varying RandomTEA* uniform rng,
 inline void shade_ao(uniform SimpleAO *uniform self,
                      varying vec3f &color,
                      varying float &alpha,
-                     int sampleCnt,
+                     const uniform int sampleCnt,
+                     const uniform int accumID,
                      const Ray &ray,
                      const int32 pixel_x,
                      const int32 pixel_y,
-                     const float rot_x,
-                     const float rot_y)
+                     const uniform float rot_x,
+                     const uniform float rot_y)
 {
   if (ray.geomID < 0) {
-    color = self->super.backgroundEnabled ? self->bgColor : make_vec3f(0.f);
+    color = self->super.backgroundEnabled ? self->super.bgColor :
+                                            make_vec3f(0.f);
     alpha = self->super.backgroundEnabled ? 1.f : 0.f;
     return;
   }
@@ -126,24 +103,24 @@ inline void shade_ao(uniform SimpleAO *uniform self,
                 |DG_MATERIALID|DG_COLOR|DG_TEXCOORD);
   
   uniform SimpleAOMaterial *mat = ((uniform SimpleAOMaterial*)dg.material);
-  vec3f baseColor = make_vec3f(1.f);
+  vec3f superColor = make_vec3f(1.f);
   if (mat) {
     foreach_unique(m in mat) {
-      baseColor = m->Kd;
+      superColor = m->Kd;
       if (m->map_Kd) {
         vec4f Kd_from_map = get4f(m->map_Kd,dg.st);
-        baseColor = baseColor * make_vec3f(Kd_from_map);
+        superColor = superColor * make_vec3f(Kd_from_map);
       }
     }
   }
   // should be done in material:
-  baseColor = baseColor * make_vec3f(dg.color);
+  superColor = superColor * make_vec3f(dg.color);
 
   // init TEA RNG //
   uniform FrameBuffer *uniform fb = self->super.fb;
   RandomTEA rng_state;
   varying RandomTEA* const uniform rng = &rng_state;
-  RandomTEA__Constructor(rng, (fb->size.x * pixel_y) + pixel_x, fb->accumID);
+  RandomTEA__Constructor(rng, (fb->size.x * pixel_y) + pixel_x, accumID);
 
   int hits = 0;
   vec3f biNormU,biNormV;
@@ -162,7 +139,7 @@ inline void shade_ao(uniform SimpleAO *uniform self,
       hits++;
   }
   float diffuse = absf(dot(N,ray.dir));
-  color = baseColor * make_vec3f(diffuse * (1.0f - (float)hits/sampleCnt));
+  color = superColor * make_vec3f(diffuse * (1.0f - (float)hits/sampleCnt));
   alpha = 1.f;
   return;
 }
@@ -177,16 +154,15 @@ void SimpleAO_renderSample(uniform Renderer *uniform _self,
   traceRay(self->super.model, sample.ray);
   sample.z = sample.ray.t;
 
-  uniform int samplesPerFrame = self->samplesPerFrame;
-  uniform int framesPer16 = 16 / samplesPerFrame;
-  int accumID = sample.sampleID.z / framesPer16;
-  float rot_x = 1.f - precomputedHalton3(accumID);
-  float rot_y = 1.f - precomputedHalton5(accumID);
+  const uniform int accumID = reduce_max(sample.sampleID.z) * self->samplesPerFrame;
+  const uniform float rot_x = 1.f - precomputedHalton3(accumID);
+  const uniform float rot_y = 1.f - precomputedHalton5(accumID);
 
   shade_ao(self,
            sample.rgb,
            sample.alpha,
-           samplesPerFrame,
+           self->samplesPerFrame,
+           accumID,
            sample.ray,
            sample.sampleID.x,
            sample.sampleID.y,
@@ -205,12 +181,10 @@ export void *uniform SimpleAO_create(void *uniform cppE,
 }
 
 export void SimpleAO_set(void *uniform _self,
-                         const uniform vec3f &bgColor,
                          uniform int samplesPerFrame,
                          uniform float aoRayLength)
 {
   uniform SimpleAO *uniform self = (uniform SimpleAO *uniform)_self;
-  self->bgColor = bgColor;
   self->samplesPerFrame = samplesPerFrame;
   self->aoRayLength = aoRayLength;
 }

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include "ospray/mpi/MPICommon.h"
-#include "ospray/render/LoadBalancer.h"
+#include "mpi/MPICommon.h"
+#include "render/LoadBalancer.h"
 
 namespace ospray {
   namespace mpi {
-    
+
     // =======================================================
     // =======================================================
     // =======================================================
@@ -35,10 +35,10 @@ namespace ospray {
       */
       struct Master : public TiledLoadBalancer
       {
-        void renderFrame(Renderer *tiledRenderer,
+        float renderFrame(Renderer *tiledRenderer,
                          FrameBuffer *fb,
-                         const uint32 channelFlags);
-        std::string toString() const;
+                         const uint32 channelFlags) override;
+        std::string toString() const override;
       };
 
       /*! \brief the 'slave' in a tile-based master-slave *static*
@@ -50,34 +50,17 @@ namespace ospray {
       */
       struct Slave : public TiledLoadBalancer
       {
-        /*! a task for rendering a frame using the global tiled load balancer */
-        //! NOTE(jda) - this looks identical to LocalTiledLoadBalancer...
-        struct RenderTask
-        {
-          mutable Ref<Renderer>     renderer;
-          mutable Ref<FrameBuffer>  fb;
-
-          size_t                    numTiles_x;
-          size_t                    numTiles_y;
-          uint32                    channelFlags;
-          void                     *perFrameData;
-
-          void run(size_t jobID) const;
-          void finish() const;
-        };
-        
         /*! number of tiles preallocated to this client; we can always
           render those even without asking for them. */
-        uint32 numPreAllocated; 
+        uint32 numPreAllocated;
         /*! total number of worker threads across all(!) slaves */
         int32 numTotalThreads;
-        
-        void renderFrame(Renderer *tiledRenderer,
-                         FrameBuffer *fb,
-                         const uint32 channelFlags);
-        std::string toString() const;
-      };
-    }
 
+        float renderFrame(Renderer *tiledRenderer,
+                         FrameBuffer *fb,
+                         const uint32 channelFlags) override;
+        std::string toString() const override;
+      };
+    }// ::ospray::mpi::staticLoadBalancer
   } // ::ospray::mpi
 } // ::ospray

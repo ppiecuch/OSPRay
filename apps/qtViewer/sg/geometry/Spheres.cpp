@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -19,7 +19,7 @@
 #include "sg/geometry/Spheres.h"
 #include "sg/common/Integrator.h"
 // xml parser
-#include "apps/common/xml/XML.h"
+#include "common/xml/XML.h"
 
 namespace ospray {
   namespace sg {
@@ -38,7 +38,7 @@ namespace ospray {
 
     box3f Spheres::getBounds() 
     {
-      box3f bounds = embree::empty;
+      box3f bounds = empty;
       for (size_t i=0;i<sphere.size();i++)
         bounds.extend(sphere[i].getBounds());
       return bounds;
@@ -65,6 +65,7 @@ namespace ospray {
       size_t num = node->getPropl("num");
       size_t ofs = node->getPropl("ofs");
       float  rad = atof(node->getProp("radius").c_str());
+      PRINT(num);
       PRINT(rad);
 
       Spheres::Sphere s(vec3f(0.f),rad,0);
@@ -78,9 +79,9 @@ namespace ospray {
           sphere.push_back(s);
         }
       } else {
+        const vec3f *in = (const vec3f*)(binBasePtr+ofs);
         for (int i=0;i<num;i++) {
-          const vec3f *in = (const vec3f*)(binBasePtr+ofs);
-          memcpy(&s,&in[i],sizeof(s));
+          memcpy(&s,&in[i],sizeof(*in));
           sphere.push_back(s);
         }
       }

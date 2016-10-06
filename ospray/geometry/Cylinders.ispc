@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,11 +15,11 @@
 // ======================================================================== //
 
 // ospray
-#include "ospray/math/vec.ih"
-#include "ospray/math/box.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/geometry/Geometry.ih"
+#include "math/vec.ih"
+#include "math/box.ih"
+#include "common/Ray.ih"
+#include "common/Model.ih"
+#include "geometry/Geometry.ih"
 // embree
 #include "embree2/rtcore.isph"
 #include "embree2/rtcore_scene.isph"
@@ -45,15 +45,13 @@ struct Cylinders {
 
 typedef uniform float uniform_float;
 
-void Cylinders_bounds(uniform Cylinders *uniform geometry,
-                      uniform size_t primID,
-                      uniform box3fa &bbox)
+unmasked void Cylinders_bounds(uniform Cylinders *uniform geometry,
+    uniform size_t primID,
+    uniform box3fa &bbox)
 {
   uniform uint8 *uniform cylinderPtr = geometry->data + geometry->bytesPerCylinder*primID;
-  uniform float radius = geometry->radius;
-  if (geometry->offset_radius >= 0) {
-    radius = *((uniform float *)(cylinderPtr+geometry->offset_radius));
-  }
+  uniform bool offr = geometry->offset_radius >= 0;
+  uniform float radius = offr ? *((uniform float *)(cylinderPtr+geometry->offset_radius)) : geometry->radius;
   uniform vec3f v0 = *((uniform vec3f*)(cylinderPtr+geometry->offset_v0));
   uniform vec3f v1 = *((uniform vec3f*)(cylinderPtr+geometry->offset_v1));
   bbox = make_box3fa(min(v0,v1)-make_vec3f(radius),
@@ -155,7 +153,7 @@ static void Cylinders_postIntersect(uniform Geometry *uniform geometry,
   }
 }
 
-export void *uniform Cylinders_create(void           *uniform cppEquivalent)
+export void *uniform Cylinders_create(void *uniform cppEquivalent)
 {
   uniform Cylinders *uniform geom = uniform new uniform Cylinders;
   Geometry_Constructor(&geom->geometry,cppEquivalent,

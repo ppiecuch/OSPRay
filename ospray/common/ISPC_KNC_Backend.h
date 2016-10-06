@@ -1,5 +1,5 @@
 /**
-  Copyright (c) 2010-2015, Intel Corporation
+  Copyright 2010-2016 Intel Corporation
   All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@
 #warning "Your compiler version is outdated which can reduce performance in some cases. Please, update your compiler!"
 #endif
 
-// for MIC, disable the 'variable declared bbut never referenced'
+// for MIC, disable the 'variable declared but never referenced'
 // warning, else the ISPC-generated code produces _far_ too many such
 // outputs
 #if defined(__INTEL_COMPILER) && defined(__MIC__)
@@ -3013,15 +3013,15 @@ static FORCEINLINE __vec16_i32 __masked_load_i32(void *p, __vec16_i1 mask) {
 }
 
 static FORCEINLINE __vec16_f __masked_load_float(void *p, __vec16_i1 mask) {
-#ifdef ISPC_FORCE_ALIGNED_MEMORY
-  return _mm512_mask_load_ps(_mm512_undefined_ps(), mask,p);
-#else
+// #ifdef ISPC_FORCE_ALIGNED_MEMORY
+//   return _mm512_mask_load_ps(_mm512_undefined_ps(), mask,p);
+// #else
   __vec16_f tmp;
   tmp.v = _mm512_mask_extloadunpacklo_ps(tmp.v, 0xFFFF, p, _MM_UPCONV_PS_NONE, _MM_HINT_NONE);
   tmp.v = _mm512_mask_extloadunpackhi_ps(tmp.v, 0xFFFF, (uint8_t*)p+64, _MM_UPCONV_PS_NONE, _MM_HINT_NONE);
   __vec16_f ret;
   return _mm512_mask_mov_ps(ret.v, mask, tmp.v);
-#endif
+// #endif
 }
 
 static FORCEINLINE __vec16_i64 __masked_load_i64(void *p, __vec16_i1 mask) {
@@ -3072,13 +3072,13 @@ static FORCEINLINE void __masked_store_i8(void *p, const __vec16_i8 &val, __vec1
 }
 
 static FORCEINLINE __vec16_i8 __masked_load_i8(void *p, __vec16_i1 mask) {
-#ifdef ISPC_FORCE_ALIGNED_MEMORY
-  __vec16_i32 tmp = _mm512_mask_extload_epi32(_mm512_undefined_epi32(), mask, p, _MM_UPCONV_EPI32_SINT8, _MM_BROADCAST32_NONE, _MM_HINT_NONE);
-#else
+// #ifdef ISPC_FORCE_ALIGNED_MEMORY
+//   __vec16_i32 tmp = _mm512_mask_extload_epi32(_mm512_undefined_epi32(), mask, p, _MM_UPCONV_EPI32_SINT8, _MM_BROADCAST32_NONE, _MM_HINT_NONE);
+// #else
   __vec16_i32 tmp;
   tmp.v = _mm512_mask_extloadunpacklo_epi32(tmp.v, 0xFFFF, p, _MM_UPCONV_EPI32_SINT8, _MM_HINT_NONE);
   tmp.v = _mm512_mask_extloadunpackhi_epi32(tmp.v, 0xFFFF, (uint8_t*)p+64, _MM_UPCONV_EPI32_SINT8, _MM_HINT_NONE);
-#endif
+// #endif
   __vec16_i8 ret;
   _mm512_extstore_epi32(&ret, tmp, _MM_DOWNCONV_EPI32_SINT8, _MM_HINT_NONE);
   return ret;
@@ -3387,6 +3387,43 @@ __gather_base_offsets64_float(uint8_t *_base, uint32_t scale, __vec16_i64 offset
   return ret;
 }
 
+static FORCEINLINE __vec16_d
+__gather_base_offsets64_double(uint8_t *_base, uint32_t scale, __vec16_i64 offsets,
+    __vec16_i1 mask) {
+
+  const __vec16_i32 signed_offsets = _mm512_add_epi32(offsets.v_lo, __smear_i32<__vec16_i32>((int32_t)INT_MIN));
+  const __m512i shuffled_signed_offsets = _mm512_permute4f128_epi32(signed_offsets.v, _MM_PERM_DCDC);
+
+  // There is no gather instruction with 64-bit offsets in KNC.
+  // We have to manually iterate over the upper 32 bits ;-)
+  __vec16_i1 still_to_do = mask;
+  __vec16_d ret;
+  while (still_to_do) {
+    int first_active_lane = _mm_tzcnt_32((int)still_to_do);
+    const uint &hi32 = ((uint*)&offsets.v_hi)[first_active_lane];
+    __vec16_i1 match = _mm512_mask_cmp_epi32_mask(mask,offsets.v_hi,
+        __smear_i32<__vec16_i32>((int32_t)hi32),
+        _MM_CMPINT_EQ);
+    void * base = (void*)((unsigned long)_base  +
+        ((scale*(unsigned long)hi32) << 32) + scale*(unsigned long)(-(long)INT_MIN));
+
+    // Extracting double
+    ret.v1 = _mm512_mask_i32loextgather_pd(ret.v1, match, signed_offsets, base,
+        _MM_UPCONV_PD_NONE, scale,
+        _MM_HINT_NONE);
+
+    ret.v2 = _mm512_mask_i32loextgather_pd(ret.v2, match, shuffled_signed_offsets, base, 
+        _MM_UPCONV_PD_NONE, scale,
+        _MM_HINT_NONE); 
+    // --
+
+    // Updating mask
+    still_to_do = _mm512_kxor(match, still_to_do);
+  }
+
+  return ret;
+}
+
 static FORCEINLINE __vec16_i8 __gather_base_offsets64_i8(uint8_t *_base, uint32_t scale, __vec16_i64 offsets,
     __vec16_i1 mask) 
 { 
@@ -3610,10 +3647,12 @@ static FORCEINLINE void __scatter64_i64(__vec16_i64 ptrs, __vec16_i64 val, __vec
   #warning "__scatter64_i64 is slow due to outdated compiler"
   __scatter_base_offsets64_i64(0, 1, ptrs, val, mask);
 #else
+
   __vec16_i32 first8ptrs, second8ptrs;
   hilo2zmm(ptrs, first8ptrs.v, second8ptrs.v);
   __vec16_i32 first8vals, second8vals;
   hilo2zmm(val, first8vals.v, second8vals.v);
+
   _mm512_mask_i64extscatter_epi64 (0, mask, first8ptrs, first8vals, _MM_DOWNCONV_EPI64_NONE, 1, _MM_HINT_NONE);
   const __mmask8 mask8 = 0x00FF & (mask >> 8);
   _mm512_mask_i64extscatter_epi64 (0, mask8, second8ptrs, second8vals, _MM_DOWNCONV_EPI64_NONE, 1, _MM_HINT_NONE);

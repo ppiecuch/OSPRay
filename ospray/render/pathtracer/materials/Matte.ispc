@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -40,7 +40,7 @@ const varying BSDF* uniform Matte_getBSDF(const uniform PathTraceMaterial* unifo
 inline void Matte_Constructor(uniform Matte* uniform self,
                               const uniform vec3f& reflectance)
 {
-  PathTraceMaterial_Constructor(&self->super, Matte_getBSDF, NULL, NULL);
+  PathTraceMaterial_Constructor(&self->super, Matte_getBSDF, NULL, NULL, NULL);
   self->reflectance = reflectance;
 }
 

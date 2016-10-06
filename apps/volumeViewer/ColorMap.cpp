@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,18 +16,18 @@
 
 #include "ColorMap.h"
 
-ColorMap::ColorMap(std::string name, std::vector<ospray::vec3f> colors)
+ColorMap::ColorMap(std::string name, std::vector<ospcommon::vec3f> colors)
 {
   this->name = name;
   this->colors = colors;
 }
 
-std::string ColorMap::getName()
+std::string ColorMap::getName() const
 {
   return name;
 }
 
-std::vector<ospray::vec3f> ColorMap::getColors()
+std::vector<ospcommon::vec3f> ColorMap::getColors() const
 {
   return colors;
 }

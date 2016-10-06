@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,14 +14,14 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
+// own
 #include "LoadBalancer.h"
 #include "Renderer.h"
-#include <sys/sysinfo.h>
-
+#include "common/tasking/parallel_for.h"
+// ospc
+#include "ospcommon/sysinfo.h"
 // stl
 #include <algorithm>
-
-#include "ospray/common/parallel_for.h"
 
 namespace ospray {
 
@@ -30,69 +30,45 @@ namespace ospray {
 
   TiledLoadBalancer *TiledLoadBalancer::instance = NULL;
 
-  void LocalTiledLoadBalancer::RenderTask::finish() const
-  {
-    renderer->endFrame(perFrameData,channelFlags);
-    renderer = NULL;
-    fb = NULL;
-  }
-
-  void LocalTiledLoadBalancer::RenderTask::run(size_t taskIndex) const
-  {
-    Tile tile;
-    const size_t tile_y = taskIndex / numTiles_x;
-    const size_t tile_x = taskIndex - tile_y*numTiles_x;
-    tile.region.lower.x = tile_x * TILE_SIZE;
-    tile.region.lower.y = tile_y * TILE_SIZE;
-    tile.region.upper.x = std::min(tile.region.lower.x+TILE_SIZE,fb->size.x);
-    tile.region.upper.y = std::min(tile.region.lower.y+TILE_SIZE,fb->size.y);
-    tile.fbSize = fb->size;
-    tile.rcp_fbSize = rcp(vec2f(tile.fbSize));
-    tile.generation = 0;
-    tile.children = 0;
-
-    const int spp = renderer->spp;
-    const int blocks = (fb->accumID > 0 || spp > 0) ? 1 :
-                       std::min(1 << -2 * spp, TILE_SIZE*TILE_SIZE);
-    const size_t numJobs = ((TILE_SIZE*TILE_SIZE)/
-                            RENDERTILE_PIXELS_PER_JOB + blocks-1)/blocks;
-
-    parallel_for(numJobs, [&](int taskIndex){
-      renderer->renderTile(perFrameData, tile, taskIndex);
-    });
-
-    fb->setTile(tile);
-  }
-
   LocalTiledLoadBalancer::LocalTiledLoadBalancer()
-#ifdef OSPRAY_USE_TBB
+#ifdef OSPRAY_TASKING_TBB
     : tbb_init(numThreads)
 #endif
   {
   }
 
   /*! render a frame via the tiled load balancer */
-  void LocalTiledLoadBalancer::renderFrame(Renderer *tiledRenderer,
-                                           FrameBuffer *fb,
-                                           const uint32 channelFlags)
+  float LocalTiledLoadBalancer::renderFrame(Renderer *renderer,
+                                            FrameBuffer *fb,
+                                            const uint32 channelFlags)
   {
-    Assert(tiledRenderer);
+    Assert(renderer);
     Assert(fb);
 
-    void *perFrameData = tiledRenderer->beginFrame(fb);
+    void *perFrameData = renderer->beginFrame(fb);
 
-    RenderTask renderTask;
-    renderTask.fb = fb;
-    renderTask.renderer = tiledRenderer;
-    renderTask.perFrameData = perFrameData;
-    renderTask.numTiles_x = divRoundUp(fb->size.x,TILE_SIZE);
-    renderTask.numTiles_y = divRoundUp(fb->size.y,TILE_SIZE);
-    renderTask.channelFlags = channelFlags;
+    parallel_for(fb->getTotalTiles(), [&](int taskIndex) {
+      const size_t numTiles_x = fb->getNumTiles().x;
+      const size_t tile_y = taskIndex / numTiles_x;
+      const size_t tile_x = taskIndex - tile_y*numTiles_x;
+      const vec2i tileID(tile_x, tile_y);
+      const int32 accumID = fb->accumID(tileID);
 
-    const int NTASKS = renderTask.numTiles_x * renderTask.numTiles_y;
-    parallel_for(NTASKS, [&](int taskIndex){renderTask.run(taskIndex);});
+      if (fb->tileError(tileID) <= renderer->errorThreshold)
+        return;
 
-    renderTask.finish();
+      Tile __aligned(64) tile(tileID, fb->size, accumID);
+
+      parallel_for(numJobs(renderer->spp, accumID), [&](int tIdx) {
+        renderer->renderTile(perFrameData, tile, tIdx);
+      });
+
+      fb->setTile(tile);
+    });
+
+    renderer->endFrame(perFrameData,channelFlags);
+
+    return fb->endFrame(renderer->errorThreshold);
   }
 
   std::string LocalTiledLoadBalancer::toString() const
@@ -100,71 +76,63 @@ namespace ospray {
     return "ospray::LocalTiledLoadBalancer";
   }
 
-  void InterleavedTiledLoadBalancer::RenderTask::run(size_t taskIndex) const
-  {
-    int tileIndex = deviceID + numDevices * taskIndex;
-
-    Tile tile;
-    const size_t tile_y = tileIndex / numTiles_x;
-    const size_t tile_x = tileIndex - tile_y*numTiles_x;
-    tile.region.lower.x = tile_x * TILE_SIZE;
-    tile.region.lower.y = tile_y * TILE_SIZE;
-    tile.region.upper.x = std::min(tile.region.lower.x+TILE_SIZE,fb->size.x);
-    tile.region.upper.y = std::min(tile.region.lower.y+TILE_SIZE,fb->size.y);
-    tile.fbSize = fb->size;
-    tile.rcp_fbSize = rcp(vec2f(tile.fbSize));
-    tile.generation = 0;
-    tile.children = 0;
-
-    const int spp = renderer->spp;
-    const int blocks = (fb->accumID > 0 || spp > 0) ? 1 :
-                       std::min(1 << -2 * spp, TILE_SIZE*TILE_SIZE);
-    const size_t numJobs = ((TILE_SIZE*TILE_SIZE)/
-                            RENDERTILE_PIXELS_PER_JOB + blocks-1)/blocks;
-
-    parallel_for(numJobs, [&](int taskIndex){
-      renderer->renderTile(perFrameData, tile, taskIndex);
-    });
-  }
-
-
-  void InterleavedTiledLoadBalancer::RenderTask::finish() const
-  {
-    renderer->endFrame(perFrameData,channelFlags);
-    renderer = NULL;
-    fb = NULL;
-  }
-
   /*! render a frame via the tiled load balancer */
-  void InterleavedTiledLoadBalancer::renderFrame(Renderer *tiledRenderer,
-                                                 FrameBuffer *fb,
-                                                 const uint32 channelFlags)
+  std::string InterleavedTiledLoadBalancer::toString() const
   {
-    Assert(tiledRenderer);
+    return "ospray::InterleavedTiledLoadBalancer";
+  }
+
+  float InterleavedTiledLoadBalancer::renderFrame(Renderer *renderer,
+                                                  FrameBuffer *fb,
+                                                  const uint32 channelFlags)
+  {
+    Assert(renderer);
     Assert(fb);
 
-    void *perFrameData = tiledRenderer->beginFrame(fb);
+    void *perFrameData = renderer->beginFrame(fb);
 
-    RenderTask renderTask;
-    renderTask.fb = fb;
-    renderTask.perFrameData = perFrameData;
-    renderTask.renderer     = tiledRenderer;
-    renderTask.numTiles_x   = divRoundUp(fb->size.x,TILE_SIZE);
-    renderTask.numTiles_y   = divRoundUp(fb->size.y,TILE_SIZE);
-    size_t numTiles_total   = renderTask.numTiles_x * renderTask.numTiles_y;
+    int numTiles_total = fb->getTotalTiles();
 
-    renderTask.numTiles_mine
-      = (numTiles_total / numDevices)
-      + (numTiles_total % numDevices > deviceID);
-    renderTask.channelFlags = channelFlags;
-    renderTask.deviceID     = deviceID;
-    renderTask.numDevices   = numDevices;
+    const int NTASKS = (numTiles_total / numDevices)
+                       + (numTiles_total % numDevices > deviceID);
 
-    const int NTASKS = renderTask.numTiles_mine;
-    parallel_for(NTASKS, [&](int taskIndex){renderTask.run(taskIndex);});
+    parallel_for(NTASKS, [&](int taskIndex) {
+      int tileIndex = deviceID + numDevices * taskIndex;
+      const size_t numTiles_x = fb->getNumTiles().x;
+      const size_t tile_y = tileIndex / numTiles_x;
+      const size_t tile_x = tileIndex - tile_y*numTiles_x;
+      const vec2i tileID(tile_x, tile_y);
+      const int32 accumID = fb->accumID(tileID);
 
-    // NOTE(jda) - this line was added to match LocalTiledLoadBalancer...check!
-    //renderTask.finish();
+      if (fb->tileError(tileID) <= renderer->errorThreshold)
+        return;
+
+#ifdef __MIC__
+#  define MAX_TILE_SIZE 32
+#else
+#  define MAX_TILE_SIZE 128
+#endif
+
+#if TILE_SIZE>MAX_TILE_SIZE
+      Tile *tilePtr = new Tile(tileID, fb->size, accumID);
+      Tile &tile = *tilePtr;
+#else
+      Tile __aligned(64) tile(tileID, fb->size, accumID);
+#endif
+
+      parallel_for(numJobs(renderer->spp, accumID), [&](int tIdx) {
+        renderer->renderTile(perFrameData, tile, tIdx);
+      });
+
+      fb->setTile(tile);
+#if TILE_SIZE>MAX_TILE_SIZE
+      delete tilePtr;
+#endif
+    });
+
+    renderer->endFrame(perFrameData,channelFlags);
+
+    return fb->endFrame(renderer->errorThreshold);
   }
 
 } // ::ospray

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,12 +17,13 @@
 #pragma once
 
 // viewer
-#include "ospray/common/OSPCommon.h"
+#include "sg/common/Common.h"
 // std
 #include <vector>
 
 namespace ospray {
   namespace viewer {
+    using namespace sg;
 
     //! \brief Helper class for storing tessellated geometry (with
     //! single color per mesh); that can be used to store 3D geometry

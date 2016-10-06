@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -63,7 +63,7 @@ inline void MetallicPaint_Constructor(uniform MetallicPaint* uniform self,
                                       const uniform float glitterSpread,
                                       const uniform float ior)
 {
-  PathTraceMaterial_Constructor(&self->super, MetallicPaint_getBSDF, NULL, NULL);
+  PathTraceMaterial_Constructor(&self->super, MetallicPaint_getBSDF, NULL, NULL, NULL);
   self->shadeColor = shadeColor;
   self->glitterColor = glitterColor;
   self->glitterSpread = glitterSpread;

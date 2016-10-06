@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,7 +16,9 @@
 
 #pragma once
 
+// ospray public
 #include <ospray/ospray.h>
+<<<<<<< HEAD
 #include "ospray/common/OSPCommon.h"
 #include <QtWidgets>
 #if 1
@@ -27,6 +29,13 @@
 # include <QGLWidget>
 # define GLWidget QGLWidget
 #endif
+=======
+// ospcommon
+#include "ospcommon/AffineSpace.h"
+// qt
+#include <QtGui>
+#include <QGLWidget>
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
 struct Viewport
 {
@@ -37,12 +46,12 @@ struct Viewport
                fovY(60.f),
                modified(true)
   {
-    frame = ospray::affine3f::translate(from) * ospray::affine3f(embree::one);
+    frame = ospcommon::affine3f::translate(from) * ospcommon::affine3f(ospcommon::one);
   }
 
-  ospray::vec3f from;
-  ospray::vec3f at;
-  ospray::vec3f up;
+  ospcommon::vec3f from;
+  ospcommon::vec3f at;
+  ospcommon::vec3f up;
 
   /*! aspect ratio (width / height) */
   float aspect;
@@ -56,10 +65,10 @@ struct Viewport
   /*! camera frame in which the Y axis is the depth axis, and X
     and Z axes are parallel to the screen X and Y axis. The frame
     itself remains normalized. */
-  ospray::affine3f frame;
+  ospcommon::affine3f frame;
 
   /*! set up vector */
-  void setUp(const ospray::vec3f &vec)
+  void setUp(const ospcommon::vec3f &vec)
   {
     up = vec;
     snapUp();
@@ -93,8 +102,8 @@ public:
 
   void setRenderingEnabled(bool renderingEnabled);
   void setRotationRate(float rotationRate);
-  void setBenchmarkParameters(int benchmarkWarmUpFrames, int benchmarkFrames);
-  virtual void setWorldBounds(const ospray::box3f &worldBounds);
+  void setBenchmarkParameters(int benchmarkWarmUpFrames, int benchmarkFrames, const std::string &benchmarkFilename);
+  virtual void setWorldBounds(const ospcommon::box3f &worldBounds);
 
   Viewport * getViewport() { return &viewport; }
 
@@ -151,15 +160,18 @@ protected:
   /*! benchmarking: number of frames over which to measure frame rate */
   int benchmarkFrames;
 
+  /*! benchmarking: file name to save the final image to */
+  std::string benchmarkFilename;
+
   /*! benchmarking: timer to measure elapsed time over benchmark frames */
   QTime benchmarkTimer;
 
   /*! Timer to measure elapsed time over a single frame. */
   QTime renderFrameTimer;
 
-  ospray::vec2i windowSize;
+  ospcommon::vec2i windowSize;
   Viewport viewport;
-  ospray::box3f worldBounds;
+  ospcommon::box3f worldBounds;
   QPoint lastMousePosition;
 
   OSPFrameBuffer frameBuffer;
@@ -168,6 +180,6 @@ protected:
   OSPTexture2D maxDepthTexture;
 
   std::string writeFramesFilename;
-  void writeFrameBufferToFile(const uint32_t *pixelData);
+  void writeFrameBufferToFile(std::string filename, const uint32_t *pixelData);
 
 };

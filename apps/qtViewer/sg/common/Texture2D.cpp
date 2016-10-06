@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -23,7 +23,7 @@ namespace ospray {
     /*! \detailed if file does not exist, or cannot be loaded for
       some reason, return NULL. Multiple loads from the same file
       will return the *same* texture object */
-    Ref<Texture2D> Texture2D::load(const FileName &fileName)
+    Ref<Texture2D> Texture2D::load(const FileName &fileName, const bool prefereLinear)
     { 
       static std::map<std::string,Texture2D*> textureCache;
       if (textureCache.find(fileName.str()) != textureCache.end()) 
@@ -41,13 +41,13 @@ namespace ospray {
           char lineBuf[LINESZ+1]; 
 
           if (!file) 
-            throw std::runtime_error("#osp:miniSG: could not open texture file '"+fileName.str()+"'.");
+            throw std::runtime_error("#osp:sg: could not open texture file '"+fileName.str()+"'.");
           
           // read format specifier:
           int format=0;
           fscanf(file,"P%i\n",&format);
           if (format != 6) 
-            throw std::runtime_error("#osp:miniSG: can currently load only binary P6 subformats for PPM texture files. "
+            throw std::runtime_error("#osp:sg: can currently load only binary P6 subformats for PPM texture files. "
                                      "Please report this bug at ospray.github.io.");
 
           // skip all comment lines
@@ -61,7 +61,7 @@ namespace ospray {
           int width=-1,height=-1;
           rc = fscanf(file,"%i %i\n",&width,&height);
           if (rc != 2) 
-            throw std::runtime_error("#osp:miniSG: could not parse width and height in P6 PPM file '"+fileName.str()+"'. "
+            throw std::runtime_error("#osp:sg: could not parse width and height in P6 PPM file '"+fileName.str()+"'. "
                                      "Please report this bug at ospray.github.io, and include named file to reproduce the error.");
         
           // skip all comment lines
@@ -77,15 +77,15 @@ namespace ospray {
             peekchar = getc(file);
 
           if (rc != 1) 
-            throw std::runtime_error("#osp:miniSG: could not parse maxval in P6 PPM file '"+fileName.str()+"'. "
+            throw std::runtime_error("#osp:sg: could not parse maxval in P6 PPM file '"+fileName.str()+"'. "
                                      "Please report this bug at ospray.github.io, and include named file to reproduce the error.");
           if (maxVal != 255)
-            throw std::runtime_error("#osp:miniSG: could not parse P6 PPM file '"+fileName.str()+"': currently supporting only maxVal=255 formats."
+            throw std::runtime_error("#osp:sg: could not parse P6 PPM file '"+fileName.str()+"': currently supporting only maxVal=255 formats."
                                      "Please report this bug at ospray.github.io, and include named file to reproduce the error.");
         
           tex = new Texture2D;
           tex->size      = vec2i(width,height);
-          tex->texelType = OSP_UCHAR3;
+          tex->texelType = prefereLinear ? OSP_TEXTURE_RGB8 : OSP_TEXTURE_SRGB;
           tex->texel     = new unsigned char[width*height*3];
           fread(tex->texel,width*height*3,1,file);
           // flip in y, because OSPRay's textures have the origin at the lower left corner
@@ -105,8 +105,7 @@ namespace ospray {
     {
       if (ospTexture) return;
       
-      ospTexture = ospNewTexture2D(size.x,
-                                   size.y,
+      ospTexture = ospNewTexture2D((osp::vec2i&)size,
                                    texelType,
                                    texel,
                                    0);

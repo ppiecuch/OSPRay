@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,16 +14,23 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC -no-ansi-alias -static-intel -std=c++11")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC -no-ansi-alias -std=c++11 -DNOMINMAX")
 SET(CMAKE_CXX_FLAGS_DEBUG          "-DDEBUG  -g")
 SET(CMAKE_CXX_FLAGS_RELEASE        "-DNDEBUG -O3")
+# on Windows use "-fp:fast" instead of "-fp-model fast"
 #SET(CMAKE_CXX_FLAGS_RELEASE        "-DNDEBUG    -O3 -no-ansi-alias -restrict -fp-model fast -fimf-precision=low -no-prec-div -no-prec-sqrt -fma -no-inline-max-total-size -inline-factor=200 ")
-SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-DNDEBUG -g -O3 -no-ansi-alias -restrict -fp-model fast -fimf-precision=low -no-prec-div -no-prec-sqrt  -fma  -no-inline-max-total-size -inline-factor=200")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 IF (APPLE)
   SET (CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS_INIT} -dynamiclib)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7")
-ENDIF (APPLE)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7") # we only use MacOSX 10.7 features
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++") # link against C++11 stdlib
+ENDIF()
+
+# enable -static-intel and avoid to export ICC specific symbols from OSPRay
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-intel")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs=ALL")
 
 # these flags apply ONLY to how embree is built; the rest of the ospray C++ code is ISA-agnostic
 SET(OSPRAY_ARCH_SSE3    "-xsse3")
@@ -35,23 +42,6 @@ SET(OSPRAY_ARCH_AVX     "-xAVX")
 SET(OSPRAY_ARCH_AVX2    "-xCORE-AVX2")
 SET(OSPRAY_ARCH_AVX512  "-xMIC-AVX512")
 
-# check whether GCC (and therefore standard library) version is new enough for
-# C++11 on Linux systems
-IF (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-	SET(GCC_VERSION_REQUIRED "4.8.0")
-
-	IF(NOT GCC_VERSION)
-	  EXECUTE_PROCESS(COMMAND gcc -dumpversion OUTPUT_VARIABLE GCC_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE)
-	  SET(GCC_VERSION ${GCC_OUTPUT} CACHE STRING "GCC Version")
-	  MARK_AS_ADVANCED(GCC_VERSION)
-	ENDIF()
-
-	IF (GCC_VERSION VERSION_LESS GCC_VERSION_REQUIRED AND NOT OSPRAY_WARNED_GCC_VERSION)
-		# only warn as another libstdc++ could be in the library path...
-	  MESSAGE(WARNING "GCC version 4.8.0 or greater is required for a sufficient version of libstdc++.")
-	  SET(OSPRAY_WARNED_GCC_VERSION ON CACHE INTERNAL "Warned about required GCC version.")
-	ENDIF()
-ENDIF()
-
 SET(OSPRAY_COMPILER_SUPPORTS_AVX  TRUE)
 SET(OSPRAY_COMPILER_SUPPORTS_AVX2 TRUE)
+SET(OSPRAY_COMPILER_SUPPORTS_AVX512 TRUE)

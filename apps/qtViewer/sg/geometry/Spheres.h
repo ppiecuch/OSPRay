@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -24,12 +24,12 @@ namespace ospray {
   namespace sg {
 
     /*! simple spheres, with all of the key info - position, radius,
-        and a int32 type specifier baked into each sphere  */
+        and a int32_t type specifier baked into each sphere  */
     struct Spheres : public sg::Geometry {
       struct Sphere { 
         vec3f position;
         float radius;
-        uint32 typeID;
+        uint32_t typeID;
         
         // constructor
         Sphere(vec3f position, float radius, uint typeID=0);

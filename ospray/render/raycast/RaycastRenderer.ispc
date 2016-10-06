@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,11 +15,11 @@
 // ======================================================================== //
 
 // ospray
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/camera/PerspectiveCamera.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/render/util.ih"
-#include "ospray/render/Renderer.ih"
+#include "fb/FrameBuffer.ih"
+#include "camera/PerspectiveCamera.ih"
+#include "common/Model.ih"
+#include "render/util.ih"
+#include "render/Renderer.ih"
 
 /*! \brief a simple, primary-ray-only ray cast render that
 
@@ -35,9 +35,9 @@ struct RaycastRenderer
 //  int shadeMode; unused
 };
 
-//! a simple test-frame renderer that doesn't even trace a ray, just
-//! returns a well-defined test frame (mostly useful for debugging
-//! whether frame buffers are properly set up etcpp
+/*! a simple test-frame renderer that doesn't even trace a ray, just
+  returns a well-defined test frame (mostly useful for debugging
+  whether frame buffers are properly set up etcpp */
 void RaycastRenderer_renderSample_testFrame(uniform Renderer *uniform _self,
                                             void *uniform perFrameData,
                                             varying ScreenSample &sample)
@@ -45,6 +45,17 @@ void RaycastRenderer_renderSample_testFrame(uniform Renderer *uniform _self,
   sample.rgb.x = ((sample.sampleID.x)%256)/255.f;
   sample.rgb.y = ((sample.sampleID.y)%256)/255.f;
   sample.rgb.z = ((sample.sampleID.x+sample.sampleID.y+sample.sampleID.z)%256)/255.f;
+  sample.alpha = 1.f;
+  sample.z = 1.f;
+}
+
+/*! a simple test-frame renderer that doesn't even trace a ray, just
+  returns the absolute of the ray direction */
+void RaycastRenderer_renderSample_rayDir(uniform Renderer *uniform _self,
+                                            void *uniform perFrameData,
+                                            varying ScreenSample &sample)
+{
+  sample.rgb = absf(sample.ray.dir);
   sample.alpha = 1.f;
   sample.z = 1.f;
 }
@@ -286,6 +297,7 @@ void RaycastRenderer_renderSample_backfacing_Ns(uniform Renderer *uniform _self,
   }                                                                     \
 
 DEFINE_RAYCAST_RENDERER(testFrame);
+DEFINE_RAYCAST_RENDERER(rayDir);
 DEFINE_RAYCAST_RENDERER(eyeLight);
 DEFINE_RAYCAST_RENDERER(Ng);
 DEFINE_RAYCAST_RENDERER(Ns);

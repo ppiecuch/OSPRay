@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,11 +18,12 @@
 
 // ospray
 #include "Messaging.h"
-#include "ospray/common/Thread.h"
-#include "ospray/common/ProducerConsumerQueue.h"
+#include "common/Thread.h"
+#include "common/ProducerConsumerQueue.h"
 // stl
 #include <deque>
 #include <vector>
+#include <atomic>
 
 namespace ospray {
   namespace mpi {
@@ -77,6 +78,7 @@ namespace ospray {
           SendThread sendThread;
           RecvThread recvThread;
           ProcThread procThread;
+          std::atomic<bool> shouldExit;
         };
 
         virtual void init();

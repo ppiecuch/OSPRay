@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -59,6 +59,7 @@ namespace embree
     Lock<MutexSys> lock(g_mutex);
     if (g_device) throw_RTCError(RTC_INVALID_OPERATION,"already initialized");
     g_device = new Device(cfg,true);
+    PING; PRINT(g_device);
     RTCORE_CATCH_END(g_device);
   }
   

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -314,7 +314,7 @@ namespace embree
 
       /* remember exception to throw */
       std::exception_ptr except = nullptr;
-      if (cancellingException) except = cancellingException;
+      if (cancellingException != nullptr) except = cancellingException;
 
       /* wait for all threads to terminate */
       atomic_add(&threadCounter,-1);
@@ -322,7 +322,7 @@ namespace embree
       cancellingException = nullptr;
 
       /* re-throw proper exception */
-      if (except) 
+      if (except != nullptr) 
         std::rethrow_exception(except);
     }
 

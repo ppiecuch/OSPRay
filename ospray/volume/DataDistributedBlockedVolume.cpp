@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,10 +14,16 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
+#include <limits>
 // ospray
-#include "ospray/volume/DataDistributedBlockedVolume.h"
-#include "ospray/common/Core.h"
-#include "ospray/transferFunction/TransferFunction.h"
+#include "volume/DataDistributedBlockedVolume.h"
+#include "volume/GhostBlockBrickedVolume.h"
+#include "common/Core.h"
+#include "transferFunction/TransferFunction.h"
+#include "volume/GhostBlockBrickedVolume.h"
+#if EXP_DATA_PARALLEL
+#include "mpi/MPICommon.h"
+#endif
 // ispc exports:
 #include "DataDistributedBlockedVolume_ispc.h"
 
@@ -85,7 +91,7 @@ namespace ospray {
   void DataDistributedBlockedVolume::buildAccelerator()
   {
     std::cout << "intentionally SKIP building an accelerator for data parallel "
-              << "volume" << std::endl;
+              << "volume (this'll be done on the brick level)" << std::endl;
   }
 
   std::string DataDistributedBlockedVolume::toString() const
@@ -113,27 +119,59 @@ namespace ospray {
     // Create the equivalent ISPC volume container and allocate memory for voxel
     // data.
     if (ispcEquivalent == NULL) createEquivalentISPC();
-    
+
+    // The block domains are in terms of the scaled regions so we must check
+    // if the data is for the block in the scaled volume
+    vec3i finalRegionCoords(vec3f(regionCoords) * scaleFactor);
+    vec3i finalRegionSize(vec3f(regionSize) * scaleFactor);
+    if (scaleFactor != vec3f(-1.f)) {
+      finalRegionCoords = vec3i(vec3f(regionCoords) * scaleFactor);
+      finalRegionSize = vec3i(vec3f(regionSize) * scaleFactor);
+    } else {
+      finalRegionCoords = regionCoords;
+      finalRegionSize = regionSize;
+    }
+
     for (int i=0;i<numDDBlocks;i++) {
       // that block isn't mine, I shouldn't care ...
       if (!ddBlock[i].isMine) continue;
       
       // first, do some culling to make sure we only do setrgion
       // calls on blocks that actually map to this block
-      if (ddBlock[i].domain.lower.x >= regionCoords.x+regionSize.x) continue;
-      if (ddBlock[i].domain.lower.y >= regionCoords.y+regionSize.y) continue;
-      if (ddBlock[i].domain.lower.z >= regionCoords.z+regionSize.z) continue;
+      if (ddBlock[i].domain.lower.x >= finalRegionCoords.x+finalRegionSize.x) continue;
+      if (ddBlock[i].domain.lower.y >= finalRegionCoords.y+finalRegionSize.y) continue;
+      if (ddBlock[i].domain.lower.z >= finalRegionCoords.z+finalRegionSize.z) continue;
       
-      if (ddBlock[i].domain.upper.x+regionSize.x < regionCoords.x) continue;
-      if (ddBlock[i].domain.upper.y+regionSize.y < regionCoords.y) continue;
-      if (ddBlock[i].domain.upper.z+regionSize.z < regionCoords.z) continue;
+      if (ddBlock[i].domain.upper.x+finalRegionSize.x < finalRegionCoords.x) continue;
+      if (ddBlock[i].domain.upper.y+finalRegionSize.y < finalRegionCoords.y) continue;
+      if (ddBlock[i].domain.upper.z+finalRegionSize.z < finalRegionCoords.z) continue;
+
+      vec3i setRegionCoords = finalRegionCoords - ddBlock[i].domain.lower;
+      if (scaleFactor != vec3f(-1.f)) {
+        setRegionCoords = vec3i(vec3f(setRegionCoords) / scaleFactor);
+      }
       
-      ddBlock[i].cppVolume->setRegion(source,
-                                      regionCoords-ddBlock[i].domain.lower,
-                                      regionSize);
+      ddBlock[i].cppVolume->setRegion(source, setRegionCoords, regionSize);
+
       ddBlock[i].ispcVolume = ddBlock[i].cppVolume->getIE();
+
+#ifndef OSPRAY_VOLUME_VOXELRANGE_IN_APP
+      ManagedObject::Param *param = ddBlock[i].cppVolume->findParam("voxelRange");
+      if (param != NULL && param->type == OSP_FLOAT2){
+        vec2f blockRange = ((vec2f*)param->f)[0];
+        voxelRange.x = std::min(voxelRange.x, blockRange.x);
+        voxelRange.y = std::max(voxelRange.y, blockRange.y);
+      }
+#endif
     }
 
+#ifndef OSPRAY_VOLUME_VOXELRANGE_IN_APP
+    // Do a reduction here to worker 0 since it will be queried for the voxel range by the display node
+    vec2f globalVoxelRange = voxelRange;
+    MPI_CALL(Reduce(&voxelRange.x, &globalVoxelRange.x, 1, MPI_FLOAT, MPI_MIN, 0, mpi::worker.comm));
+    MPI_CALL(Reduce(&voxelRange.y, &globalVoxelRange.y, 1, MPI_FLOAT, MPI_MAX, 0, mpi::worker.comm));
+    set("voxelRange", globalVoxelRange);
+#endif
     return 0;
   }
 
@@ -154,7 +192,6 @@ namespace ospray {
                     "ospSetRegion())");
 
     ddBlocks    = getParam3i("num_dp_blocks",vec3i(4,4,4));
-    PRINT(ddBlocks);
     blockSize   = divRoundUp(dimensions,ddBlocks);
     std::cout << "#osp:dp: using data parallel volume of " << ddBlocks
               << " blocks, blockSize is " << blockSize << std::endl;
@@ -170,7 +207,9 @@ namespace ospray {
     // Set the grid spacing, default to (1,1,1).
     this->gridSpacing = getParam3f("gridSpacing", vec3f(1.f));
 
-    numDDBlocks = embree::reduce_mul(ddBlocks);
+    this->scaleFactor = getParam3f("scaleFactor", vec3f(-1.f));
+
+    numDDBlocks = ospcommon::reduce_mul(ddBlocks);
     ddBlock     = new DDBlock[numDDBlocks];
 
     printf("=======================================================\n");
@@ -183,64 +222,70 @@ namespace ospray {
                                "mode...");
     }
     int64 numWorkers = ospray::core::getWorkerCount();
-    PRINT(numDDBlocks);
-    PRINT(numWorkers);
+    // PRINT(numDDBlocks);
+    // PRINT(numWorkers);
 
     voxelType = getParamString("voxelType", "unspecified");  
 
     // if (numDDBlocks >= numWorkers) {
-      // we have more workers than blocks - use one owner per block,
-      // meaning we'll end up with multiple blocks per worker
-      int blockID = 0;
-      for (int iz=0;iz<ddBlocks.z;iz++)
-        for (int iy=0;iy<ddBlocks.y;iy++)
-          for (int ix=0;ix<ddBlocks.x;ix++, blockID++) {
-            DDBlock *block = &ddBlock[blockID];
-            if (numDDBlocks >= numWorkers) {
-              block->firstOwner = blockID % numWorkers;
-              block->numOwners = 1;
-            } else {
-              block->firstOwner = (blockID * numWorkers) / numDDBlocks;
-              int nextBlockFirstOwner = ((blockID+1)*numWorkers) / numDDBlocks;
-              block->numOwners = nextBlockFirstOwner - block->firstOwner + 1;
-            }
-            block->isMine 
-              = (ospray::core::getWorkerRank() >= block->firstOwner)
-              && (ospray::core::getWorkerRank() <
-                  (block->firstOwner + block->numOwners));
-            block->domain.lower = vec3i(ix,iy,iz) * blockSize;
-            block->domain.upper = min(block->domain.lower+blockSize,dimensions);
-            block->bounds.lower = gridOrigin +
-                                  (gridSpacing * vec3f(block->domain.lower));
-            block->bounds.upper = gridOrigin +
-                                  (gridSpacing * vec3f(block->domain.upper));
-
-            // XXX?? 1 overlap?
-            block->domain.upper = min(block->domain.upper+vec3i(1),dimensions);
-
-            
-            if (block->isMine) {
-              Ref<Volume> volume = new BlockBrickedVolume;
-              vec3i blockDims = block->domain.upper - block->domain.lower;
-              volume->findParam("dimensions",1)->set(blockDims);
-              volume->findParam("gridOrigin",1)->set(block->bounds.lower);
-              volume->findParam("gridSpacing",1)->set(gridSpacing);
-              volume->findParam("voxelType",1)->set(voxelType.c_str());
-
-              printf("rank %li owns block %i,%i,%i (ID %i), dims %i %i %i\n",
-                     (size_t)core::getWorkerRank(),ix,iy,iz,
-                     blockID,blockDims.x,blockDims.y,blockDims.z);
-              block->cppVolume = volume;
-              block->ispcVolume = NULL; //volume->getIE();
-            } else {
-              block->ispcVolume = NULL;
-              block->cppVolume = NULL;
-            }
+    // we have more workers than blocks - use one owner per block,
+    // meaning we'll end up with multiple blocks per worker
+    int blockID = 0;
+    for (int iz=0;iz<ddBlocks.z;iz++)
+      for (int iy=0;iy<ddBlocks.y;iy++)
+        for (int ix=0;ix<ddBlocks.x;ix++, blockID++) {
+          DDBlock *block = &ddBlock[blockID];
+          if (numDDBlocks >= numWorkers) {
+            block->firstOwner = blockID % numWorkers;
+            block->numOwners = 1;
+          } else {
+            block->firstOwner = (blockID * numWorkers) / numDDBlocks;
+            int nextBlockFirstOwner = ((blockID+1)*numWorkers) / numDDBlocks;
+            block->numOwners = nextBlockFirstOwner - block->firstOwner; // + 1;
           }
-    // } else {
-    //   FATAL("not implemented yet - more workers than blocks ...");//TODO
-    // }
-
+          block->isMine 
+            = (ospray::core::getWorkerRank() >= block->firstOwner)
+            && (ospray::core::getWorkerRank() <
+                (block->firstOwner + block->numOwners));
+          block->domain.lower = vec3i(ix,iy,iz) * blockSize;
+          block->domain.upper = min(block->domain.lower+blockSize,dimensions);
+          block->bounds.lower = gridOrigin +
+            (gridSpacing * vec3f(block->domain.lower));
+          block->bounds.upper = gridOrigin +
+            (gridSpacing * vec3f(block->domain.upper));
+          
+          // iw: add one voxel overlap, so we can properly interpolate
+          // even across block boundaries (we need the full *cell* on
+          // the right side, not just the last *voxel*!)
+          block->domain.upper = min(block->domain.upper+vec3i(1),dimensions);
+          
+          
+          if (block->isMine) {
+#ifdef EXP_NEW_BB_VOLUME_KERNELS
+            Ref<Volume> volume = new GhostBlockBrickedVolume;
+#else
+            Ref<Volume> volume = new BlockBrickedVolume;
+#endif
+            vec3i blockDims = block->domain.upper - block->domain.lower;
+            volume->findParam("dimensions",1)->set(blockDims);
+            volume->findParam("gridOrigin",1)->set(block->bounds.lower);
+            volume->findParam("gridSpacing",1)->set(gridSpacing);
+            volume->findParam("voxelType",1)->set(voxelType.c_str());
+            if (scaleFactor != vec3f(-1.f)) {
+              volume->findParam("scaleFactor",1)->set(scaleFactor);
+            }
+            
+            printf("rank %li owns block %i,%i,%i (ID %i), dims %i %i %i\n",
+                   (size_t)core::getWorkerRank(),ix,iy,iz,
+                   blockID,blockDims.x,blockDims.y,blockDims.z);
+            block->cppVolume = volume;
+            block->ispcVolume = NULL; //volume->getIE();
+          } else {
+            block->ispcVolume = NULL;
+            block->cppVolume = NULL;
+          }
+        }
+    
     // Create an ISPC BlockBrickedVolume object and assign type-specific
     // function pointers.
     ispcEquivalent = ispc::DDBVolume_create(this,                                                             

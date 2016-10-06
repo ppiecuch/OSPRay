@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -22,17 +22,12 @@
 #endif
 
 // sg
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "sg/geometry/Spheres.h"
 // stl
 #include <map>
 // xml
-#include "apps/common/xml/XML.h"
-// stdlib, for mmap
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
+#include "common/xml/XML.h"
 
 namespace ospray {
   namespace sg {

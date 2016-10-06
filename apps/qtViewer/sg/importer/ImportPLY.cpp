@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -22,7 +22,7 @@
 #endif
 
 // sg
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "sg/common/Texture2D.h"
 #include "sg/geometry/TriangleMesh.h"
 //
@@ -145,11 +145,15 @@ namespace ospray {
         bool isPipe = false;
 
         if (strlen(filename) > 7 && !strcmp(filename+strlen(filename)-7,".ply.gz")) {
+#ifdef _WIN32
+          THROW_SG_ERROR("#osp:sg:ply: gzipped file not supported yet on Windows");
+#else
           isPipe = true;
           char cmd[10000];
           sprintf(cmd,"/usr/bin/gunzip -c %s",filename);
           file = popen(cmd,"r");
-        } else 
+#endif
+        } else
           file = fopen(filename,"rb");
     
         if (!file) 

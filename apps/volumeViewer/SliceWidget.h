@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,13 +17,18 @@
 #pragma once
 
 #include <ospray/ospray.h>
+<<<<<<< HEAD
 #include "ospray/common/OSPCommon.h"
 #include <QtWidgets>
+=======
+#include "ospcommon/box.h"
+#include <QtGui>
+>>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
 struct SliceParameters
 {
-  ospray::vec3f origin;
-  ospray::vec3f normal;
+  ospcommon::vec3f origin;
+  ospcommon::vec3f normal;
 };
 
 class SliceEditor;
@@ -35,7 +40,7 @@ Q_OBJECT
 
 public:
 
-  SliceWidget(SliceEditor *sliceEditor, ospray::box3f boundingBox);
+  SliceWidget(SliceEditor *sliceEditor, ospcommon::box3f boundingBox);
   ~SliceWidget();
 
   SliceParameters getSliceParameters();
@@ -60,7 +65,7 @@ protected slots:
 protected:
 
   //! Bounding box of the volume.
-  ospray::box3f boundingBox;
+  ospcommon::box3f boundingBox;
 
   //! UI elements.
   QDoubleSpinBox originXSpinBox;

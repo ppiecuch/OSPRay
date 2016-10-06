@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,21 +16,13 @@
 
 #undef NDEBUG
 
-// O_LARGEFILE is a GNU extension.
-#ifdef __APPLE__
-#define  O_LARGEFILE  0
-#endif
+#define WARN_ON_INCLUDING_OSPCOMMON 1
 
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "sg/common/Texture2D.h"
 #include "sg/geometry/TriangleMesh.h"
 // stl
 #include <map>
-// stdlib, for mmap
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 
 namespace ospray {
   namespace sg {
@@ -83,10 +75,15 @@ namespace ospray {
           assert(channels != size_t(-1) && "Channel count not properly parsed for Texture2D nodes");
           assert(depth != size_t(-1) && "Depth not properly parsed for Texture2D nodes");
 
-          if (channels == 4 && depth == 1) txt.ptr->texelType = OSP_UCHAR4;
-          else if (channels == 3 && depth == 1) txt.ptr->texelType = OSP_UCHAR3;
-          else if (channels == 4) txt.ptr->texelType = OSP_FLOAT3A;
-          else if (channels == 3) txt.ptr->texelType = OSP_FLOAT3;
+          txt.ptr->texelType = OSP_TEXTURE_R8;
+          if (channels == 4 && depth == 1)
+            txt.ptr->texelType = OSP_TEXTURE_RGBA8;
+          else if (channels == 3 && depth == 1)
+            txt.ptr->texelType = OSP_TEXTURE_RGB8;
+          else if (channels == 4)
+            txt.ptr->texelType = OSP_TEXTURE_RGBA32F;
+          else if (channels == 3)
+            txt.ptr->texelType = OSP_TEXTURE_RGB32F;
 
           txt.ptr->size = vec2i(width, height);
 
@@ -193,28 +190,28 @@ namespace ospray {
                 float w = atof(s);
                 mat->setParam(childName, vec4f(x,y,z,w));
               } else if (!childType.compare("int")) {
-                mat->setParam(childName, (int32)atol(s));
+                mat->setParam(childName, (int32_t)atol(s));
               } else if (!childType.compare("int2")) {
-                int32 x = atol(s);
+                int32_t x = atol(s);
                 s = NEXT_TOK;
-                int32 y = atol(s);
+                int32_t y = atol(s);
                 // mat->setParam(childName.c_str(), vec2i(x,y));
                 mat->setParam(childName, vec2i(x,y));
               } else if (!childType.compare("int3")) {
-                int32 x = atol(s);
+                int32_t x = atol(s);
                 s = NEXT_TOK;
-                int32 y = atol(s);
+                int32_t y = atol(s);
                 s = NEXT_TOK;
-                int32 z = atol(s);
+                int32_t z = atol(s);
                 mat->setParam(childName, vec3i(x,y,z));
               } else if (!childType.compare("int4")) {
-                int32 x = atol(s);
+                int32_t x = atol(s);
                 s = NEXT_TOK;
-                int32 y = atol(s);
+                int32_t y = atol(s);
                 s = NEXT_TOK;
-                int32 z = atol(s);
+                int32_t z = atol(s);
                 s = NEXT_TOK;
-                int32 w = atol(s);
+                int32_t w = atol(s);
                 mat->setParam(childName, vec4i(x,y,z,w));
               } else {
                 //error!
@@ -461,18 +458,7 @@ namespace ospray {
     {
       string xmlFileName = fileName;
       string binFileName = fileName+".bin";
-
-      FILE *file = fopen(binFileName.c_str(),"rb");
-      if (!file)
-        perror("could not open binary file");
-      fseek(file,0,SEEK_END);
-      size_t fileSize = ftell(file);
-      fclose(file);
-
-      int fd = ::open(binFileName.c_str(),O_LARGEFILE|O_RDWR);
-      if (fd == -1)
-        perror("could not open file");
-      binBasePtr = (unsigned char *)mmap(NULL,fileSize,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+      const unsigned char * const binBasePtr = mapFile(binFileName);
 
       xml::XMLDoc *doc = xml::readXML(fileName);
       if (doc->child.size() != 1 || doc->child[0]->name != "BGFscene")

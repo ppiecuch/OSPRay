@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,10 +16,10 @@
 
 #pragma once
 
-// ospray
-#include "ospray/common/OSPCommon.h"
-// embree
-#include "common/sys/filename.h"
+// ospcomon
+#include "ospcommon/common.h"
+#include "ospcommon/vec.h"
+#include "ospcommon/FileName.h"
 // stl
 #include <stack>
 #include <vector>
@@ -38,7 +38,7 @@ namespace ospray {
   namespace xml {
 
     struct Node;
-    using embree::FileName;
+    using ospcommon::FileName;
     struct XMLDoc;
 
     /*! 'prop'erties in xml nodes are the 'name="value"' inside the
@@ -58,20 +58,37 @@ namespace ospray {
       virtual ~Node();
 
       inline bool hasProp(const std::string &name) const {
-        for (int i=0;i<prop.size();i++) 
+        for (size_t i = 0; i < prop.size(); i++)
           if (prop[i]->name == name) return true;
         return false;
       }
       inline std::string getProp(const std::string &name) const {
-        for (int i=0;i<prop.size();i++) 
+        for (size_t i = 0; i < prop.size(); i++)
           if (prop[i]->name == name) return prop[i]->value; 
         return "";
       }
 
       /*! find properly with given name, and return as long ('l')
         int. return undefined if prop does not exist */
-      inline size_t getPropl(const std::string &name) const
-      { return atol(getProp(name).c_str()); }
+      inline size_t getPropl(const std::string &name, const size_t defaultValue=0) const
+      {
+        const std::string val = getProp(name);
+        if (val.empty()) 
+          return defaultValue;
+        else 
+          return atol(val.c_str()); 
+      }
+      
+      /*! find properly with given name, and return as long ('l')
+        int. return undefined if prop does not exist */
+      inline float getPropf(const std::string &name, const float defaultValue=0.f) const
+      {
+        const std::string val = getProp(name);
+        if (val.empty()) 
+          return defaultValue;
+        else 
+          return atof(val.c_str()); 
+      }
       
       /*! name of the xml node (i.e., the thing that's in
           "<name>....</name>") */
@@ -112,9 +129,9 @@ namespace ospray {
       
     /*! @{ */
     //! \brief helper function(s) to convert data tyeps into strings 
-    std::string toString(const int64 value);
+    std::string toString(const int64_t value);
     std::string toString(const float value);
-    std::string toString(const ospray::vec3f &value);
+    std::string toString(const ospcommon::vec3f &value);
     /*! @} */
     
     /*! helper class for writing sg nodes in XML format */

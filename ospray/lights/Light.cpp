@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,10 +16,11 @@
 
 //ospray
 #include "Light.h"
-#include "ospray/common/Library.h"
-
+#include "common/Library.h"
 //system
 #include <map>
+
+#define creatorFct litCreatorFct
 
 namespace ospray {
   typedef Light *(*creatorFct)();
@@ -62,3 +63,5 @@ namespace ospray {
   }
 
 }
+
+#undef creatorFct

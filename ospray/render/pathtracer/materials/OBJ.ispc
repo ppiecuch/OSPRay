@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,12 +14,12 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "./Material.ih"
-#include "ospray/texture/TextureParam.ih"
-#include "../bsdfs/MultiBSDF.ih"
-#include "../bsdfs/Transmission.ih"
-#include "../bsdfs/Lambert.ih"
-#include "../bsdfs/Specular.ih"
+#include "Material.ih"
+#include "texture/TextureParam.ih"
+#include "render/pathtracer/bsdfs/MultiBSDF.ih"
+#include "render/pathtracer/bsdfs/Transmission.ih"
+#include "render/pathtracer/bsdfs/Lambert.ih"
+#include "render/pathtracer/bsdfs/Specular.ih"
 
 struct OBJ
 {
@@ -135,7 +135,7 @@ vec3f OBJ_getTransparency(const uniform PathTraceMaterial* uniform super,
 
 void OBJ_Constructor(uniform OBJ* uniform self)
 {
-  PathTraceMaterial_Constructor(&self->super, OBJ_getBSDF, OBJ_getTransparency, NULL);
+  PathTraceMaterial_Constructor(&self->super, OBJ_getBSDF, OBJ_getTransparency, NULL, NULL);
 
   uniform affine2f xform = make_AffineSpace2f_identity();
 

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -113,4 +113,14 @@ inline varying vec2f operator*(const varying AffineSpace2f a, const varying vec2
 
 /*! short-hand name for AffineSpace3f */
 typedef AffineSpace2f affine2f;
+
+inline void out(uniform affine3f a) 
+{ 
+  print("Affine3f(");
+  out(a.l.vx);
+  out(a.l.vy);
+  out(a.l.vz);
+  out(a.p);
+  print(")");
+}
 

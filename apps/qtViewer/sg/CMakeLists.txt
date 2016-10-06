@@ -1,7 +1,20 @@
-CONFIGURE_OSPRAY()
+## ======================================================================== ##
+## Copyright 2009-2016 Intel Corporation                                    ##
+##                                                                          ##
+## Licensed under the Apache License, Version 2.0 (the "License");          ##
+## you may not use this file except in compliance with the License.         ##
+## You may obtain a copy of the License at                                  ##
+##                                                                          ##
+##     http://www.apache.org/licenses/LICENSE-2.0                           ##
+##                                                                          ##
+## Unless required by applicable law or agreed to in writing, software      ##
+## distributed under the License is distributed on an "AS IS" BASIS,        ##
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. ##
+## See the License for the specific language governing permissions and      ##
+## limitations under the License.                                           ##
+## ======================================================================== ##
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
-INCLUDE_DIRECTORIES(${OSPRAY_SOURCE_DIR})
 
 ADD_LIBRARY(ospray_sg${OSPRAY_LIB_SUFFIX} STATIC
   # scene graph nodes
@@ -32,13 +45,10 @@ ADD_LIBRARY(ospray_sg${OSPRAY_LIB_SUFFIX} STATIC
   importer/ImportOBJ.cpp
   importer/ImportPLY.cpp
   importer/ImportRIVL.cpp
-  #    ImportX3D.cpp
 )
 
-TARGET_LINK_LIBRARIES(ospray_sg${OSPRAY_LIB_SUFFIX} 
-  ospray_xml${OSPRAY_LIB_SUFFIX}
-  ospray${OSPRAY_LIB_SUFFIX}
+TARGET_LINK_LIBRARIES(ospray_sg
+  ospray
+  ospray_common
+  ospray_xml
 )
-
-
-

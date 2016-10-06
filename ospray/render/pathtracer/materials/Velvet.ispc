@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use self file except in compliance with the License.         //
@@ -64,7 +64,7 @@ void Velvet_Constructor(uniform Velvet* uniform self,
                         uniform float horizonScatteringFallOff,
                         uniform float backScattering)
 {
-  PathTraceMaterial_Constructor(&self->super, Velvet_getBSDF, NULL, NULL);
+  PathTraceMaterial_Constructor(&self->super, Velvet_getBSDF, NULL, NULL, NULL);
   self->reflectance = reflectance;
   self->horizonScatteringColor = horizonScatteringColor;
   self->horizonScatteringFallOff = horizonScatteringFallOff;

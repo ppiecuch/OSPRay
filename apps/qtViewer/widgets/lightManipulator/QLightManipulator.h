@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,17 +16,20 @@
 
 #pragma once
 
-// ospray interna
-#include "ospray/common/OSPCommon.h"
+#include "sg/SceneGraph.h"
 // ospray public api
 #include "ospray/ospray.h"
 // qt
 #include <QtWidgets>
 //sg
 #include "sg/Renderer.h"
+// ospcomon
+#include "ospcommon/common.h"
 
 namespace ospray {
   namespace viewer {
+    using namespace ospcommon;
+
     // ==================================================================
     //! \brief A QT Widget that allows mouse manipulation of a reference
     /*! The Widget works by keeping and manipulating a reference frame
@@ -54,8 +57,8 @@ namespace ospray {
     // ==================================================================
     struct LightInfo {
       OSPLight ospLight;
-      ospray::vec3f color;
-      ospray::vec3f direction;
+      vec3f color;
+      vec3f direction;
       float intensity;
     };
 
@@ -102,7 +105,7 @@ namespace ospray {
       QPushButton *applyButton;
 
     private:
-      ospray::vec3f upVector;
+      vec3f upVector;
     };
   }
 }

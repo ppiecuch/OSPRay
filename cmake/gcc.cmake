@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2015 Intel Corporation                                    ##
+## Copyright 2009-2016 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -18,10 +18,12 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fno-strict-aliasing  -std=c++11 -
 SET(CMAKE_CXX_FLAGS_DEBUG          "-DDEBUG  -g     -Wstrict-aliasing=1")
 SET(CMAKE_CXX_FLAGS_RELEASE        "-DNDEBUG    -O3 -Wstrict-aliasing=1 -ffast-math ")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-DNDEBUG -g -O3 -Wstrict-aliasing=1 -ffast-math ")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 IF (APPLE)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7")
-ENDIF (APPLE)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7") # we only use MacOSX 10.7 features
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++") # link against C++11 stdlib
+ENDIF()
 
 # these flags apply ONLY to how embree is built; the rest of the ospray C++ code is ISA-agnostic
 SET(OSPRAY_ARCH_SSE3    "-msse3")
@@ -49,3 +51,11 @@ ENDIF()
 # GCC 4.8.0 supports AVX and AVX2...
 SET(OSPRAY_COMPILER_SUPPORTS_AVX TRUE)
 SET(OSPRAY_COMPILER_SUPPORTS_AVX2 TRUE)
+
+SET(GCC_VERSION_REQUIRED_AVX512 "4.9.0")
+
+IF (GCC_VERSION VERSION_LESS GCC_VERSION_REQUIRED_AVX512)
+  SET(OSPRAY_COMPILER_SUPPORTS_AVX512 FALSE)
+ELSE()
+  SET(OSPRAY_COMPILER_SUPPORTS_AVX512 TRUE)
+ENDIF()

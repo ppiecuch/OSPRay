@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,28 +14,16 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/common/Ray.ih"
-#include "ospray/render/util.ih"
-#include "ospray/render/volume/RaycastVolumeRenderer.ih"
-#include "ospray/render/volume/RaycastVolumeRendererMaterial.ih"
-#include "ospray/volume/DataDistributedBlockedVolume.ih"
-#include "ospray/render/util.ih"
-#include "ospray/camera/Camera.ih"
-#include "ospray/common/Model.ih"
-
-#if 0//Cannot enable here b/c RENDERTILE_PIXELS_PER_JOB doesn't match C++ side?
-#ifdef RENDERTILE_PIXELS_PER_JOB
-#  undef RENDERTILE_PIXELS_PER_JOB
-#endif
-
-/*! number of pixels that each job in a parallel rendertile task
-    executes together. Must be a multipel of the maximum possible
-    programCount (16), and must be smaller than TILE_SIZE (in one
-    dimension) */
-#define RENDERTILE_PIXELS_PER_JOB 32
-#endif
+#include "fb/FrameBuffer.ih"
+#include "common/Model.ih"
+#include "common/Ray.ih"
+#include "render/util.ih"
+#include "render/volume/RaycastVolumeRenderer.ih"
+#include "render/volume/RaycastVolumeMaterial.ih"
+#include "volume/DataDistributedBlockedVolume.ih"
+#include "render/util.ih"
+#include "camera/Camera.ih"
+#include "common/Model.ih"
 
 struct PassInfo {
   // region to integrate over in this pass
@@ -46,43 +34,27 @@ struct PassInfo {
   uniform bool useBG;
 };
 
-void RaycastVolumeRenderer_endFrame(Renderer *uniform renderer,
-                                    void *uniform perFrameData,
-                                    const uniform int32 accumID)
+inline void
+RaycastVolumeRenderer_computeVolumeSample(RaycastVolumeRenderer *uniform self,
+                                          Volume *uniform volume,
+                                          varying Ray &ray,
+                                          varying vec4f &color)
 {
-  if (renderer->fb)
-    renderer->fb->accumID = accumID;
-
-  renderer->fb = NULL;
-}
-
-void *uniform RaycastVolumeRenderer_beginFrame(Renderer *uniform renderer,
-                                               FrameBuffer *uniform framebuffer)
-{
-  renderer->fb = framebuffer;
-  return NULL;
-}
-
-inline void RaycastVolumeRenderer_computeVolumeSample(RaycastVolumeRenderer *uniform renderer,
-                                                      Volume *uniform volume,
-                                                      varying Ray &ray,
-                                                      varying vec4f &color)
-{
-  // if (!volume) { print("NULL VOLUME IN VOLUMESAMPLE()\n");  }
-  // if (!volume->computeSample) { print("trying to sample volume w/o sample function!!!!\n");  }
-
   // Sample the volume at the hit point in world coordinates.
   const vec3f coordinates = ray.org + ray.t0 * ray.dir;
   const float sample = volume->computeSample(volume, coordinates);
 
+  TransferFunction *uniform xf = volume->transferFunction;
+
   // Look up the color associated with the volume sample.
-  vec3f sampleColor = volume->transferFunction->getColorForValue(volume->transferFunction, sample);
+  vec3f sampleColor = xf->getColorForValue(xf, sample);
 
   // Compute gradient shading, if enabled.
   if(volume->gradientShadingEnabled) {
 
     // Use volume gradient as the normal.
-    const vec3f gradient = safe_normalize(volume->computeGradient(volume, coordinates));
+    const vec3f gradient = safe_normalize(volume->computeGradient(volume,
+                                                                  coordinates));
 
     // Setup differential geometry for the volume sample point.
     DifferentialGeometry dg;
@@ -93,34 +65,40 @@ inline void RaycastVolumeRenderer_computeVolumeSample(RaycastVolumeRenderer *uni
     vec3f shadedColor = make_vec3f(0.f);
     const vec2f s = make_vec2f(0.5f);
 
-    for (uniform uint32 i=0; i<renderer->numLights; i++) {
-      const LightSample light = renderer->lights[i]->sample(renderer->lights[i], dg, s);
-      const float cosNL = (gradient.x == 0.f && gradient.y == 0.f && gradient.z == 0.f) ?
-                          1.f : abs(dot(safe_normalize(light.direction), gradient));
+    for (uniform uint32 i=0; i<self->numLights; i++) {
+      const Light_SampleRes light =
+          self->lights[i]->sample(self->lights[i], dg, s);
+      const float cosNL =
+          (gradient.x == 0.f && gradient.y == 0.f && gradient.z == 0.f) ?
+          1.f : abs(dot(safe_normalize(light.dir), gradient));
 
-      shadedColor = shadedColor + sampleColor * cosNL * light.radiance;
+      shadedColor = shadedColor + sampleColor * cosNL * light.weight;
     }
 
     sampleColor = shadedColor;
   }
 
   // Look up the opacity associated with the volume sample.
-  const float sampleOpacity = volume->transferFunction->getOpacityForValue(volume->transferFunction, sample);
+  const float sampleOpacity = xf->getOpacityForValue(xf, sample);
 
   // Set the color contribution for this sample only (do not accumulate).
-  color = clamp(sampleOpacity / volume->samplingRate) * make_vec4f(sampleColor.x, sampleColor.y, sampleColor.z, 1.0f);
+  color
+    = clamp(sampleOpacity / volume->samplingRate) 
+    * make_vec4f(sampleColor.x, sampleColor.y, sampleColor.z, 1.0f);
 
   // Advance the ray for the next sample.
   volume->intersect(volume, ray);
 }
 
-inline void RaycastVolumeRenderer_computeGeometrySample(RaycastVolumeRenderer *uniform renderer,
-                                                        varying Ray &ray,
-                                                        const region1f &clipRange,
-                                                        varying vec4f &color)
+inline void
+RaycastVolumeRenderer_computeGeometrySample(RaycastVolumeRenderer *uniform self,
+                                            varying Ray &ray,
+                                            const region1f &clipRange,
+                                            varying vec4f &color)
 {
-  // We compute intersections on the model and provide the contribution for the closest hit.
-  traceRay(renderer->inherited.model, ray);
+  // We compute intersections on the model and provide the contribution for the
+  // closest hit.
+  traceRay(self->super.model, ray);
 
   // No hit found.
   if(ray.geomID < 0) {
@@ -130,7 +108,7 @@ inline void RaycastVolumeRenderer_computeGeometrySample(RaycastVolumeRenderer *u
 
   // Post intersect on the hit geometry.
   DifferentialGeometry dg;
-  postIntersect(renderer->inherited.model, dg, ray,
+  postIntersect(self->super.model, dg, ray,
                 DG_NG|DG_NS|DG_NORMALIZE|DG_FACEFORWARD|DG_COLOR
                 |DG_MATERIALID|DG_TEXCOORD);
 
@@ -160,7 +138,10 @@ inline void RaycastVolumeRenderer_computeGeometrySample(RaycastVolumeRenderer *u
 
       if (m->volume) {
         const float sample = m->volume->computeSample(m->volume, dg.P);
-        geometryColor = geometryColor * m->volume->transferFunction->getColorForValue(m->volume->transferFunction, sample);
+        geometryColor =
+            geometryColor *
+            m->volume->transferFunction->getColorForValue(
+              m->volume->transferFunction, sample);
       }
     }
   }
@@ -172,22 +153,27 @@ inline void RaycastVolumeRenderer_computeGeometrySample(RaycastVolumeRenderer *u
   vec3f shadedColor = make_vec3f(0.f);
   const vec2f s = make_vec2f(0.5f);
 
-  for (uniform uint32 i=0; i<renderer->numLights; i++) {
-    const LightSample light = renderer->lights[i]->sample(renderer->lights[i], dg, s);
-    const float cosNL = abs(dot(safe_normalize(light.direction), dg.Ns));
+  for (uniform uint32 i=0; i<self->numLights; i++) {
+    const Light_SampleRes light = self->lights[i]->sample(self->lights[i],
+                                                          dg,
+                                                          s);
+    const float cosNL = abs(dot(safe_normalize(light.dir), dg.Ns));
 
-    shadedColor = shadedColor + geometryColor * cosNL * light.radiance;
+    shadedColor = shadedColor + geometryColor * cosNL * light.weight;
   }
 
   // Set the color contribution for this sample only (do not accumulate).
-  color = geometryOpacity * make_vec4f(shadedColor.x, shadedColor.y, shadedColor.z, 1.f);
+  color = geometryOpacity * make_vec4f(shadedColor.x,
+                                       shadedColor.y,
+                                       shadedColor.z,
+                                       1.f);
 }
 
-/*! Returns the first hit volume for the provided ray and sets the ray bounds t0 and t,
-    considering the provided ray offset and any clipping. If no volume is found, the
-    returned volume is NULL and ray.t0 will be set to infinity. */
+/*! Returns the first hit volume for the provided ray and sets the ray bounds t0
+    and t, considering the provided ray offset and any clipping. If no volume is
+    found, the returned volume is NULL and ray.t0 will be set to infinity. */
 inline Volume *
-RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform renderer,
+RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform self,
                                        varying Ray &ray,
                                        const uniform PassInfo &passInfo,
                                        const varying float &rayOffset)
@@ -204,18 +190,6 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
     // Intersect volume bounding box.
     float t0, t1;
     Volume *uniform volume_i = passInfo.block->ispcVolume;
-#if 0
-     print("bb %\n % % %\n % % %\n",
-           volume_i,
-           volume_i->boundingBox.lower.x,
-           volume_i->boundingBox.lower.y,
-           volume_i->boundingBox.lower.z,
-           volume_i->boundingBox.upper.x,
-           volume_i->boundingBox.upper.y,
-           volume_i->boundingBox.upper.z);
-     if (eq(volume_i->boundingBox.lower,volume_i->boundingBox.upper))
-       print("EMPTY BBOX!!!!\n");
-#endif
     intersectBox(ray, volume_i->boundingBox, t0, t1);
     t0 = max(t0,passInfo.region.lower);
     t1 = min(t1,passInfo.region.upper);
@@ -228,9 +202,10 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
     // Update the provided ray.
     ray = volumeRay;
 
-    // If we intersected a volume, offset ray by a fraction of the nominal ray step.
-
-#if 0
+    // If we hit a volume, offset ray by a fraction of the nominal ray step.
+    /* make sure that we place the first sample in this block exactly
+       where it would have been if this was not its own block, but
+       rather a region in a larger volume; else we get artifacts */
     if (volume) {
       float dt = volume->samplingStep * rcpf(volume->samplingRate);
       float t0 = ray.t0;
@@ -238,9 +213,7 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
       ray.t0 = (i0 + rayOffset)*dt;
       if (ray.t0 < t0) ray.t0 += dt;
     }
-#else
-    if (volume) ray.t0 += rayOffset * volume->samplingStep * rcpf(volume->samplingRate);
-#endif
+    // if (volume) ray.t0 += rayOffset * volume->samplingStep * rcpf(volume->samplingRate);
 
     // Return the first intersected volume.
     return volume;
@@ -248,8 +221,8 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
 #endif
 
   // Test each volume and find the first intersection.
-  for (uniform int32 i=0; i<renderer->inherited.model->volumeCount; i++) {
-    Volume *uniform volume_i = renderer->inherited.model->volumes[i];
+  for (uniform int32 i=0; i<self->super.model->volumeCount; i++) {
+    Volume *uniform volume_i = self->super.model->volumes[i];
 #if EXP_DATA_PARALLEL
     // hack for now .... if this does not have a 'getvoxel' function
     // it must be a data parallel volume...
@@ -270,7 +243,8 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
 #endif
 
     // Clip against volume clipping box (if specified).
-    if(ne(volume_i->volumeClippingBox.lower, volume_i->volumeClippingBox.upper)) {
+    if(ne(volume_i->volumeClippingBox.lower,
+          volume_i->volumeClippingBox.upper)) {
       float tClip0, tClip1;
       intersectBox(ray, volume_i->volumeClippingBox, tClip0, tClip1);
 
@@ -289,22 +263,23 @@ RaycastVolumeRenderer_intersectVolumes(uniform RaycastVolumeRenderer *uniform re
   // Update the provided ray.
   ray = volumeRay;
 
-  // If we intersected a volume, offset ray by a fraction of the nominal ray step.
-#if 1
-  if (volume) ray.t0 += rayOffset * volume->samplingStep * rcpf(volume->samplingRate);
-#endif
+  // If we intersected a volume, offset ray by a fraction of the nominal ray
+  // step.
+  if (volume)
+    ray.t0 += rayOffset * volume->samplingStep * rcpf(volume->samplingRate);
 
   // Return the first intersected volume.
   return volume;
 }
 
 /*! This function intersects the volume and geometries. */
-void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform renderer,
-                                     varying Ray &ray,
-                                     const uniform PassInfo &passInfo,
-                                     const varying float &rayOffset,
-                                     varying vec4f &color,
-                                     varying float &depth)
+void
+RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform self,
+                                varying Ray &ray,
+                                const uniform PassInfo &passInfo,
+                                const varying float &rayOffset,
+                                varying vec4f &color,
+                                varying float &depth)
 {
   const region1f clipRange = passInfo.region;
 
@@ -313,28 +288,24 @@ void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform rend
     ray.t = min(ray.t,clipRange.upper);
   }
 
-  // if (dbg) {
-  //   print("RENDER SAMPLE (block %)\n",passInfo.block);
-  //   print("range % %\n",ray.t0,ray.t);
-  // }
-
-
   // Original tMax for ray interval
   const float tMax = ray.t;
 
   // Ray epsilon based on bounding box of all volumes.
-  uniform box3f boundingBox = renderer->inherited.model->volumeCount
-    ? renderer->inherited.model->volumes[0]->boundingBox
+  uniform box3f boundingBox = self->super.model->volumeCount
+    ? self->super.model->volumes[0]->boundingBox
     : make_box3f(make_vec3f(0.f), make_vec3f(0.f));
 
-  Model *uniform model = renderer->inherited.model;
-  for (uniform int32 i=1; i<renderer->inherited.model->volumeCount; i++) {
-    boundingBox.lower = min(boundingBox.lower, model->volumes[i]->boundingBox.lower);
-    boundingBox.upper = max(boundingBox.upper, model->volumes[i]->boundingBox.upper);
+  Model *uniform model = self->super.model;
+  for (uniform int32 i = 1; i < self->super.model->volumeCount; i++) {
+    boundingBox.lower =
+        min(boundingBox.lower, model->volumes[i]->boundingBox.lower);
+    boundingBox.upper =
+        max(boundingBox.upper, model->volumes[i]->boundingBox.upper);
   }
 
   const uniform float epsilon
-    = renderer->inherited.model->volumeCount
+    = self->super.model->volumeCount
     ? 1e-4f * distance(boundingBox.lower, boundingBox.upper)
     : 1e-4f;
 
@@ -346,7 +317,7 @@ void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform rend
   geometryRay.instID = -1;
 
   // Get first intersected volume for each ray and set the ray bounds.
-  Volume *volume = RaycastVolumeRenderer_intersectVolumes(renderer, ray,
+  Volume *volume = RaycastVolumeRenderer_intersectVolumes(self, ray,
                                                           passInfo,
                                                           rayOffset);
 
@@ -354,12 +325,13 @@ void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform rend
   if (volume != NULL)
     geometryRay.time = -rayOffset * volume->samplingStep;
 
-  // Separate color contributions for the volume and geometries. Initialize to provided color in case of no contribution...
+  // Separate color contributions for the volume and geometries. Initialize
+  // to provided color in case of no contribution...
   vec4f volumeColor = color;
   vec4f geometryColor = color;
 
   // Initial trace through geometries.
-  RaycastVolumeRenderer_computeGeometrySample(renderer, geometryRay,
+  RaycastVolumeRenderer_computeGeometrySample(self, geometryRay,
                                               clipRange, geometryColor);
 
   // Depth is the first volume bounding box or geometry hit
@@ -377,22 +349,19 @@ void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform rend
 
         ray.t0 = ray.t + epsilon;
         ray.t = tMax;
-        volume = RaycastVolumeRenderer_intersectVolumes(renderer, ray, passInfo, rayOffset);
-        // if (dbg)
-        // print("volume intersect 2\n %\n %\n",ray.t0,ray.t);
+        volume = RaycastVolumeRenderer_intersectVolumes(self,
+                                                        ray,
+                                                        passInfo,
+                                                        rayOffset);
       }
       else {
 
         if (any(volume == NULL))
           print("ACCESSING NULL VOLUME HERE!\n");
 
-        // Compute the volume sample at the current position and advance the ray.
+        // Compute the volume sample at the current position and advance the ray
         foreach_unique (v in volume)
-          RaycastVolumeRenderer_computeVolumeSample(renderer, v, ray, volumeColor);
-
-        // if (dbg) {
-        //   print("sample at %\n %\n %\n %\n",ray.t0,volumeColor.x,volumeColor.y,volumeColor.z);
-        // }
+          RaycastVolumeRenderer_computeVolumeSample(self, v, ray, volumeColor);
 
         // Volume contribution.
         color = color + (1.0f - color.w) * volumeColor;
@@ -410,11 +379,12 @@ void RaycastVolumeRenderer_intersect(uniform RaycastVolumeRenderer *uniform rend
       geometryRay.geomID = -1;
       geometryRay.instID = -1;
 
-      // Update ray offset for use with isosurface geometries based on current volume (this value ignored elsewhere).
+      // Update ray offset for use with isosurface geometries based on
+      // current volume (this value ignored elsewhere).
       geometryRay.time = volume ? -rayOffset * volume->samplingStep : 0.f;
 
       // Trace next geometry ray.
-      RaycastVolumeRenderer_computeGeometrySample(renderer, geometryRay,
+      RaycastVolumeRenderer_computeGeometrySample(self, geometryRay,
                                                   clipRange,
                                                   geometryColor);
     }
@@ -425,7 +395,7 @@ void RaycastVolumeRenderer_renderSample(Renderer *uniform pointer,
                                         void *uniform _passInfo,
                                         varying ScreenSample &sample)
 {
-  RaycastVolumeRenderer *uniform renderer
+  RaycastVolumeRenderer *uniform self
     = (RaycastVolumeRenderer *uniform) pointer;
 
   PassInfo *uniform passInfo
@@ -443,29 +413,26 @@ void RaycastVolumeRenderer_renderSample(Renderer *uniform pointer,
 
   if(rayOffset > 1.f) rayOffset -= 1.f;
 
-  // Provide the renderer to the intersector as it contains all
+  // Provide the self to the intersector as it contains all
   // volumes, geometries, etc.
   vec4f color = make_vec4f(0.0f,0.f,0.f,0.f);
   float depth = infinity;
 
   if (passInfo != NULL) {
-    RaycastVolumeRenderer_intersect(renderer, sample.ray,
+    RaycastVolumeRenderer_intersect(self, sample.ray,
                                     *passInfo, rayOffset, color, depth);
   } else {
     uniform PassInfo dummyPassInfo;
     dummyPassInfo.region = make_region1f(0.f,inf);
     dummyPassInfo.useBG = true;
     dummyPassInfo.block = NULL;
-    RaycastVolumeRenderer_intersect(renderer, sample.ray,
+    RaycastVolumeRenderer_intersect(self, sample.ray,
                                     dummyPassInfo, rayOffset, color, depth);
   }
 
-  // color.x = 1.f;
-  // color.w = 1.f;
-
   // Attenuate the foreground and background colors by the opacity.
-  if (useBG && renderer->inherited.backgroundEnabled) {
-    const vec4f background = make_vec4f(renderer->bgColor, 1.f);
+  if (useBG && self->super.backgroundEnabled) {
+    const vec4f background = make_vec4f(self->super.bgColor, 1.f);
     color = color.w * color + (1.0f - color.w) * background;
   }
 
@@ -475,46 +442,17 @@ void RaycastVolumeRenderer_renderSample(Renderer *uniform pointer,
   sample.rgb.z = color.z;
   sample.alpha = color.w;
   sample.z = depth;
-
-
-  // sample.rgb.x = 1.f;
-  // sample.rgb.y = 0.f;
-  // sample.rgb.z = 0.f;
-  // sample.alpha = 0.f;
-  // sample.z = 0.001f;
 }
 
 export void *uniform RaycastVolumeRenderer_createInstance()
 {
-  // The renderer object.
-  RaycastVolumeRenderer *uniform renderer = uniform new uniform RaycastVolumeRenderer;
+  RaycastVolumeRenderer *uniform self =
+      uniform new uniform RaycastVolumeRenderer;
 
-  // Constructor of the parent class.
-  Renderer_Constructor(&renderer->inherited, NULL);
+  Renderer_Constructor(&self->super, NULL);
+  self->super.renderSample = RaycastVolumeRenderer_renderSample;
 
-  // Function to compute the color and opacity for a screen space sample.
-  renderer->inherited.renderSample = RaycastVolumeRenderer_renderSample;
-
-  // Function to perform per-frame state initialization.
-  renderer->inherited.beginFrame = RaycastVolumeRenderer_beginFrame;
-
-  // Function to perform per-frame state completion.
-  renderer->inherited.endFrame = RaycastVolumeRenderer_endFrame;
-
-  // Do this once up front (was done during rendering, makes more sense here?)
-  precomputeZOrder();
-
-  return renderer;
-}
-
-export void RaycastVolumeRenderer_setBackgroundColor(void *uniform _self,
-                                                     const uniform vec3f &bgColor)
-{
-  // Cast to the actual Renderer subtype.
-  uniform RaycastVolumeRenderer *uniform self = (uniform RaycastVolumeRenderer *uniform)_self;
-
-  // Set the background color.
-  self->bgColor = bgColor;
+  return self;
 }
 
 export void RaycastVolumeRenderer_setLights(void *uniform _self,
@@ -522,7 +460,8 @@ export void RaycastVolumeRenderer_setLights(void *uniform _self,
                                             const uniform uint32 numLights)
 {
   // Cast to the actual Renderer subtype.
-  uniform RaycastVolumeRenderer *uniform self = (uniform RaycastVolumeRenderer *uniform)_self;
+  uniform RaycastVolumeRenderer *uniform self =
+      (uniform RaycastVolumeRenderer *uniform)_self;
 
   // Set the light sources.
   self->lights = (Light **uniform)lights;
@@ -530,8 +469,9 @@ export void RaycastVolumeRenderer_setLights(void *uniform _self,
 }
 
 #if EXP_DATA_PARALLEL
-extern "C" Tile *uniform CacheForBlockTiles_getTileForBlock(void *uniform _tileCache,
-                                                            uniform uint32 blockID);
+extern "C" Tile *
+uniform CacheForBlockTiles_getTileForBlock(void *uniform _tileCache,
+                                           uniform uint32 blockID);
 
 inline uniform bool itIsIThatHasToRenderThisBlock(DDBVolumeBlock *uniform block,
                                                   uniform int32 tileID,
@@ -555,7 +495,6 @@ inline void DDVR_renderSample(RaycastVolumeRenderer *uniform self,
                               uniform int32 myRank,
                               uniform bool isMyTile)
 {
-  // screenSample.rgb = make_vec3f(1.f);
   // ray interval that overlaps _any_ block
   region1f blockRegion = make_region1f(+inf,-inf);
   float org_ray_t0 = fgSample.ray.t0;
@@ -574,19 +513,21 @@ inline void DDVR_renderSample(RaycastVolumeRenderer *uniform self,
       // now, render this block if it's one of ours
       if (!block[blockID].mine) continue;
       if (itIsIThatHasToRenderThisBlock(&block[blockID],tileID,myRank)) {
-        // if (block[blockID].mine) {
-        Tile *uniform blockTile = CacheForBlockTiles_getTileForBlock(_tileCache,blockID);
+        Tile *uniform blockTile =
+            CacheForBlockTiles_getTileForBlock(_tileCache,blockID);
         // -------------------------------------------------------
         // set up pass for 'one particular block'
         // -------------------------------------------------------
         uniform PassInfo passInfo;
-        // set integration pass up for region from (at most) ray origin to start of blocks
+        // set integration pass up for region from (at most) ray origin to
+        // start of blocks
         passInfo.region = make_region1f(t0,t1);
         // do not use background color in this pass
         passInfo.useBG = false;
         // do not use any block in this pass
         passInfo.block = &block[blockID];
-        RaycastVolumeRenderer_renderSample((Renderer*uniform)self,&passInfo,fgSample);
+        RaycastVolumeRenderer_renderSample((Renderer*uniform)self,
+                                           &passInfo,fgSample);
         fgSample.ray.t0 = org_ray_t0;
         fgSample.ray.t  = org_ray_t1;
         setRGBAZ(*blockTile,pixelID,fgSample.rgb,fgSample.alpha,fgSample.z);
@@ -594,7 +535,7 @@ inline void DDVR_renderSample(RaycastVolumeRenderer *uniform self,
     }
   }
 
-if (!isMyTile) return;
+  if (!isMyTile) return;
 
   if (blockRegion.lower >= blockRegion.upper) {
     // ------------------------------------------------------------------
@@ -608,7 +549,8 @@ if (!isMyTile) return;
     // ------------------------------------------------------------------
 
     uniform PassInfo passInfo;
-    // set integration pass up for region from (at most) ray origin to start of blocks
+    // set integration pass up for region from (at most) ray origin to start
+    // of blocks
     passInfo.region = make_region1f(fgSample.ray.t0,fgSample.ray.t);
     // do not use background color in this pass
     passInfo.useBG = true;
@@ -616,15 +558,13 @@ if (!isMyTile) return;
     passInfo.block = NULL;
 
     // ray does not overlap _any_ block; render entire ray segment in one sweep
-    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,&passInfo,fgSample);
-    // bgSample.rgb = make_vec3f(1.f,0.f,0.f);
+    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,
+                                       &passInfo,
+                                       fgSample);
 
     bgSample.rgb = make_vec3f(0.f,0.f,0.f);
     bgSample.z = inf;
-    // bgSample.z = 1e10f; //inf;
     bgSample.alpha = 0.f;
-
-    // fgSample.z = 0.f;
   } else {
     // ray overlaps the data parallel volume. render both the region
     // BEFORE, and AFTER the dp volume, but not yet anything inside.
@@ -633,26 +573,30 @@ if (!isMyTile) return;
     // set up pass for 'before any blocks'
     // -------------------------------------------------------
     uniform PassInfo passInfo;
-    // set integration pass up for region from (at most) ray origin to start of blocks
+    // set integration pass up for region from (at most) ray origin to start
+    // of blocks
     passInfo.region = make_region1f(fgSample.ray.t0,blockRegion.lower);
     // do not use background color in this pass
     passInfo.useBG = false;
     // do not use any block in this pass
     passInfo.block = NULL;
-    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,&passInfo,fgSample);
-    // fgSample.z = blockRegion.lower;
-    // fgSample.alpha = 0.f;
+    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,
+                                       &passInfo,
+                                       fgSample);
 
     // -------------------------------------------------------
     // set up pass for 'after any blocks'
     // -------------------------------------------------------
-    // set integration pass up for region from (at most) ray origin to start of blocks
+    // set integration pass up for region from (at most) ray origin to start
+    // of blocks
     passInfo.region = make_region1f(blockRegion.upper,bgSample.ray.t);
     // do not use background color in this pass
     passInfo.useBG = true;
     // do not use any block in this pass
     passInfo.block = NULL;
-    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,&passInfo,bgSample);
+    RaycastVolumeRenderer_renderSample((Renderer*uniform)self,
+                                       &passInfo,
+                                       bgSample);
   }
 }
 
@@ -676,7 +620,6 @@ export void DDDVRRenderer_renderTile(void*uniform _self,
 
   float pixel_du = .5f, pixel_dv = .5f;
   float lens_du = 0.f,  lens_dv = 0.f;
-  uniform int32 spp = self->spp;
 
   ScreenSample fgSample, bgSample;
   fgSample.z = inf;
@@ -686,7 +629,7 @@ export void DDDVRRenderer_renderTile(void*uniform _self,
 
   const uniform int begin = taskIndex * RENDERTILE_PIXELS_PER_JOB;
   const uniform int end   = begin     + RENDERTILE_PIXELS_PER_JOB;
-  const uniform int startSampleID = max(fb->accumID,0);
+  const uniform int startSampleID = max(fgTile.accumID,0);
 
   for (uniform uint32 i=begin;i<end;i+=programCount) {
     const uint32 index = i + programIndex;
@@ -696,8 +639,6 @@ export void DDDVRRenderer_renderTile(void*uniform _self,
     if ((fgSample.sampleID.x >= fb->size.x) |
         (fgSample.sampleID.y >= fb->size.y))
       continue;
-
-    // dbg = (fgSample.sampleID.x == 640 && fgSample.sampleID.y == 340);
 
     const uint32 pixel = z_order.xs[index] + (z_order.ys[index] * TILE_SIZE);
 
@@ -710,15 +651,15 @@ export void DDDVRRenderer_renderTile(void*uniform _self,
 
     camera->initRay(camera,fgSample.ray,cameraSample);
 
-    // set ray t value for early ray termination if we have a maximum depth texture
+    // set ray t value for early ray termination if we have a max depth texture
     if (self->maxDepthTexture) {
-
-      // don't consider pixel_du, pixel_dv for depth texture coordinates
+      // always sample center of pixel
       vec2f depthTexCoord;
-      depthTexCoord.x = fgSample.sampleID.x * fb->rcpSize_1.x;
-      depthTexCoord.y = fgSample.sampleID.y * fb->rcpSize_1.y;
+      depthTexCoord.x = (fgSample.sampleID.x + 0.5f) * fb->rcpSize.x;
+      depthTexCoord.y = (fgSample.sampleID.y + 0.5f) * fb->rcpSize.y;
 
-      fgSample.ray.t = get1f(self->maxDepthTexture, depthTexCoord);
+      const float oldT = fgSample.ray.t;
+      fgSample.ray.t = max(get1f(self->maxDepthTexture, depthTexCoord),oldT);
     }
 
     bgSample = fgSample;
@@ -726,11 +667,8 @@ export void DDDVRRenderer_renderTile(void*uniform _self,
                       fgSample,bgSample,_tileCache,pixel,
                       numBlocks,block,tileNeedsBlock,tileID,myRank,isMyTile);
 
-    // if (dbg) { bgSample.rgb = fgSample.rgb = make_vec3f(1,0,0);  }
-
     setRGBAZ(bgTile,pixel,bgSample.rgb,bgSample.alpha,bgSample.z);
     setRGBAZ(fgTile,pixel,fgSample.rgb,fgSample.alpha,fgSample.z);
-
   }
 }
 

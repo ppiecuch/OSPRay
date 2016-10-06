@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,8 +18,8 @@
 
 #include "PathTracer.h"
 // ospray
-#include "ospray/common/Data.h"
-#include "ospray/lights/Light.h"
+#include "common/Data.h"
+#include "lights/Light.h"
 // ispc exports
 #include "PathTracer_ispc.h"
 // std
@@ -66,9 +66,10 @@ namespace ospray {
 
     const int32 maxDepth = getParam1i("maxDepth", 20);
     const float minContribution = getParam1f("minContribution", 0.01f);
+    const float maxRadiance = getParam1f("maxContribution", getParam1f("maxRadiance", inf));
     Texture2D *backplate = (Texture2D*)getParamObject("backplate", NULL);
 
-    ispc::PathTracer_set(getIE(), maxDepth, minContribution,
+    ispc::PathTracer_set(getIE(), maxDepth, minContribution, maxRadiance,
                          backplate ? backplate->getIE() : NULL,
                          lightPtr, lightArray.size());
   }

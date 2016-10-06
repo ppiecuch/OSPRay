@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,12 +14,14 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/math/vec.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/fb/FrameBuffer.ih"
-#include "ospray/render/util.ih"
-#include "ospray/lights/Light.ih"
-#include "ospray/render/Renderer.ih"
+#pragma once
+
+#include "math/vec.ih"
+#include "common/Model.ih"
+#include "fb/FrameBuffer.ih"
+#include "render/util.ih"
+#include "lights/Light.ih"
+#include "render/Renderer.ih"
 
 #define MAX_LIGHTS 1000
 
@@ -28,6 +30,7 @@ struct PathTracer {
 
   int32 maxDepth;
   float minContribution;
+  float maxRadiance;
   Texture2D* uniform backplate;
 
   const uniform Light *uniform *uniform lights;

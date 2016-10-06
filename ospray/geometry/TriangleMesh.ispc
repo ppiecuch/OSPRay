@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2015 Intel Corporation                                    //
+// Copyright 2009-2016 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,13 +16,83 @@
 
 // ospray
 #include "TriangleMesh.ih"
-#include "ospray/common/Model.ih"
-#include "ospray/math/LinearSpace.ih"
+#include "common/Model.ih"
+#include "math/LinearSpace.ih"
 
 // embree
 #include "embree2/rtcore.isph"
 #include "embree2/rtcore_geometry.isph"
 #include "embree2/rtcore_geometry_user.isph"
+
+#define BITS 20
+
+inline vec3i gather64_vec3i(const int *uniform const base, 
+                            const uniform int stride, 
+                            const varying int index)
+{
+  vec3i v;
+
+  // special 64-bit safe code:
+  const int index_lo = index & ((1<<BITS)-1);
+  const int index_hi = index - index_lo;
+  // varying offset of lower bits:
+  const varying int scaledIndexLo = stride * index_lo;
+  foreach_unique(hi in index_hi) {
+    //uniform offset for upper bits:
+    uniform int64 scaledIndexHi = (int64)hi * (int64)stride;
+    // properly shifted base address (shifted by 64-bits)
+    const int *uniform base_hi = base + scaledIndexHi;
+    
+    v.x = base_hi[scaledIndexLo+0];
+    v.y = base_hi[scaledIndexLo+1];
+    v.z = base_hi[scaledIndexLo+2];
+  }
+  return v;
+}
+
+inline vec3f gather64_vec3f(const float *uniform const base, 
+                            const uniform int stride, 
+                            const varying int index)
+{
+  vec3f v;
+
+  // special 64-bit safe code:
+  const int index_lo = index & ((1<<BITS)-1);
+  const int index_hi = index - index_lo;
+  // varying offset of lower bits:
+  const varying int scaledIndexLo = stride * index_lo;
+  foreach_unique(hi in index_hi) {
+    //uniform offset for upper bits:
+    uniform int64 scaledIndexHi = (int64)hi * (int64)stride;
+    // properly shifted base address (shifted by 64-bits)
+    const float *uniform base_hi = base + scaledIndexHi;
+    
+    v.x = base_hi[scaledIndexLo+0];
+    v.y = base_hi[scaledIndexLo+1];
+    v.z = base_hi[scaledIndexLo+2];
+  }
+  return v;
+}
+
+inline vec4f gather64_vec4f(const vec4f *uniform const base, 
+                            const varying int index)
+{
+  vec4f v;
+
+  // special 64-bit safe code:
+  const int index_lo = index & ((1<<BITS)-1);
+  const int index_hi = index - index_lo;
+  // varying offset of lower bits:
+  const varying int scaledIndexLo = index_lo;
+  foreach_unique(hi in index_hi) {
+    //uniform offset for upper bits:
+    uniform int64 scaledIndexHi = (int64)hi;
+    // properly shifted base address (shifted by 64-bits)
+    const vec4f *uniform base_hi = base + scaledIndexHi;
+    v = base_hi[scaledIndexLo];
+  }
+  return v;
+}
 
 static void TriangleMesh_postIntersect(uniform Geometry *uniform _self,
                                        uniform Model    *uniform model,
@@ -32,14 +102,24 @@ static void TriangleMesh_postIntersect(uniform Geometry *uniform _self,
 {
   uniform TriangleMesh *uniform self = (uniform TriangleMesh *uniform)_self;
   dg.Ng = dg.Ns = ray.Ng;
-
+#if 1
+  const varying vec3i index = gather64_vec3i(self->index,self->idxSize,ray.primID);
+#else
   const varying int indexBase = self->idxSize * ray.primID;
   const varying vec3i index = make_vec3i(self->index[indexBase+0],
                                          self->index[indexBase+1],
                                          self->index[indexBase+2]);
+#endif
+
   const uniform float *uniform normal = self->normal;
   const uniform int32 norSize = self->norSize;
   if ((flags & DG_NS) && normal) {
+#if 1
+    dg.Ns
+      = (1.f-ray.u-ray.v) * gather64_vec3f(normal,self->norSize,index.x)
+      + ray.u * gather64_vec3f(normal,self->norSize,index.y)
+      + ray.v * gather64_vec3f(normal,self->norSize,index.z);
+#else
     const uniform vec3f *const varying n0ptr = (const uniform vec3f *)&normal[index.x * norSize];
     const uniform vec3f *const varying n1ptr = (const uniform vec3f *)&normal[index.y * norSize];
     const uniform vec3f *const varying n2ptr = (const uniform vec3f *)&normal[index.z * norSize];
@@ -47,15 +127,24 @@ static void TriangleMesh_postIntersect(uniform Geometry *uniform _self,
       = (1.f-ray.u-ray.v) * *n0ptr
       + ray.u * *n1ptr
       + ray.v * *n2ptr;
+#endif
   }
 
   if ((flags & DG_COLOR)) {
     uniform vec4f *uniform color = self->color;
     if (color) {
+
+#if 1
+      dg.color
+        = (1.f-ray.u-ray.v) * gather64_vec4f(color,index.x)
+        + ray.u * gather64_vec4f(color,index.y)
+        + ray.v * gather64_vec4f(color,index.z);
+#else
       dg.color
         = (1.f-ray.u-ray.v) * (color[index.x])
         + ray.u * (color[index.y])
         + ray.v * (color[index.z]);
+#endif
     }
   }
 
@@ -109,7 +198,8 @@ static void TriangleMesh_postIntersect(uniform Geometry *uniform _self,
     }
 
     if( self->materialList) {
-      dg.material = self->materialList[dg.materialID < 0 ? 0 : dg.materialID];
+      Material *myMat = self->materialList[dg.materialID < 0 ? 0 : dg.materialID];
+      dg.material = myMat;
     }
   }
 }
@@ -152,17 +242,6 @@ void TriangleMesh_Constructor(uniform TriangleMesh *uniform mesh,
   mesh->materialList = materialList;
   mesh->geom_materialID = geom_materialID;
 }
-
-#ifdef OSPRAY_INTERSECTION_FILTER
-static void intersectionFilter(void* uniform ptr,   /*!< pointer to user data */
-                               varying Ray &ray  /*!< intersection to filter */)
-{
-  uniform Geometry *uniform geom = (uniform Geometry *uniform)ptr;
-  if (ray.intersectionFilter) {
-    ray.intersectionFilter(geom,(varying Ray &)ray);
-  }
-}
-#endif
 
 export void *uniform TriangleMesh_create(void *uniform cppEquivalent)
 {
@@ -208,9 +287,4 @@ export void *uniform TriangleMesh_set(void *uniform _mesh,
                            (Material*uniform)material,
                            (Material*uniform*uniform)materialList,
                            prim_materialID);
-#ifdef OSPRAY_INTERSECTION_FILTER
- rtcSetUserData(model->embreeSceneHandle,geomID,mesh);
- rtcSetIntersectionFilterFunction(model->embreeSceneHandle,geomID,
-                                  (uniform RTCFilterFuncVarying)&intersectionFilter);
-#endif
 }
