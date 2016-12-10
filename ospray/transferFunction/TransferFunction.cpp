@@ -20,45 +20,47 @@
 // std
 #include <map>
 
+#define creatorFct trnCreatorFct
+
 namespace ospray {
 
   // Function pointer type for creating a concrete instance of a
   // subtype of this class.
-  typedef TransferFunction *(*creationFunctionPointer)();
+  typedef TransferFunction *(*creatorFct)();
 
   // Return a concrete instance of the requested subtype if the
   // creation function is already known.
-  std::map<std::string, creationFunctionPointer> symbolRegistry;
+  std::map<std::string, creatorFct> transferRegistry;
 
-  void TransferFunction::registerInstance(const std::string &type, creationFunctionPointer creationFunction)
+  void TransferFunction::registerTransferFunction(const std::string &type, TransferFunction *(*creationFunction)())
   {
-    symbolRegistry[type] = creationFunction;
+    transferRegistry[type] = creationFunction;
   }
 
-  TransferFunction *TransferFunction::createInstance(const std::string &type) {
+  TransferFunction *TransferFunction::createTransferFunction(const std::string &type) {
 
     // Return a concrete instance of the requested subtype if the creation function is already known.
-    if (symbolRegistry.count(type) > 0 && symbolRegistry[type] != NULL)
+    if (transferRegistry.count(type) > 0 && transferRegistry[type] != NULL)
     {
-    	TransferFunction *transferFunction = (*symbolRegistry[type])();
+    	TransferFunction *transferFunction = (*transferRegistry[type])();
     	if (transferFunction) transferFunction->managedObjectType = OSP_TRANSFER_FUNCTION;
     	return transferFunction;
     }
 
     // Otherwise construct the name of the creation function to look for.
-    std::string creationFunctionName = "ospray_create_transfer_function_" + type;
+    std::string creationFunctionName = "ospray_create_transfer_function__" + type;
 
     // Look for the named function.
-    symbolRegistry[type] = (creationFunctionPointer) getSymbol(creationFunctionName);
+    transferRegistry[type] = (creatorFct) getSymbol(creationFunctionName);
 
     // The named function may not be found if the requested subtype is not known.
-    if (!symbolRegistry[type] && ospray::logLevel >= 1) 
+    if (!transferRegistry[type] && ospray::logLevel >= 1) 
       std::cerr << "  ospray::TransferFunction  WARNING: unrecognized subtype '" 
                 << type << "'." << std::endl;
 
     // Create a concrete instance of the requested subtype.
     TransferFunction *transferFunction
-      = (symbolRegistry[type]) ? (*symbolRegistry[type])() : NULL;
+      = (transferRegistry[type]) ? (*transferRegistry[type])() : NULL;
 
     // Denote the subclass type in the ManagedObject base class.
     if (transferFunction) 
@@ -70,3 +72,4 @@ namespace ospray {
 
 } // ::ospray
 
+#undef creatorFct

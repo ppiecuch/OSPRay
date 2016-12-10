@@ -23,7 +23,16 @@
 // stl
 #include <map>
 
+#define creatorFct volCreatorFct
+
 namespace ospray {
+
+  // Function pointer type for creating a concrete instance of a subtype of
+  // this class.
+  typedef Volume *(*creatorFct)();
+
+  // Function pointers corresponding to each subtype.
+  static std::map<std::string, creatorFct> volumeRegistry;
 
   Volume::~Volume()
   {
@@ -39,35 +48,33 @@ namespace ospray {
     return("ospray::Volume");
   }
 
-  Volume *Volume::createInstance(const std::string &type)
+  void Volume::registerVolume(const std::string &type, Volume *(*creator)())
   {
-    // Function pointer type for creating a concrete instance of a subtype of
-    // this class.
-    typedef Volume *(*creationFunctionPointer)();
-
-    // Function pointers corresponding to each subtype.
-    static std::map<std::string, creationFunctionPointer> symbolRegistry;
-
+    volumeRegistry[type] = creator;
+  }
+  
+  Volume *Volume::createVolume(const std::string &type)
+  {
     // Find the creation function for the subtype if not already known.
-    if (symbolRegistry.count(type) == 0) {
+    if (volumeRegistry.count(type) == 0) {
 
       // Construct the name of the creation function to look for.
-      std::string creationFunctionName = "ospray_create_volume_" + type;
+      std::string creationFunctionName = "ospray_create_volume__" + type;
 
       // Look for the named function.
-      symbolRegistry[type] =
-          (creationFunctionPointer)getSymbol(creationFunctionName);
+      volumeRegistry[type] =
+          (creatorFct)getSymbol(creationFunctionName);
 
       // The named function may not be found if the requested subtype is not
       // known.
-      if (!symbolRegistry[type] && ospray::logLevel >= 1) {
+      if (!volumeRegistry[type] && ospray::logLevel >= 1) {
         std::cerr << "  ospray::Volume  WARNING: unrecognized subtype '" + type
                   << "'." << std::endl;
       }
     }
 
     // Create a concrete instance of the requested subtype.
-    Volume *volume = (symbolRegistry[type]) ? (*symbolRegistry[type])() : NULL;
+    Volume *volume = (volumeRegistry[type]) ? (*volumeRegistry[type])() : NULL;
 
     // Denote the subclass type in the ManagedObject base class.
     if (volume) volume->managedObjectType = OSP_VOLUME;
@@ -123,9 +130,33 @@ namespace ospray {
                                            getParam1i("gradientShadingEnabled",
                                                       0));
 
+    ispc::Volume_setPreIntegration(ispcEquivalent,
+                                       getParam1i("preIntegration",
+                                                  0));
+
+    ispc::Volume_setSingleShade(ispcEquivalent,
+                                   getParam1i("singleShade",
+                                              1));
+
+    ispc::Volume_setAdaptiveSampling(ispcEquivalent,
+                                   getParam1i("adaptiveSampling",
+                                              1));
+
+    ispc::Volume_setAdaptiveScalar(ispcEquivalent,
+                                 getParam1f("adaptiveScalar", 15.0f));
+
+    ispc::Volume_setAdaptiveMaxSamplingRate(ispcEquivalent,
+                                 getParam1f("adaptiveMaxSamplingRate", 0.7f));
+
+    ispc::Volume_setAdaptiveBacktrack(ispcEquivalent,
+                                 getParam1f("adaptiveBacktrack", 0.03f));
+
     // Set the recommended sampling rate for ray casting based renderers.
     ispc::Volume_setSamplingRate(ispcEquivalent,
                                  getParam1f("samplingRate", 1.0f));
+
+    vec3f specular = getParam3f("specular", vec3f(0.3f));
+    ispc::Volume_setSpecular(ispcEquivalent, (const ispc::vec3f &)specular);
 
     // Set the transfer function.
     TransferFunction *transferFunction =
@@ -144,3 +175,4 @@ namespace ospray {
 
 } // ::ospray
 
+#undef creatorFct

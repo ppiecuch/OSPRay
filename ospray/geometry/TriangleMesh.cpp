@@ -90,7 +90,7 @@ namespace ospray {
     this->normal = normalData ? (float*)normalData->data : NULL;
     this->color  = colorData ? (vec4f*)colorData->data : NULL;
     this->texcoord = texcoordData ? (vec2f*)texcoordData->data : NULL;
-    this->prim_materialID  = prim_materialIDData ? (uint32*)prim_materialIDData->data : NULL;
+    this->prim_materialID  = prim_materialIDData ? (uint32_t*)prim_materialIDData->data : NULL;
     this->materialList  = materialListData ? (ospray::Material**)materialListData->data : NULL;
     
     if (materialList && !ispcMaterialPtrs) {
@@ -155,7 +155,6 @@ namespace ospray {
                                numTris,numVerts);
 #ifndef NDEBUG
     {
-      cout << "#osp/trimesh: Verifying index buffer ... " << endl;
       for (int i=0;i<numTris*numCompsInTri;i+=numCompsInTri) {
         if (!inRange(index[i+0],0,numVerts) || 
             !inRange(index[i+1],0,numVerts) || 
@@ -168,7 +167,6 @@ namespace ospray {
           throw std::runtime_error("vertex index not in range! (broken input model, refusing to handle that)");
         }
       }
-      cout << "#osp/trimesh: Verifying vertex buffer ... " << endl;
       for (int i=0;i<numVerts*numCompsInVtx;i+=numCompsInVtx) {
         if (std::isnan(vertex[i+0]) || 
             std::isnan(vertex[i+1]) || 
@@ -187,7 +185,7 @@ namespace ospray {
 
     bounds = empty;
     
-    for (int i=0;i<numVerts*numCompsInVtx;i+=numCompsInVtx) 
+    for (uint32_t i = 0; i < numVerts*numCompsInVtx; i+=numCompsInVtx)
       bounds.extend(*(vec3f*)(vertex + i));
 
     if (logLevel >= 2) 
@@ -210,7 +208,7 @@ namespace ospray {
                            geom_materialID,
                            getMaterial()?getMaterial()->getIE():NULL,
                            ispcMaterialPtrs,
-                           (uint32*)prim_materialID);
+                           (uint32_t*)prim_materialID);
   }
 
   OSP_REGISTER_GEOMETRY(TriangleMesh,triangles);

@@ -32,6 +32,7 @@ IF(POLICY CMP0054)
 ENDIF()
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
+<<<<<<< HEAD
 ## Let Qt be found:
 SET(CMAKE_PREFIX_PATH "/Developer/Qt/5.6/clang_64")
 SET(OSPRAY_VERSION_MAJOR 1)
@@ -79,20 +80,24 @@ ENDIF()
 SET(OSPRAY_BINARY_DIR ${PROJECT_BINARY_DIR})
 SET(LIBRARY_OUTPUT_PATH ${OSPRAY_BINARY_DIR})
 SET(EXECUTABLE_OUTPUT_PATH ${OSPRAY_BINARY_DIR})
+=======
+>>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17
 
 ##############################################################
 # CMake modules and macro files
 ##############################################################
 
-INCLUDE(cmake/ospray.cmake)
-INCLUDE(cmake/ispc.cmake)
-INCLUDE(cmake/mpi.cmake)
+INCLUDE(ospray_macros)
+INCLUDE(ospray_options)
+INCLUDE(ispc)
+INCLUDE(mpi)
 
 IF(NOT WIN32)
   INCLUDE(cmake/doxygen.cmake)
 ENDIF()
 
 ##############################################################
+<<<<<<< HEAD
 # OSPRay specific build options and configuration selection
 ##############################################################
 
@@ -128,53 +133,45 @@ SET(OSPRAY_EMBREE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ospray/embree-v${EMBREE_TREE}
 INCLUDE(package)
 
 ##############################################################
+=======
+>>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17
 # the OSPRay 'common' library
 ##############################################################
 
-CONFIGURE_OSPRAY()
-
-SET(OSPRAY_TARGET "intel64")
-ADD_SUBDIRECTORY(ospcommon builddir/ospray_common/intel64)
-IF (OSPRAY_MIC)
-  SET(OSPRAY_TARGET "mic")
-  ADD_SUBDIRECTORY(ospcommon builddir/ospray_common/mic)
-ENDIF()
+OSPRAY_ADD_SUBDIRECTORY(ospcommon)
 
 ##############################################################
 # the OSPRay library
 ##############################################################
 
-SET(OSPRAY_TARGET "intel64")
-ADD_SUBDIRECTORY(ospray builddir/ospray/intel64)
-IF (OSPRAY_MIC)
-  SET(OSPRAY_TARGET "mic")
-  ADD_SUBDIRECTORY(ospray builddir/ospray/mic)
-ENDIF()
+OSPRAY_ADD_SUBDIRECTORY(ospray)
 
 ##############################################################
 # OSPRay modules
 ##############################################################
 
-SET(OSPRAY_TARGET "intel64")
-ADD_SUBDIRECTORY(modules builddir/modules/intel64)
-IF (OSPRAY_MIC)
-  SET(OSPRAY_TARGET "mic")
-  ADD_SUBDIRECTORY(modules builddir/modules/mic)
+OPTION(OSPRAY_ENABLE_MODULES "Enable the 'modules' subtree in the build." ON)
+MARK_AS_ADVANCED(OSPRAY_ENABLE_MODULES)
+
+IF (OSPRAY_ENABLE_MODULES)
+  OSPRAY_ADD_SUBDIRECTORY(modules)
 ENDIF()
 
 ##############################################################
 # OSPRay sample apps; at the end: they may need modules
 ##############################################################
 
-SET(OSPRAY_TARGET "intel64")
-ADD_SUBDIRECTORY(apps builddir/apps/intel64)
-IF (OSPRAY_MIC)
-  SET(OSPRAY_TARGET "mic")
-  ADD_SUBDIRECTORY(apps builddir/apps/mic)
+OPTION(OSPRAY_ENABLE_APPS "Enable the 'apps' subtree in the build." ON)
+MARK_AS_ADVANCED(OSPRAY_ENABLE_APPS)
+
+IF (OSPRAY_ENABLE_APPS)
+  # NOTE(jda) - Don't use OSPRAY_ADD_SUBDIRECTORY() macro as we don't have any
+  #             KNC code in the apps subdirectory to compile.
+  ADD_SUBDIRECTORY(apps)
 ENDIF()
 
-# create a configure file that both ospray and ispc can read the cmake config from
-# needs to be at the end, after all cache variables have been set
+# create a configure file that both ospray and ispc can read the cmake config
+# from needs to be at the end, after all cache variables have been set
 CONFIGURE_FILE(ospray/common/OSPConfig.h.in OSPConfig.h)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/OSPConfig.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ospray

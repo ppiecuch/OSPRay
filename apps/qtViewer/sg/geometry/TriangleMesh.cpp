@@ -25,7 +25,7 @@ namespace ospray {
     box3f TriangleMesh::getBounds()
     {
       box3f bounds = empty;
-      for (int i=0;i<vertex->getSize();i++)
+      for (uint32_t i = 0; i < vertex->getSize(); i++)
         bounds.extend(vertex->get3f(i));
       return bounds;
     }
@@ -34,7 +34,7 @@ namespace ospray {
     box3f PTMTriangleMesh::getBounds()
     {
       box3f bounds = empty;
-      for (int i=0;i<vertex->getSize();i++)
+      for (uint32_t i = 0; i < vertex->getSize(); i++)
         bounds.extend(vertex->get3f(i));
       return bounds;
     }
@@ -146,7 +146,7 @@ namespace ospray {
       // want to do a 'real' material
       OSPMaterial mat = ospNewMaterial(ctx.integrator?ctx.integrator->getOSPHandle():NULL,"default");
       if (mat) {
-        vec3f kd(.7f);
+        vec3f kd(material?material->ospGet3f("Kd", vec3f(.7f)));
         vec3f ks(.3f);
         ospSet3fv(mat,"kd",&kd.x);
         ospSet3fv(mat,"ks",&ks.x);
@@ -156,7 +156,7 @@ namespace ospray {
       
       std::vector<OSPMaterial> ospMaterials;
       for (size_t i = 0; i < materialList.size(); i++) {
-        assert(materialList[i] != NULL);
+        assert(materialList[i].ptr != NULL);
         //If the material hasn't already been 'rendered' ensure that it is.
         materialList[i]->render(ctx);
         //Push the 'rendered' material onto the list

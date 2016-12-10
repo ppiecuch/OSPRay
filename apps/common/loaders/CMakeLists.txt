@@ -18,6 +18,7 @@ INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
 
 CONFIGURE_OSPRAY()
 
+<<<<<<< HEAD
 <<<<<<< HEAD:apps/modelViewer/CMakeLists.txt
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/apps/common)
@@ -42,6 +43,9 @@ TARGET_LINK_LIBRARIES(ospModelViewer
 INSTALL(TARGETS ospModelViewer DESTINATION bin)
 =======
 OSPRAY_CREATE_LIBRARY(loaders
+=======
+OSPRAY_CREATE_LIBRARY(ospray_loaders
+>>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17
   ObjectFile.cpp
   OSPObjectFile.cpp
   PLYTriangleMeshFile.cpp

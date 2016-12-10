@@ -15,10 +15,11 @@
 ## ======================================================================== ##
 
 IF (OSPRAY_MODULE_DISPLAY_WALD)
-	INCLUDE_DIRECTORIES(${DISPLAY_WALD_INCLUDE_DIR})
-	ADD_DEFINITIONS(-DOSPRAY_DISPLAY_WALD=1)
+  INCLUDE_DIRECTORIES(${DISPLAY_WALD_INCLUDE_DIR})
+  ADD_DEFINITIONS(-DOSPRAY_DISPLAY_WALD=1)
 ENDIF()
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 INCLUDE(${PROJECT_SOURCE_DIR}/cmake/glut.cmake)
 
@@ -42,9 +43,15 @@ SET(LIBS
 >>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
 OSPRAY_CREATE_LIBRARY(glut3d
+=======
+OSPRAY_CREATE_LIBRARY(ospray_glut3d
+>>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17
   Glut3dExport.h
   glut3D.cpp
   OSPGlutViewer.cpp
-	LINK
-	${LIBS}
+LINK
+  ospray
+  ospray_common
+  ${OPENGL_LIBRARIES}
+  ${GLUT_LIBRARIES}
 )

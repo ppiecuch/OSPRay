@@ -46,6 +46,6 @@ ENDIF (NOT THIS_IS_MIC)
   LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/modules/opengl)
 >>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
-  OSPRAY_CREATE_LIBRARY(module_opengl_util util.cpp
+  OSPRAY_CREATE_LIBRARY(ospray_module_opengl_util util.cpp
     LINK ospray ${OPENGL_LIBRARIES})
 ENDIF()

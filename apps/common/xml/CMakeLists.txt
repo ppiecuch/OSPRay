@@ -15,6 +15,7 @@
 ## ======================================================================== ##
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 CONFIGURE_OSPRAY()
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray)
@@ -33,3 +34,6 @@ INSTALL(TARGETS ospray_xml${OSPRAY_LIB_SUFFIX} DESTINATION lib)
 =======
 OSPRAY_CREATE_LIBRARY(xml XML.cpp LINK ospray_common)
 >>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
+=======
+OSPRAY_CREATE_LIBRARY(ospray_xml XML.cpp LINK ospray_common)
+>>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17

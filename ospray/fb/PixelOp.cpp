@@ -31,6 +31,7 @@ namespace ospray {
   PixelOp::Instance *PixelOp::createInstance(FrameBuffer *fb,
                                              PixelOp::Instance *prev)
   {
+    UNUSED(fb, prev);
     return nullptr;
   }
 

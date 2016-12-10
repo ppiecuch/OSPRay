@@ -272,8 +272,7 @@ namespace ospray {
       Assert(object != nullptr  && "invalid object handle");
       Assert(bufName != nullptr && "invalid identifier for object parameter");
 
-      ManagedObject::Param *param = object->findParam(bufName,1);
-      param->set(f);
+      object->findParam(bufName,1)->set(f);
     }
 
     /*! Copy data into the given volume. */
@@ -463,7 +462,7 @@ namespace ospray {
     OSPVolume LocalDevice::newVolume(const char *type)
     {
       Assert(type != nullptr && "invalid volume type identifier");
-      Volume *volume = Volume::createInstance(type);
+      Volume *volume = Volume::createVolume(type);
       if (!volume) {
         if (ospray::debugMode) {
           throw std::runtime_error("unknown volume type '" +
@@ -480,7 +479,7 @@ namespace ospray {
     OSPTransferFunction LocalDevice::newTransferFunction(const char *type)
     {
       Assert(type != nullptr && "invalid transfer function type identifier");
-      auto *transferFunction = TransferFunction::createInstance(type);
+      auto *transferFunction = TransferFunction::createTransferFunction(type);
       if (!transferFunction) {
         if (ospray::debugMode) {
           throw std::runtime_error("unknown transfer function type '" +

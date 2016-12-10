@@ -45,7 +45,8 @@ static void gluLookAt (double px, double py, double pz, double fx, double fy, do
 	mat[1] = d[0]; mat[5] = d[1]; mat[ 9] = d[2]; mat[13] = -(mat[1]*px + mat[5]*py + mat[ 9]*pz);
 	mat[2] = f[0]; mat[6] = f[1]; mat[10] = f[2]; mat[14] = -(mat[2]*px + mat[6]*py + mat[10]*pz);
 	mat[3] =  0.0; mat[7] =  0.0; mat[11] =  0.0; mat[15] = 1.0;
-	glLoadMatrixd(mat);
+	
+    glLoadMatrixd(mat);
 }
 
 namespace ospray {
@@ -398,7 +399,9 @@ namespace ospray {
           for (int y=0;y<Ny;y++) {
             const float t = (y+0.f)/Ny*2.f*M_PI;
             const float f = (x+0.f)/Nx*2.f*M_PI;
-            vtx[x][y] = vec3f(cos(t)*sin(f),sin(t)*sin(f),cos(f));
+            vtx[x][y] = vec3f(ospcommon::cos(t)*ospcommon::sin(f),
+                              ospcommon::sin(t)*ospcommon::sin(f),
+                              ospcommon::cos(f));
             txt[x][y] = vec2f(x/float(Nx),y/float(Ny));
             vec3f c = (((x/4)+(y/4))%2) ? color_bright : color_dark;
             col[x][y] = vec3f(c);

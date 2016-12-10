@@ -30,18 +30,12 @@
 //!  at build time.  Rather, the subclass can be defined in an external
 //!  module and registered with OSPRay using this macro.
 //! 
-<<<<<<< HEAD:modules/loaders/TriangleMeshFile.h
-#define OSP_REGISTER_TRIANGLEMESH_FILE(InternalClass, ExternalName)			\
-  extern "C" OSPTriangleMesh ospray_import_trianglemesh_file_##ExternalName(const std::string &filename, OSPTriangleMesh triangleMesh) \
-    { InternalClass file(filename);  return(file.importTriangleMesh(triangleMesh)); } \
-  extern "C" void register_plugin_instance_##ExternalName() {				\
-    TriangleMeshFile::registerTriangleMesh(#ExternalName, 					\
-		ospray_import_trianglemesh_file_##ExternalName); }
-=======
-#define OSP_REGISTER_TRIANGLEMESH_FILE(InternalClass, ExternalName)           \
+#define OSP_REGISTER_TRIANGLEMESH_FILE(InternalClass, ExternalName)			          \
   extern "C" OSPGeometry ospray_import_trianglemesh_file_##ExternalName(const std::string &filename, OSPGeometry triangleMesh) \
-    { InternalClass file(filename);  return(file.importTriangleMesh(triangleMesh)); }
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708:apps/common/loaders/TriangleMeshFile.h
+    { InternalClass file(filename);  return(file.importTriangleMesh(triangleMesh)); } \
+  extern "C" void register_plugin_instance_##ExternalName() {                         \
+    TriangleMeshFile::registerTriangleMesh(#ExternalName,                             \
+		ospray_import_trianglemesh_file_##ExternalName); }
 
 //! \brief The TriangleMeshFile class is an abstraction for the concrete
 //!  object which is used to load triangle mesh data from a file.
@@ -58,16 +52,12 @@ public:
   //! Destructor.
   virtual ~TriangleMeshFile() {}
 
-<<<<<<< HEAD:modules/loaders/TriangleMeshFile.h
-  //! Create a TriangleMeshFile object of the subtype given by the file extension and import the triangle mesh.
-  static OSPTriangleMesh importTriangleMesh(const std::string &filename, OSPTriangleMesh triangleMesh);
   static void registerTriangleMesh(const std::string &type, OSPTriangleMesh (*creationFunction)(const std::string &filename, OSPTriangleMesh triangleMesh));
-=======
+
   //! Create a TriangleMeshFile object of the subtype given by the file
   //! extension and import the triangle mesh.
   static OSPGeometry importTriangleMesh(const std::string &filename,
                                         OSPGeometry triangleMesh);
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708:apps/common/loaders/TriangleMeshFile.h
 
   //! Import the triangle mesh specification and data.
   virtual OSPGeometry importTriangleMesh(OSPGeometry triangleMesh) = 0;

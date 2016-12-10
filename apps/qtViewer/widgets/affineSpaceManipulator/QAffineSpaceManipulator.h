@@ -165,7 +165,7 @@ namespace ospray {
 
       //! this fct gets called when the user triggers a 'pick' event (by clicking with the pick modifier key pressed)
       virtual void pick(QMouseEvent *event)
-      { std::cout << "pcking at " << event->pos().x() << "." << event->pos().y() << std::endl; }
+      { std::cout << "picking at " << event->pos().x() << "." << event->pos().y() << std::endl; }
 
     protected:
 

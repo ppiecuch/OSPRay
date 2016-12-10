@@ -14,15 +14,6 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-<<<<<<< HEAD
-IF (NOT OSPRAY_MODULE_LOADERS)
-  message(FATAL_ERROR "The 'loaders' module must be enabled to build the 'ospVolumeViewer' application.")
-ENDIF (NOT OSPRAY_MODULE_LOADERS)
-
-ADD_DEFINITIONS(-DOSPRAY_MODULE_LOADERS)
-
-=======
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 IF (NOT OSPRAY_MODULE_OPENGL_UTIL)
   message(FATAL_ERROR "The 'OpenGL util' module must be enabled to build the 'ospVolumeViewer' application.")
 ENDIF()
@@ -63,14 +54,8 @@ SET(SRCS ${SRCS}
   SliceWidget.cpp
   TransferFunctionEditor.cpp
   VolumeViewer.cpp
-<<<<<<< HEAD
   
   # moc headers
-=======
-)
-
-SET(MOC_HEADERS
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
   IsosurfaceEditor.h
   IsovalueWidget.h
   LightEditor.h
@@ -87,19 +72,11 @@ SET(MOC_HEADERS
 
 SET(CMAKE_AUTOMOC ON)
 
-<<<<<<< HEAD
-ADD_EXECUTABLE(ospVolumeViewer ${SRCS})
-TARGET_LINK_LIBRARIES(ospVolumeViewer ${LIBS})
-QT5_USE_MODULES(ospVolumeViewer Widgets)
-# ------------------------------------------------------------
-INSTALL(TARGETS ospVolumeViewer DESTINATION bin)
-# ------------------------------------------------------------
-
-=======
-OSPRAY_CREATE_APPLICATION(VolumeViewer
+OSPRAY_CREATE_APPLICATION(ospVolumeViewer
   ${SRCS}
   ${MOC_OUTFILES}
 LINK
   ${LIBS} 
 )
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
+
+QT5_USE_MODULES(ospVolumeViewer Widgets)

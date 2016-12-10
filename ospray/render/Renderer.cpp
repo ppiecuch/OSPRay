@@ -35,6 +35,11 @@ namespace ospray {
 
   std::map<std::string, creatorFct> rendererRegistry;
 
+  void Renderer::registerRenderer(const char *identifier, creatorFct creator)
+  {
+	rendererRegistry[identifier] = creator;
+  }
+
   void Renderer::commit()
   {
     epsilon = getParam1f("epsilon", 1e-6f);
@@ -83,11 +88,6 @@ namespace ospray {
         v.push_back(it->first);
     }
     return v;
-  }
-
-  void Renderer::registerRenderer(const char *identifier, creatorFct creator)
-  {
-	rendererRegistry[identifier] = creator;
   }
 
   Renderer *Renderer::createRenderer(const char *_type)
@@ -148,6 +148,7 @@ namespace ospray {
   void *Renderer::beginFrame(FrameBuffer *fb)
   {
     this->currentFB = fb;
+    fb->beginFrame();
     return ispc::Renderer_beginFrame(getIE(),fb->getIE());
   }
 

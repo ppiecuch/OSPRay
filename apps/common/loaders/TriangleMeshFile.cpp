@@ -18,38 +18,24 @@
 #include <map>
 #include "common/common.h"
 
-<<<<<<< HEAD:modules/loaders/TriangleMeshFile.cpp
 // Function pointer type for creating a concrete instance of a subtype of this class.
-typedef OSPTriangleMesh (*creationFunctionPointer)(const std::string &filename, OSPTriangleMesh triangleMesh);
+typedef OSPTriangleMesh (*tmeshCreationFunctionPointer)(const std::string &filename, OSPGeometry triangleMesh);
 
 // Function pointers corresponding to each subtype.
-static std::map<std::string, creationFunctionPointer> symbolRegistry;
+static std::map<std::string, tmeshCreationFunctionPointer> symbolRegistry;
 
 
-void TriangleMeshFile::registerTriangleMesh(const std::string &type, creationFunctionPointer creationFunction)
+void TriangleMeshFile::registerTriangleMesh(const std::string &type, tmeshCreationFunctionPointer creationFunction)
 {
 	symbolRegistry[type] = creationFunction;
 }
 
-OSPTriangleMesh TriangleMeshFile::importTriangleMesh(const std::string &filename, OSPTriangleMesh triangleMesh)
-=======
 OSPGeometry TriangleMeshFile::importTriangleMesh(const std::string &filename,
                                                  OSPGeometry triangleMesh)
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708:apps/common/loaders/TriangleMeshFile.cpp
 {
   // Attempt to get the absolute file path.
   std::string fullfilename = getFullFilePath(filename);
 
-<<<<<<< HEAD:modules/loaders/TriangleMeshFile.cpp
-=======
-  // Function pointer type for creating a concrete instance of a subtype of this class.
-  typedef OSPGeometry (*creationFunctionPointer)(const std::string &filename,
-                                                 OSPGeometry triangleMesh);
-
-  // Function pointers corresponding to each subtype.
-  static std::map<std::string, creationFunctionPointer> symbolRegistry;
-
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708:apps/common/loaders/TriangleMeshFile.cpp
   // The subtype string is the file extension.
   std::string type = filename.substr(filename.find_last_of(".") + 1);
 
@@ -60,7 +46,7 @@ OSPGeometry TriangleMeshFile::importTriangleMesh(const std::string &filename,
   std::string creationFunctionName = "ospray_import_trianglemesh_file_" + std::string(type);
 
   // Look for the named function.
-  symbolRegistry[type] = (creationFunctionPointer) ospcommon::getSymbol(creationFunctionName);
+  symbolRegistry[type] = (tmeshCreationFunctionPointer) ospcommon::getSymbol(creationFunctionName);
 
   // The named function may not be found if the requested subtype is not known.
   if (!symbolRegistry[type]) std::cerr << "  ospray_module_loaders::TriangleMeshFile  WARNING: unrecognized file type '" + type + "'." << std::endl;

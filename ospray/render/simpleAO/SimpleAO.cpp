@@ -28,8 +28,8 @@ namespace ospray {
   SimpleAO::SimpleAO(int defaultNumSamples)
     : defaultNumSamples(defaultNumSamples)
   {
-    ispcEquivalent = ispc::SimpleAO_create(this,NULL,NULL);
     managedObjectType = OSP_RENDERER; // this is a renderer
+    ispcEquivalent = ispc::SimpleAO_create(this);
   }
 
   /*! \brief create a material of given type */
@@ -58,26 +58,13 @@ namespace ospray {
   // OSP_REGISTER_RENDERER(SimpleAO, ao);
 
   /*! \note Reintroduce aoX renderers for compatibility, they should be
-            depricated!*/
-
-#define OSP_REGISTER_AO_RENDERER(external_name, nSamples)	\
-  extern "C" OSPRAY_INTERFACE                              	\
-  Renderer *ospray_create_renderer__##external_name()       \
-  {                                                         \
-    SimpleAO *renderer = new SimpleAO(nSamples);            \
-    return renderer;                                        \
-  }															\
-  extern "C" void register_plugin_instance_##external_name() { \
-    Renderer::registerRenderer(#external_name, 				\
-		ospray_create_renderer__##external_name);			\
-  }
-
-  OSP_REGISTER_AO_RENDERER(ao,   4 );
-  OSP_REGISTER_AO_RENDERER(ao1,  1 );
-  OSP_REGISTER_AO_RENDERER(ao2,  2 );
-  OSP_REGISTER_AO_RENDERER(ao4,  4 );
-  OSP_REGISTER_AO_RENDERER(ao8,  8 );
-  OSP_REGISTER_AO_RENDERER(ao16, 16);
+            deprecated!*/
+  OSP_REGISTER_RENDERER(SimpleAO(4), ao);
+  OSP_REGISTER_RENDERER(SimpleAO(1), ao1);
+  OSP_REGISTER_RENDERER(SimpleAO(2), ao2);
+  OSP_REGISTER_RENDERER(SimpleAO(4), ao4);
+  OSP_REGISTER_RENDERER(SimpleAO(8), ao8);
+  OSP_REGISTER_RENDERER(SimpleAO(16), ao16);
 
 } // ::ospray
 

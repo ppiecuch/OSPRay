@@ -18,12 +18,12 @@
 #include <map>
 
 // Function pointer type for creating a concrete instance of a subtype of this class.
-typedef OSPVolume (*creationFunctionPointer)(const std::string &filename, OSPVolume volume);
+typedef OSPVolume (*volCreationFunctionPointer)(const std::string &filename, OSPVolume volume);
 
 // Function pointers corresponding to each subtype.
-static std::map<std::string, creationFunctionPointer> symbolRegistry;
+static std::map<std::string, volCreationFunctionPointer> symbolRegistry;
 
-void VolumeFile::registerVolume(const std::string &type, creationFunctionPointer creationFunction)
+void VolumeFile::registerVolume(const std::string &type, volCreationFunctionPointer creationFunction)
 {
 	symbolRegistry[type] = creationFunction;
 }
@@ -44,7 +44,7 @@ OSPVolume VolumeFile::importVolume(const std::string &filename, OSPVolume volume
   std::string creationFunctionName = "ospray_import_volume_file_" + std::string(type);
 
   // Look for the named function.
-  symbolRegistry[type] = (creationFunctionPointer) ospcommon::getSymbol(creationFunctionName);
+  symbolRegistry[type] = (volCreationFunctionPointer) ospcommon::getSymbol(creationFunctionName);
 
   // The named function may not be found of the requested subtype is not known.
   if (!symbolRegistry[type]) std::cerr << "  ospray_module_loaders::VolumeFile  WARNING: unrecognized file type '" + type + "'." << std::endl;
