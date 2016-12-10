@@ -90,7 +90,6 @@ SET(EXECUTABLE_OUTPUT_PATH ${OSPRAY_BINARY_DIR})
 INCLUDE(ospray_macros)
 INCLUDE(ospray_options)
 INCLUDE(ispc)
-INCLUDE(mpi)
 
 IF(NOT WIN32)
   INCLUDE(cmake/doxygen.cmake)
