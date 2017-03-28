@@ -25,14 +25,9 @@
 #include "ospcommon/LinearSpace.h"
 // qt
 #include <QtWidgets>
-#if 1
-# include <QOpenGLWidget>
-# define GLWidget QOpenGLWidget
-# define updateGL update
-#else
-# include <QGLWidget>
-# define GLWidget QGLWidget
-#endif
+#include <QOpenGLWidget>
+#define GLWidget QOpenGLWidget
+#define updateGL update
 
 namespace ospray {
   namespace viewer {
