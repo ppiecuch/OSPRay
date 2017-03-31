@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2016 Intel Corporation                                    //
+// Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -47,14 +47,14 @@ Light_SampleRes PointLight_sample(const uniform Light* uniform super,
   res.dir = dir * invdist;
   res.dist = dist2 * invdist;
 
-  res.pdf = inf; // per default we always take this res
+  res.pdf = inf; // per default we always take this sample
 
   // convert from power to radiance by attenuating by distance^2
   res.weight = self->power * sqr(invdist);
   const float sinTheta = self->radius * invdist;
 
   if ((self->radius > 0.f) & (sinTheta > 0.005f)) {
-    // res surface of sphere as seen by hit point -> cone of directions
+    // sample surface of sphere as seen by hit point -> cone of directions
     // for very small cones treat as point light, because float precision is not good enough
     if (sinTheta < 1.f) {
       const float cosTheta = sqrt(1.f - sinTheta * sinTheta);
@@ -80,6 +80,7 @@ Light_SampleRes PointLight_sample(const uniform Light* uniform super,
 Light_EvalRes PointLight_eval(const uniform Light* uniform super,
                               const DifferentialGeometry& dg,
                               const vec3f& dir,
+                              const float minDist,
                               const float maxDist)
 {
   const PointLight* uniform self = (PointLight* uniform)super;
@@ -98,7 +99,7 @@ Light_EvalRes PointLight_eval(const uniform Light* uniform super,
       const float t_near = (b - sqrt(radical)) / (2.f*a);
       const float t_far = (b + sqrt(radical)) / (2.f*a);
 
-      if (t_far > 0.0f & t_near <= maxDist) {
+      if (t_far > minDist & t_near <= maxDist) {
         // TODO: handle interior case
 
         const float sinTheta2 = sqr(self->radius) * rcp(centerDist2);

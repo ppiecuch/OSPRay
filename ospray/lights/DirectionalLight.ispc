@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2016 Intel Corporation                                    //
+// Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -57,6 +57,7 @@ Light_SampleRes DirectionalLight_sample(const uniform Light* uniform super,
 Light_EvalRes DirectionalLight_eval(const uniform Light* uniform super,
                                     const DifferentialGeometry&,
                                     const vec3f& dir,
+                                    const float,
                                     const float maxDist)
 {
   uniform DirectionalLight* uniform self = (uniform DirectionalLight* uniform)super;

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2016 Intel Corporation                                    //
+// Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,10 +16,7 @@
 
 // ospray
 #include "Renderer.h"
-#include "../common/Library.h"
-// stl
-#include <map>
-#include <vector>
+#include "common/Util.h"
 // ispc exports
 #include "Renderer_ispc.h"
 // ospray
@@ -28,12 +25,11 @@
 #define creatorFct rdrCreatorFct
 
 namespace ospray {
-  using std::cout;
-  using std::endl;
 
-  typedef Renderer *(*creatorFct)();
-
-  std::map<std::string, creatorFct> rendererRegistry;
+  std::string Renderer::toString() const 
+  {
+    return "ospray::Renderer";
+  }
 
   void Renderer::registerRenderer(const char *identifier, creatorFct creator)
   {
@@ -46,15 +42,15 @@ namespace ospray {
     spp = getParam1i("spp", 1);
     errorThreshold = getParam1f("varianceThreshold", 0.f);
     backgroundEnabled = getParam1i("backgroundEnabled", 1);
-    maxDepthTexture = (Texture2D*)getParamObject("maxDepthTexture", NULL);
+    maxDepthTexture = (Texture2D*)getParamObject("maxDepthTexture", nullptr);
     model = (Model*)getParamObject("model", getParamObject("world"));
 
     if (maxDepthTexture) {
       if (maxDepthTexture->type != OSP_TEXTURE_R32F
           || !(maxDepthTexture->flags & OSP_TEXTURE_FILTER_NEAREST)) {
         static WarnOnce warning("expected maxDepthTexture provided to the "
-                                "renderer to be type OSP_FLOAT and have the "
-                                "OSP_TEXTURE_FILTER_NEAREST flag");
+                                "renderer to be type OSP_TEXTURE_R32F and have "
+                                "the OSP_TEXTURE_FILTER_NEAREST flag");
       }
     }
 
@@ -70,74 +66,19 @@ namespace ospray {
       }
 
       ispc::Renderer_set(getIE(),
-                         model ?  model->getIE() : NULL,
-                         camera ?  camera->getIE() : NULL,
+                         model ? model->getIE() : nullptr,
+                         camera ? camera->getIE() : nullptr,
                          epsilon,
                          spp,
                          backgroundEnabled,
                          (ispc::vec3f&)bgColor,
-                         maxDepthTexture ? maxDepthTexture->getIE() : NULL);
+                         maxDepthTexture ? maxDepthTexture->getIE() : nullptr);
     }
   }
 
-  std::vector<std::string> Renderer::registeredRenderers()
+  Renderer *Renderer::createRenderer(const char *type)
   {
-    std::vector<std::string> v;
-    for(std::map<std::string, creatorFct>::iterator it = rendererRegistry.begin(); it != rendererRegistry.end(); ++it) 
-    {
-        v.push_back(it->first);
-    }
-    return v;
-  }
-
-  Renderer *Renderer::createRenderer(const char *_type)
-  {
-    std::string type = _type;
-    size_t atSign = type.find_first_of('@');
-    if (atSign != std::string::npos) {
-      std::string libName = type.substr(atSign + 1);
-      type = type.substr(0, atSign);
-      loadLibrary("ospray_module_" + libName);
-    }
-
-    std::map<std::string, Renderer *(*)()>::iterator it
-        = rendererRegistry.find(type);
-    if (it != rendererRegistry.end()) {
-      Renderer *renderer = it->second ? (it->second)() : NULL;
-      if (renderer != NULL)
-    	renderer->managedObjectType = OSP_RENDERER;
-      return renderer;
-    }
-
-    if (ospray::logLevel >= 2) {
-      std::cout << "#ospray: trying to look up renderer type '"
-                << type << "' for the first time" << std::endl;
-    }
-
-    std::string creatorName = "ospray_create_renderer__" + type;
-    creatorFct creator = (creatorFct)getSymbol(creatorName);
-    rendererRegistry[type] = creator;
-    if (creator == NULL) {
-      if (ospray::logLevel >= 1) {
-        std::cout << "#ospray: could not find renderer type '" << type << "'"
-                  << std::endl;
-      }
-      return NULL;
-    }
-
-    Renderer *renderer = (*creator)();
-    if (renderer != NULL)
-    	renderer->managedObjectType = OSP_RENDERER;
-    else if (ospray::logLevel >= 1) {
-      std::cout << "#osp:warning[ospNewRenderer(...)]:"
-                << " could not create renderer of that type."
-                << endl;
-      std::cout << "#osp:warning[ospNewRenderer(...)]:"
-                << " Note: Requested renderer type was '" << type << "'"
-                << endl;
-    }
-
-    return renderer;
+    return createInstanceHelper<Renderer, OSP_RENDERER>(type);
   }
 
   void Renderer::renderTile(void *perFrameData, Tile &tile, size_t jobID) const

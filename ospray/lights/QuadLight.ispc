@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2016 Intel Corporation                                    //
+// Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -35,12 +35,17 @@ struct QuadLight
 
 Light_SampleRes QuadLight_sample(const uniform Light* uniform super,
                                  const DifferentialGeometry& dg,
-                                 const vec2f& s)
+                                 const vec2f& sp)
 {
   const QuadLight* uniform self = (QuadLight* uniform)super;
   Light_SampleRes res;
 
-  // res position on light with density ppdf = 1/area
+  // (0, 0) should sample center --> add 0.5 CranleyPatterson rotation
+  vec2f s;
+  s.x = sp.x > 0.5f ? sp.x - 0.5f : sp.x + 0.5f;
+  s.y = sp.y > 0.5f ? sp.y - 0.5f : sp.y + 0.5f;
+
+  // sample position on light with density ppdf = 1/area
   // TODO: use solid angle sampling
   const vec3f pos = self->position + self->edge1 * s.x + self->edge2 * s.y;
 
@@ -65,6 +70,7 @@ Light_SampleRes QuadLight_sample(const uniform Light* uniform super,
 Light_EvalRes QuadLight_eval(const uniform Light* uniform super,
                              const DifferentialGeometry& dg,
                              const vec3f& dir,
+                             const float minDist,
                              const float maxDist)
 {
   uniform QuadLight* uniform self = (uniform QuadLight* uniform)super;
@@ -88,7 +94,7 @@ Light_EvalRes QuadLight_eval(const uniform Light* uniform super,
 
   const float rcosd = rcp(cosd);
   const float dist = dot(self->nnormal, c) * rcosd;
-  if (dist > maxDist)
+  if (dist <= minDist | dist > maxDist)
     return res;
 
   res.radiance = self->radiance;

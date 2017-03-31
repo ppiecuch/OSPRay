@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2016 Intel Corporation                                    ##
+## Copyright 2009-2017 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -21,9 +21,9 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 SET(LIBS ${LIBS} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES})
 
 FIND_PACKAGE(Qt5Widgets REQUIRED)
+SET(QT_USE_QTOPENGL TRUE)
+INCLUDE(${QT_USE_FILE})
 SET(LIBS ${LIBS} ${QT_LIBRARIES})
-
-ADD_SUBDIRECTORY(sg)
 
 SET(SRCS ${SRCS}
   # qt helper widgets
@@ -48,15 +48,10 @@ SET(SRCS ${SRCS}
 
 SET(CMAKE_AUTOMOC ON)
 
-<<<<<<< HEAD
-ADD_EXECUTABLE(ospQtViewer ${SRCS})
-TARGET_LINK_LIBRARIES(ospQtViewer
-=======
 OSPRAY_CREATE_APPLICATION(ospQtViewer
   ${SRCS}
   ${MOC_OUTFILES}
 LINK
->>>>>>> 143e649e6e3898204aea90196fd47677f10b7e17
   ${LIBS} 
   ospray_sg${OSPRAY_LIB_SUFFIX}
   ${TBB_LIBRARY_MALLOC}

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2016 Intel Corporation                                    //
+// Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,49 +17,32 @@
 //ospray
 #include "Light.h"
 #include "common/Library.h"
+#include "common/Util.h"
+// ispc exports
+#include "Light_ispc.h"
 //system
 #include <map>
 
 #define creatorFct litCreatorFct
 
 namespace ospray {
-  typedef Light *(*creatorFct)();
-  typedef std::map<std::string, creatorFct> LightRegistry;
-  LightRegistry lightRegistry;
 
-  void Light::registerLight(const char *type, creatorFct creator)
+  void Light::commit()
   {
-    lightRegistry[type] = creator;
+    isVisible = getParam1i("isVisible", true);
+
+    ispc::Light_set(getIE(), isVisible);
+  }
+
+  std::string Light::toString() const
+  {
+    return "ospray::Light";
   }
 
   //! Create a new Light object of given type
-  Light *Light::createLight(const char *type) {
-    LightRegistry::const_iterator it = lightRegistry.find(type);
-
-    if (it != lightRegistry.end())
-    {
-      Light *light = it->second ? (it->second)() : NULL;
-      if (light)
-    	light->managedObjectType = OSP_LIGHT;
-      return light;
-    }
-
-    if (ospray::logLevel >= 2)
-      std::cout << "#ospray: trying to look up light type '" << type << "' for the first time" << std::endl;
-
-    std::string creatorName = "ospray_create_light__"+std::string(type);
-
-    creatorFct creator = (creatorFct)getSymbol(creatorName);
-    lightRegistry[type] = creator;
-
-    if (creator == NULL) {
-      if (ospray::logLevel >= 1)
-        std::cout << "#ospray: could not find light type '" << type << "'" << std::endl;
-      return NULL;
-    }
-    Light *light = (*creator)();
-    light->managedObjectType = OSP_LIGHT;
-    return light;
+  Light *Light::createLight(const char *type)
+  {
+    return createInstanceHelper<Light, OSP_LIGHT>(type);
   }
 
 }
