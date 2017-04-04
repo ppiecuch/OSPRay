@@ -20,7 +20,7 @@
 
 namespace ospray {
   namespace sg {
-    class FrameBuffer;
+    struct FrameBuffer;
     struct Renderer {
       Renderer();
 

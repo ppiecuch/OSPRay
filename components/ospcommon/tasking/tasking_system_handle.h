@@ -16,46 +16,10 @@
 
 #pragma once
 
-#include "sg/common/Node.h"
-#include "sg/common/Serialization.h"
-#include "sg/common/World.h"
+#include "../common.h"
 
-namespace ospray {
-  namespace sg {
+namespace ospcommon {
 
-    struct Camera;
-    struct World;
+  void OSPCOMMON_INTERFACE initTaskingSystem(int numThreads = -1);
 
-    /*! a renderer node - the generic renderer node */
-    struct Integrator : public sg::Node {
-
-      /*! constructor */
-      Integrator(const std::string &type) : type(type), ospRenderer(NULL), spp(1) {};
-      
-      /*! \brief returns a std::string with the c++ name of this class */
-      virtual    std::string toString() const override;
-      
-      /*! update the current node's fields to ospray - the node must
-        already have been 'render'ed once before this can be called */
-      virtual void commit() override;
-      
-      void setSPP(size_t spp);
-
-      OSPRenderer getOSPHandle() const { return ospRenderer; }
-
-      SG_NODE_DECLARE_MEMBER(std::shared_ptr<sg::Camera>,camera,Camera);
-      SG_NODE_DECLARE_MEMBER(std::shared_ptr<sg::World>,world,World);
-
-    public:
-      /*! renderer type, i.e., 'ao', 'obj', 'pathtracer', ... */
-      const std::string type; 
-
-      OSPRenderer ospRenderer;
-      size_t spp;
-    };
-
-    
-  } // ::ospray::sg
-} // ::ospray
-
-
+}// namespace ospcommon

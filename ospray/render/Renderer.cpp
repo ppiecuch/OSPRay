@@ -31,11 +31,6 @@ namespace ospray {
     return "ospray::Renderer";
   }
 
-  void Renderer::registerRenderer(const char *identifier, creatorFct creator)
-  {
-	rendererRegistry[identifier] = creator;
-  }
-
   void Renderer::commit()
   {
     epsilon = getParam1f("epsilon", 1e-6f);

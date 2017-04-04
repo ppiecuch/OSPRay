@@ -342,8 +342,7 @@ namespace ospray {
     return new InternalClass;                                                  \
   }                                                                            \
   extern "C" void register_plugin_instance_##external_name() {		           \
-    Object::register##Object(#external_name, 		                           \
-		ospray_create_##object_name##__##external_name);                       \
+      ospray_create_##object_name##__##external_name();                        \
   }                                                                            \
   /* additional declaration to avoid "extra ;" -Wpedantic warnings */          \
   Object *ospray_create_##object_name##__##external_name()

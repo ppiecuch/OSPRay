@@ -84,22 +84,22 @@ namespace ospray {
       
       //All text boxes and labels
       QLabel *intensityLabel;
-      QLineEdit *intensityValue;
+      QDoubleSpinBox *intensityValue;
 
       QLabel *colorLabel;
-      QLineEdit *colorRedValue;
-      QLineEdit *colorGreenValue;
-      QLineEdit *colorBlueValue;
+      QDoubleSpinBox *colorRedValue;
+      QDoubleSpinBox *colorGreenValue;
+      QDoubleSpinBox *colorBlueValue;
 
       QLabel *directionVectorLabel;
-      QLineEdit *directionVectorXValue;
-      QLineEdit *directionVectorYValue;
-      QLineEdit *directionVectorZValue;
+      QDoubleSpinBox *directionVectorXValue;
+      QDoubleSpinBox *directionVectorYValue;
+      QDoubleSpinBox *directionVectorZValue;
 
       QLabel *upVectorLabel;
-      QLineEdit *upVectorXValue;
-      QLineEdit *upVectorYValue;
-      QLineEdit *upVectorZValue;
+      QDoubleSpinBox *upVectorXValue;
+      QDoubleSpinBox *upVectorYValue;
+      QDoubleSpinBox *upVectorZValue;
 
       //Apply any changes
       QPushButton *applyButton;

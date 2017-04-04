@@ -23,6 +23,13 @@
 namespace ospray {
   namespace viewer {
     
+    QDoubleSpinBox *newQDoubleSpinBox(double val)
+    {
+        QDoubleSpinBox *spin = new QDoubleSpinBox;
+        spin->setValue(val);
+        return spin;
+    }
+
     QLightManipulator::QLightManipulator(std::shared_ptr<sg::Renderer> renderer, vec3f up)
     {
       sgRenderer = renderer;
@@ -38,8 +45,8 @@ namespace ospray {
       ospSetData(sgRenderer->integrator->ospRenderer, "lights", lightArray);
       ospCommit(sgRenderer->integrator->ospRenderer);
       
-      //Set up all QT bells and whistles
-      QVBoxLayout *layout = new QVBoxLayout;
+      //Set up all Qt bells and whistles
+      QVBoxLayout *layout = new QVBoxLayout; layout->setContentsMargins(0, 0, 0, 0);
       setLayout(layout);
       intensityLabel = new QLabel(tr("Intensity:"));
       colorLabel = new QLabel(tr("Light Color (RGB):"));
@@ -47,20 +54,20 @@ namespace ospray {
       upVectorLabel = new QLabel(tr("World Up Vector (XYZ):"));
 
       layout->addWidget(intensityLabel);
-      intensityValue = new QLineEdit("1.0");
+      intensityValue = newQDoubleSpinBox(1.0);
       layout->addWidget(intensityValue);
       
-      colorRedValue = new QLineEdit("1.0");
-      colorGreenValue = new QLineEdit("1.0");
-      colorBlueValue = new QLineEdit("1.0");
+      colorRedValue = newQDoubleSpinBox(1.0);
+      colorGreenValue = newQDoubleSpinBox(1.0);
+      colorBlueValue = newQDoubleSpinBox(1.0);
       layout->addWidget(colorLabel);
       layout->addWidget(colorRedValue);
       layout->addWidget(colorGreenValue);
       layout->addWidget(colorBlueValue);
       
-      directionVectorXValue = new QLineEdit("0.0");
-      directionVectorYValue = new QLineEdit("-1.0");
-      directionVectorZValue = new QLineEdit("0.0");
+      directionVectorXValue = newQDoubleSpinBox(0.0);
+      directionVectorYValue = newQDoubleSpinBox(-1.0);
+      directionVectorZValue = newQDoubleSpinBox(0.0);
       
       layout->addWidget(directionVectorLabel);
       layout->addWidget(directionVectorXValue);
@@ -69,15 +76,9 @@ namespace ospray {
       
       //Need to make these read only
       //Need to make them update with the up vector of the camera
-      std::stringstream floatstream;
-      floatstream << up.x;
-      upVectorXValue = new QLineEdit(floatstream.str().c_str());
-      floatstream.str("");
-      floatstream << up.y;
-      upVectorYValue = new QLineEdit(floatstream.str().c_str());
-      floatstream.str("");
-      floatstream << up.z;
-      upVectorZValue = new QLineEdit(floatstream.str().c_str());
+      upVectorXValue = newQDoubleSpinBox(up.x);
+      upVectorYValue = newQDoubleSpinBox(up.y);
+      upVectorZValue = newQDoubleSpinBox(up.z);
 
       layout->addWidget(upVectorLabel);
       layout->addWidget(upVectorXValue); upVectorXValue->setReadOnly(true);

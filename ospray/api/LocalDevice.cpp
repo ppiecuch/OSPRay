@@ -483,7 +483,7 @@ namespace ospray {
     OSPTransferFunction LocalDevice::newTransferFunction(const char *type)
     {
       Assert(type != nullptr && "invalid transfer function type identifier");
-      auto *transferFunction = TransferFunction::createTransferFunction(type);
+      auto *transferFunction = TransferFunction::createInstance(type);
       if (!transferFunction) {
         if (debugMode) {
           throw std::runtime_error("unknown transfer function type '" +

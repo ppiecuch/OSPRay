@@ -18,7 +18,7 @@
 
 #define WARN_ON_INCLUDING_OSPCOMMON 1
 
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "sg/common/Texture2D.h"
 #include "sg/geometry/TriangleMesh.h"
 // stl

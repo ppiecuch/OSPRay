@@ -36,11 +36,6 @@ namespace ospray {
     return "ospray::Volume";
   }
 
-  void Volume::registerVolume(const std::string &type, Volume *(*creator)())
-  {
-    volumeRegistry[type] = creator;
-  }
-  
   Volume *Volume::createVolume(const std::string &type)
   {
     return createInstanceHelper<Volume, OSP_VOLUME>(type);

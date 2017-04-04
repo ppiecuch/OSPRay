@@ -70,7 +70,7 @@ namespace ospray {
     /*! fullscreen display */
     bool fullscreen = false;
 
-	static void processCmdLine(Ref<sg::World> &world, int argc, const char *argv[])
+	static void processCmdLine(std::shared_ptr<sg::World> &world, int argc, const char *argv[])
 	{
       for (int argID=1;argID<argc;argID++) {
         const std::string arg = argv[argID];

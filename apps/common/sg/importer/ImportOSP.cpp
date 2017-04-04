@@ -17,7 +17,7 @@
 #undef NDEBUG
 
 // header
-#include "SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "Importer.h"
 // stl
 #include <map>
