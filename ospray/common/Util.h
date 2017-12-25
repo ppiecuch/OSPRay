@@ -23,7 +23,7 @@
 namespace ospray {
 
   template <typename OSPRAY_CLASS, OSPDataType OSP_TYPE>
-  inline OSPRAY_CLASS *createInstanceHelper(const std::string &type)
+  inline OSPRAY_CLASS *createInstanceHelper(const std::string &type, std::map<std::string, OSPRAY_CLASS*(*)()> **registry = 0)
   {
     // Function pointer type for creating a concrete instance of a subtype of
     // this class.
@@ -31,6 +31,10 @@ namespace ospray {
 
     // Function pointers corresponding to each subtype.
     static std::map<std::string, creationFunctionPointer> symbolRegistry;
+
+    if (registry) *registry = &symbolRegistry;
+    if (type.empty()) return 0;
+
     const auto type_string = stringForType(OSP_TYPE);
 
     // Find the creation function for the subtype if not already known.

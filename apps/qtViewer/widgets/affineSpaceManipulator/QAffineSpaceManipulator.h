@@ -115,14 +115,15 @@ namespace ospray {
       
       //! switch to requested interaction mode
       void setInteractionMode(QAffineSpaceManipulator::InteractionMode interactionMode);
-
+      QAffineSpaceManipulator::InteractionMode getInteractionMode() const { return interactionMode; }
       /*! toggle-up: switch to given axis (x=0,y=1,z=2) as up-vectors for the rotation.
         when _already_ in up-vector mode for this axis, switch to negative axis. */
       void toggleUp(int axis);
 
-      //! set the movement speed
+      //! set/get the movement speed
       void setMoveSpeed(const float moveSpeed) { this->motionSpeed = moveSpeed; }
-      
+      float getMoveSpeed() const { return this->motionSpeed; }
+
       //! set camera to a default pose that overlooks the given bounding box
       void setDefaultFrame(const box3f &worldBounds);
 
@@ -146,7 +147,7 @@ namespace ospray {
       virtual void mousePressEvent(QMouseEvent * event);
       virtual void mouseReleaseEvent(QMouseEvent * event);
       virtual void mouseMoveEvent(QMouseEvent * event);
-
+      virtual void wheelEvent(QWheelEvent * event);
 
       // -------------------------------------------------------
       // overloadable callbacks

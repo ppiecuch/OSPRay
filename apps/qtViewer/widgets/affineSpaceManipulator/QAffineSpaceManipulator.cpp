@@ -94,9 +94,8 @@ namespace ospray {
     QAffineSpaceManipulator::QAffineSpaceManipulator(InteractionMode interactionMode) 
       : size(-1,-1),
         frame(new ReferenceFrame),
-        //        interactionMode(QAffineSpaceManipulator::FREE_ROTATION),
         interactionMode(interactionMode),
-        motionSpeed(0.f)
+        motionSpeed(0.1f)
     {}
 
     //! the QT callback that tells us that we have to redraw
@@ -146,7 +145,7 @@ namespace ospray {
 
       lastMousePos = event->pos();
       emit affineSpaceChanged(this);
-      updateGL();
+      update();
     }
 
     /*! rotate around target point, by given angles */
@@ -223,39 +222,47 @@ namespace ospray {
       };
       lastMousePos = event->pos();
       emit affineSpaceChanged(this);
-      updateGL();
+      update();
+    }
+
+
+    static void _move(const QAffineSpaceManipulator *which, QAffineSpaceManipulator::ReferenceFrame *frame, float delta)
+    {
+      const vec3f moveAxis = frame->orientation.vy;
+      float moveDistance = - 10 * which->getMoveSpeed() * delta / float(which->getSize().y);
+      switch (which->getInteractionMode()) {
+        case QAffineSpaceManipulator::FLY: {
+            /* fly mode: move BOTH source and target positions
+            forward/backward along move axis. Since we are moving
+            *forward* with mouse, we move in POSITIVE y distance */
+            frame->sourcePoint -= moveDistance * moveAxis;
+            frame->targetPoint -= moveDistance * moveAxis;
+        } break;
+        case QAffineSpaceManipulator::FREE_ROTATION:
+        case QAffineSpaceManipulator::INSPECT: {
+            /* inspect mode: pull or push target towards/away from
+            viewer; but at most to a given minimum distance (can't
+            pull behind us). Since we are PULLING the target
+            TOWARDS us, we move with NEGATIVE distance */
+            moveDistance = -moveDistance;
+            const float targetDistance = length(frame->targetPoint - frame->sourcePoint);
+            const float maxAllowedDistance = targetDistance - .1f * which->getMoveSpeed();
+            if (moveDistance > maxAllowedDistance) moveDistance = maxAllowedDistance;
+            frame->sourcePoint += moveDistance * moveAxis;
+        } break;
+      }
     }
 
     void QAffineSpaceManipulator::move(QMouseEvent * event)
     {
-      QPoint newPos = event->pos();
-      
-      const vec3f moveAxis = frame->orientation.vy;
-      float moveDistance = - 10 * motionSpeed * (newPos.y()-lastMousePos.y()) / float(size.y);
-      switch (interactionMode) {
-      case FLY: {
-        /* fly mode: move BOTH source and target positions
-           forward/backward along move axis. Since we are moving
-           *forward* with mouse, we move in POSITIVE y distance */
-        frame->sourcePoint -= moveDistance * moveAxis;
-        frame->targetPoint -= moveDistance * moveAxis;
-      } break;
-      case FREE_ROTATION: 
-      case INSPECT: {
-        /* inspect mode: pull or push target towards/away from
-           viewer; but at most to a given minimum distance (can't
-           pull behind us). Since we are PULLING the target
-           TOWARDS us, we move with NEGATIVE distance */
-        moveDistance = -moveDistance;
-        const float targetDistance = length(frame->targetPoint - frame->sourcePoint);
-        const float maxAllowedDistance = targetDistance - .1f * motionSpeed;
-        if (moveDistance > maxAllowedDistance) moveDistance = maxAllowedDistance;
-        frame->sourcePoint += moveDistance * moveAxis;
-      } break;
-      }
-      lastMousePos = event->pos();
+      const QPoint newPos = event->pos();
+      const float delta = newPos.y()-lastMousePos.y();
+
+      _move(this, frame, delta);
+
+      lastMousePos = newPos;
       emit affineSpaceChanged(this);
-      updateGL();
+      update();
     }
 
 
@@ -275,6 +282,16 @@ namespace ospray {
     }
 
 
+
+    void QAffineSpaceManipulator::wheelEvent(QWheelEvent* event)
+    {
+        const float step = event->delta() / 240.0;
+
+        _move(this, frame, step);
+
+        emit affineSpaceChanged(this);
+        update();
+    }
 
     void QAffineSpaceManipulator::mouseMoveEvent(QMouseEvent * event)
     {

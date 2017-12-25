@@ -119,10 +119,6 @@ namespace ospray {
     OSPSG_INTERFACE std::shared_ptr<sg::World> readXML(const std::string &fileName);
     OSPSG_INTERFACE std::shared_ptr<sg::World> importRIVL(const std::string &fileName);
     OSPSG_INTERFACE std::shared_ptr<sg::World> loadOSG(const std::string &fileName);
-
-    /*! import an LDR model, and add its contents to the given world */
-    OSPSG_INTERFACE void importLeoCad(std::shared_ptr<World> &world, const FileName &fileName);
-
     /*! @} */
 
   } // ::ospray::sg

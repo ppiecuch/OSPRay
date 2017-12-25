@@ -76,6 +76,19 @@ namespace ospray {
     return createInstanceHelper<Renderer, OSP_RENDERER>(type);
   }
 
+  std::vector<std::string> Renderer::registeredRenderers()
+  {
+    using creationFunctionPointer = Renderer*(*)();
+    std::map<std::string, creationFunctionPointer> *registry = 0;
+    createInstanceHelper<Renderer, OSP_RENDERER>("", &registry);
+    std::vector<std::string> v;
+    for(std::map<std::string, creationFunctionPointer>::iterator it = registry->begin(); it != registry->end(); ++it)
+    {
+        v.push_back(it->first);
+    }
+    return v;
+  }
+
   void Renderer::renderTile(void *perFrameData, Tile &tile, size_t jobID) const
   {
     ispc::Renderer_renderTile(getIE(),perFrameData,(ispc::Tile&)tile, jobID);

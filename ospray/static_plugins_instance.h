@@ -30,8 +30,6 @@
 	OSP_PLUGIN_INSTANCE(raytracer);
 	OSP_PLUGIN_INSTANCE(rt);
 	OSP_PLUGIN_INSTANCE(scivis);
-	OSP_PLUGIN_INSTANCE(raycast_volume_renderer);
-	OSP_PLUGIN_INSTANCE(dvr);
 
 	OSP_PLUGIN_INSTANCE(orthographic);
 	OSP_PLUGIN_INSTANCE(panoramic);
@@ -63,12 +61,6 @@
 	OSP_PLUGIN_INSTANCE(PathTracer_Plastic);		
 	OSP_PLUGIN_INSTANCE(PathTracer_ThinGlass);		
 	OSP_PLUGIN_INSTANCE(PathTracer_Velvet);		
-	// OSP_PLUGIN_INSTANCE(RaytraceMaterial);		
-	OSP_PLUGIN_INSTANCE(RaycastVolumeMaterial);
-
-#ifdef OSPRAY_DISPLAYCLUSTER
-	OSP_PLUGIN_INSTANCE(display_wall);
-#endif
 
 	OSP_PLUGIN_INSTANCE(cylinders);		
 	OSP_PLUGIN_INSTANCE(instance);		
