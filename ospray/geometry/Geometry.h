@@ -37,7 +37,7 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE Geometry : public ManagedObject
   {
     Geometry();
-    virtual ~Geometry() = default;
+    virtual ~Geometry() override = default;
 
     //! set given geometry's material.
     /*! all material assignations should go through this function; the
@@ -47,7 +47,7 @@ namespace ospray {
         c++-side's material gets changed */
     virtual void setMaterial(Material *mat);
 
-    //! get material assigned to this geometry 
+    //! get material assigned to this geometry
     virtual Material *getMaterial() const;
 
     //! \brief common function to help printf-debugging
@@ -63,8 +63,12 @@ namespace ospray {
       in either ospray proper or any already loaded module. For
       geometry types specified in special modules, make sure to call
       ospLoadModule first. */
+<<<<<<< HEAD
     static Geometry *createGeometry(const char *type); 
     static void registerGeometry(const char *type, Geometry *(*creator)()); 
+=======
+    static Geometry *createInstance(const char *type);
+>>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     box3f bounds {empty};
 
@@ -84,6 +88,7 @@ namespace ospray {
       of this geometry.
   */
 #define OSP_REGISTER_GEOMETRY(InternalClass, external_name) \
-  OSP_REGISTER_OBJECT(Geometry, geometry, InternalClass, external_name)
+  OSP_REGISTER_OBJECT(::ospray::Geometry, geometry, \
+                      InternalClass, external_name)
 
 } // ::ospray

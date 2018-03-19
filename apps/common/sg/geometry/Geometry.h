@@ -16,28 +16,24 @@
 
 #pragma once
 
-#include "sg/common/Material.h"
+#include "../common/Material.h"
+#include "../common/Renderable.h"
 
 namespace ospray {
   namespace sg {
 
-    /*! a geometry node - the generic geometry node */
-    struct Geometry : public sg::Node {
-      Geometry(const std::string &type) : type(type) {};
+    struct OSPSG_INTERFACE Geometry : public Renderable
+    {
+      Geometry(const std::string &type);
 
       /*! \brief returns a std::string with the c++ name of this class */
-      virtual    std::string toString() const override { return "ospray::sg::Geometry"; }
+      virtual std::string toString() const override;
 
-      //! return bounding box of all primitives
-      virtual box3f getBounds() override = 0;
-
-      /*! geometry type, i.e., 'spheres', 'cylinders', 'trianglemesh', ... */
-      const std::string type; 
-      
-      /*! material for this geometry */
-      std::shared_ptr<Material> material;
+      virtual void preCommit(RenderContext& ctx) override;
+      virtual void postCommit(RenderContext& ctx) override;
+      virtual void postRender(RenderContext& ctx) override;
     };
-    
+
   } // ::ospray::sg
 } // ::ospray
 

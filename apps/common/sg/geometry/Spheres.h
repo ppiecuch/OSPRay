@@ -17,7 +17,6 @@
 #pragma once
 
 #include "sg/common/Node.h"
-#include "sg/transferFunction/TransferFunction.h"
 #include "sg/geometry/Geometry.h"
 
 namespace ospray {
@@ -25,30 +24,14 @@ namespace ospray {
 
     /*! simple spheres, with all of the key info - position, radius,
         and a int32_t type specifier baked into each sphere  */
-    struct Spheres : public sg::Geometry {
-      struct Sphere { 
-        vec3f position;
-        float radius;
-        uint32_t typeID;
-        
-        // constructor
-        Sphere(vec3f position, float radius, uint32_t typeID=0);
-        
-        // return the bounding box
-        inline box3f getBounds() const
-        { return box3f(position-vec3f(radius),position+vec3f(radius)); };
-      };
+    struct OSPSG_INTERFACE Spheres : public sg::Geometry
+    {
+      Spheres();
 
-      //! constructor
-      Spheres() : Geometry("spheres"), ospGeometry(NULL) {};
-      
       // return bounding box of all primitives
-      virtual box3f getBounds();
+      box3f bounds() const override;
 
-      /*! 'render' the nodes */
-      virtual void render(RenderContext &ctx);
-
-      //! \brief Initialize this node's value from given XML node 
+      //! \brief Initialize this node's value from given XML node
       /*!
         \detailed This allows a plug-and-play concept where a XML
         file can specify all kind of nodes wihout needing to know
@@ -56,21 +39,19 @@ namespace ospray {
         create a proper C++ instance of the given node type (the
         OSP_REGISTER_SG_NODE() macro will allow it to do so), and can
         tell the node to parse itself from the given XML content and
-        XML children 
-        
+        XML children
+
         \param node The XML node specifying this node's fields
 
         \param binBasePtr A pointer to an accompanying binary file (if
         existant) that contains additional binary data that the xml
         node fields may point into
       */
-      void setFromXML(const xml::Node *const node, const unsigned char *binBasePtr);
+      void setFromXML(const xml::Node &node,
+                      const unsigned char *binBasePtr) override;
 
-      OSPGeometry         ospGeometry;
-      std::vector<Sphere> sphere;
+      OSPGeometry ospGeometry {nullptr};
     };
 
   } // ::ospray::sg
 } // ::ospray
-
-

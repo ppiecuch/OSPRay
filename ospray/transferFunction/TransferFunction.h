@@ -32,7 +32,7 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE TransferFunction : public ManagedObject
   {
     TransferFunction() = default;
-    virtual ~TransferFunction() = default;
+    virtual ~TransferFunction() override = default;
     virtual void commit() override;
     virtual std::string toString() const override;
 
@@ -50,6 +50,7 @@ namespace ospray {
   module and registered with OSPRay using this macro.
 */
 #define OSP_REGISTER_TRANSFER_FUNCTION(InternalClass, external_name) \
-  OSP_REGISTER_OBJECT(TransferFunction, transfer_function, InternalClass, external_name)
+  OSP_REGISTER_OBJECT(::ospray::TransferFunction, transfer_function, \
+                      InternalClass, external_name)
 
 } // ::ospray

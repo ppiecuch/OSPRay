@@ -14,15 +14,12 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-// obj
 #include "SciVisRenderer.h"
 #include "SciVisMaterial.h"
 // ospray
 #include "common/Data.h"
 #include "lights/Light.h"
 #include "lights/AmbientLight.h"
-//sys
-#include <vector>
 // ispc exports
 #include "SciVisRenderer_ispc.h"
 
@@ -56,7 +53,6 @@ namespace ospray {
       void **lightPtr = lightArray.empty() ? nullptr : &lightArray[0];
 
       const bool shadowsEnabled = getParam1i("shadowsEnabled", 0);
-      const int32 maxDepth = getParam1i("maxDepth", 10);
       int aoSamples = getParam1i("aoSamples", 0);
       float aoDistance = getParam1f("aoDistance",
                           getParam1f("aoOcclusionDistance"/*old name*/, 1e20f));
@@ -68,7 +64,6 @@ namespace ospray {
 
       ispc::SciVisRenderer_set(getIE(),
                                shadowsEnabled,
-                               maxDepth,
                                aoSamples,
                                aoDistance,
                                (ispc::vec3f&)aoColor,
@@ -94,6 +89,7 @@ namespace ospray {
     OSP_REGISTER_RENDERER(SciVisRenderer, sv);
     OSP_REGISTER_RENDERER(SciVisRenderer, obj);
     OSP_REGISTER_RENDERER(SciVisRenderer, OBJ);
+    OSP_REGISTER_RENDERER(SciVisRenderer, dvr);
 
   } // ::ospray::scivis
 } // ::ospray

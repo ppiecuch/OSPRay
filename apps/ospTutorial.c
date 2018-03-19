@@ -18,13 +18,14 @@
 /* This is a small example tutorial how to use OSPRay in an application.
  *
  * On Linux build it in the build_directory with
- *   gcc -std=c99 ../apps/ospTutorial.c -I ../ospray/include -I .. ./libospray.so -Wl,-rpath,. -o ospTutorialC
+ *   gcc -std=c99 ../apps/ospTutorial.c -I ../ospray/include -I .. ./libospray.so -Wl,-rpath,. -o ospTutorial
  * On Windows build it in the build_directory\$Configuration with
- *   cl ..\..\apps\ospTutorial.c /EHsc -I ..\..\ospray\include -I ..\.. ospray.lib
+ *   cl ..\..\apps\ospTutorial.c -I ..\..\ospray\include -I ..\.. ospray.lib
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <errno.h>
 #ifdef _WIN32
 #  include <malloc.h>
 #else
@@ -38,6 +39,10 @@ void writePPM(const char *fileName,
               const uint32_t *pixel)
 {
   FILE *file = fopen(fileName, "wb");
+  if (!file) {
+    fprintf(stderr, "fopen('%s', 'wb') failed: %d", fileName, errno);
+    return;
+  }
   fprintf(file, "P6\n%i %i\n255\n", size->x, size->y);
   unsigned char *out = (unsigned char *)alloca(3*size->x);
   for (int y = 0; y < size->y; y++) {
@@ -79,7 +84,9 @@ int main(int argc, const char **argv) {
 
 
   // initialize OSPRay; OSPRay parses (and removes) its commandline parameters, e.g. "--osp:debug"
-  ospInit(&argc, argv);
+  OSPError init_error = ospInit(&argc, argv);
+  if (init_error != OSP_NO_ERROR)
+    return init_error;
 
   // create and setup camera
   OSPCamera camera = ospNewCamera("perspective");
@@ -123,6 +130,7 @@ int main(int argc, const char **argv) {
 
   // complete setup of renderer
   ospSet1i(renderer, "aoSamples", 1);
+  ospSet1f(renderer, "bgColor", 1.0f); // white, transparent
   ospSetObject(renderer, "model",  world);
   ospSetObject(renderer, "camera", camera);
   ospSetObject(renderer, "lights", lights);
@@ -138,7 +146,7 @@ int main(int argc, const char **argv) {
 
   // access framebuffer and write its content as PPM file
   const uint32_t * fb = (uint32_t*)ospMapFrameBuffer(framebuffer, OSP_FB_COLOR);
-  writePPM("firstFrameC.ppm", &imgSize, fb);
+  writePPM("firstFrame.ppm", &imgSize, fb);
   ospUnmapFrameBuffer(fb, framebuffer);
 
 
@@ -147,7 +155,7 @@ int main(int argc, const char **argv) {
     ospRenderFrame(framebuffer, renderer, OSP_FB_COLOR | OSP_FB_ACCUM);
 
   fb = (uint32_t*)ospMapFrameBuffer(framebuffer, OSP_FB_COLOR);
-  writePPM("accumulatedFrameC.ppm", &imgSize, fb);
+  writePPM("accumulatedFrame.ppm", &imgSize, fb);
   ospUnmapFrameBuffer(fb, framebuffer);
 
   return 0;

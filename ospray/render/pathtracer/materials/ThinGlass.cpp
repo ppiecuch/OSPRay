@@ -15,28 +15,51 @@
 // ======================================================================== //
 
 #include "common/Material.h"
+#include "texture/Texture2D.h"
 #include "ThinGlass_ispc.h"
 
 namespace ospray {
   namespace pathtracer {
-    struct ThinGlass : public ospray::Material {
+
+    struct ThinGlass : public ospray::Material
+    {
       //! \brief common function to help printf-debugging
       /*! Every derived class should overrride this! */
-      virtual std::string toString() const { return "ospray::pathtracer::ThinGlass"; }
+      virtual std::string toString() const  override
+      { return "ospray::pathtracer::ThinGlass"; }
+
+      ThinGlass()
+      {
+        ispcEquivalent = ispc::PathTracer_ThinGlass_create();
+      }
 
       //! \brief commit the material's parameters
-      virtual void commit() {
-        if (getIE() != nullptr) return;
+      virtual void commit()  override
+      {
+        const float eta = getParamf("eta", 1.5f);
+        const vec3f& attenuationColor =
+          getParam3f("attenuationColor",
+              getParam3f("transmission",
+                getParam3f("color", vec3f(1.f))));
+        const float attenuationDistance =
+          getParamf("attenuationDistance", 1.f);
+        const float thickness = getParamf("thickness", 1.f);
 
-        const vec3f& transmission
-          = getParam3f("transmission", vec3f(1.f));
-        const float eta
-          = getParamf("eta", 1.5f);
-        const float thickness
-          = getParamf("thickness",1.f);
+        Texture2D *map_attenuationColor =
+          (Texture2D*)getParamObject("map_attenuationColor",
+              getParamObject("colorMap", nullptr));
+        affine2f xform_attenuationColor =
+          getTextureTransform("map_attenuationColor")
+          * getTextureTransform("colorMap"); 
 
-        ispcEquivalent = ispc::PathTracer_ThinGlass_create
-          (eta,(const ispc::vec3f&)transmission,thickness);
+        ispc::PathTracer_ThinGlass_set(getIE()
+            , eta
+            , (const ispc::vec3f&)attenuationColor
+            , map_attenuationColor ? map_attenuationColor->getIE() : nullptr,
+              (const ispc::AffineSpace2f&)xform_attenuationColor
+            , attenuationDistance
+            , thickness
+            );
       }
     };
 

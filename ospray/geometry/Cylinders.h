@@ -60,7 +60,7 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE Cylinders : public Geometry
   {
     Cylinders();
-    virtual ~Cylinders() = default;
+    virtual ~Cylinders() override = default;
     //! \brief common function to help printf-debugging
     virtual std::string toString() const override;
     /*! \brief integrates this geometry's primitives into the respective
@@ -77,11 +77,13 @@ namespace ospray {
     int64 offset_radius;
     int64 offset_materialID;
     int64 offset_colorID;
+    float epsilon;  //epsilon for intersections
 
     Ref<Data> cylinderData;
     Ref<Data> materialList;
     void     *_materialList {nullptr};
-    Ref<Data> colorData; /*!< cylinder color array (vec3fa) */
+    Ref<Data> colorData; /*!< cylinder color array */
+    Ref<Data> texcoordData;
   };
 /*! @} */
 

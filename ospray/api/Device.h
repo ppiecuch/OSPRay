@@ -19,7 +19,6 @@
 // ospray
 #include "common/OSPCommon.h"
 #include "common/Managed.h"
-#include "ospray/ospray.h"
 // embree
 #include "embree2/rtcore.h"
 // std
@@ -33,24 +32,25 @@ namespace ospray {
   namespace api {
 
     /*! abstract base class of all 'devices' that implement the ospray API */
-    struct OSPRAY_SDK_INTERFACE Device : public ManagedObject {
+    struct OSPRAY_SDK_INTERFACE Device : public ManagedObject
+    {
       /*! singleton that points to currently active device */
       static Ref<Device> current;
 
       Device() = default;
-      virtual ~Device();
+      virtual ~Device() override;
 
       /*! \brief creates an abstract device class of given type */
       static Device *createDevice(const char *type);
 
       /*! create a new frame buffer/swap chain of given type */
-      virtual OSPFrameBuffer 
-      frameBufferCreate(const vec2i &size, 
+      virtual OSPFrameBuffer
+      frameBufferCreate(const vec2i &size,
                         const OSPFrameBufferFormat mode,
                         const uint32 channels) = 0;
-      
+
       /*! map frame buffer */
-      virtual const void *frameBufferMap(OSPFrameBuffer fb, 
+      virtual const void *frameBufferMap(OSPFrameBuffer fb,
                                          const OSPFrameBufferChannel) = 0;
 
       /*! unmap previously mapped frame buffer */
@@ -80,10 +80,10 @@ namespace ospray {
 
       /*! create a new data buffer */
       virtual OSPData newData(size_t nitems, OSPDataType format,
-                              void *init, int flags) = 0;
+                              const void *init, int flags) = 0;
 
       /*! Copy data into the given volume. */
-      virtual int setRegion(OSPVolume object, const void *source, 
+      virtual int setRegion(OSPVolume object, const void *source,
                             const vec3i &index, const vec3i &count) = 0;
 
       /*! assign (named) string parameter to an object */
@@ -126,22 +126,23 @@ namespace ospray {
 
       /*! set a frame buffer's pixel op object */
       virtual void setPixelOp(OSPFrameBuffer _fb, OSPPixelOp _op) = 0;
-      
+
       /*! create a new geometry object (out of list of registered geometries) */
       virtual OSPGeometry newGeometry(const char *type) = 0;
-      
+
       /*! create a new camera object (out of list of registered cameras) */
       virtual OSPCamera newCamera(const char *type) = 0;
-      
+
       /*! create a new volume object (out of list of registered volumes) */
       virtual OSPVolume newVolume(const char *type) = 0;
-      
+
       /*! create a new transfer function object (out of list of registered
        *  transfer function types) */
       virtual OSPTransferFunction newTransferFunction(const char *type) = 0;
 
       /*! have given renderer create a new material */
-      virtual OSPMaterial newMaterial(OSPRenderer _renderer, const char *type) = 0;
+      virtual OSPMaterial newMaterial(OSPRenderer _renderer,
+                                      const char *type) = 0;
 
       /*! create a new Texture2D object */
       virtual OSPTexture2D newTexture2D(const vec2i &size,
@@ -151,18 +152,18 @@ namespace ospray {
       virtual OSPLight newLight(OSPRenderer _renderer, const char *type) = 0;
 
       /*! clear the specified channel(s) in 'fbChannelFlags'
-        
+
         if fbChannelFlags&OSP_FB_COLOR!=0, clear the color buffer to
-        '0,0,0,0'.  
+        '0,0,0,0'.
 
         if fbChannelFlags&OSP_FB_DEPTH!=0, clear the depth buffer to
-        +inf.  
+        +inf.
 
         if fbChannelFlags&OSP_FB_ACCUM!=0, clear the accum buffer to 0,0,0,0,
         and reset accumID.
       */
       virtual void frameBufferClear(OSPFrameBuffer _fb,
-                                    const uint32 fbChannelFlags) = 0; 
+                                    const uint32 fbChannelFlags) = 0;
 
       /*! call a renderer to render a frame buffer */
       virtual float renderFrame(OSPFrameBuffer _sc,
@@ -170,7 +171,7 @@ namespace ospray {
                                 const uint32 fbChannelFlags) = 0;
 
 
-  
+
       //! release (i.e., reduce refcount of) given object
       /*! note that all objects in ospray are refcounted, so one cannot
         explicitly "delete" any object. instead, each object is created
@@ -197,15 +198,9 @@ namespace ospray {
       }
 
       /*! perform a pick operation */
-      virtual OSPPickResult pick(OSPRenderer renderer, const vec2f &screenPos) 
-      { 
+      virtual OSPPickResult pick(OSPRenderer renderer, const vec2f &screenPos)
+      {
         UNUSED(renderer, screenPos);
-        NOT_IMPLEMENTED;
-      }
-
-      /*! switch API mode for distributed API extensions */
-      virtual void apiMode(OSPDApiMode)
-      { 
         NOT_IMPLEMENTED;
       }
 
@@ -229,17 +224,38 @@ namespace ospray {
       int numThreads {-1};
       /*! whether we're running in debug mode (cmdline: --osp:debug) */
       bool debugMode {false};
+
+      enum OSP_THREAD_AFFINITY {AUTO_DETECT, AFFINITIZE, DEAFFINITIZE};
+      int threadAffinity {AUTO_DETECT};
       /*! logging level (cmdline: --osp:loglevel \<n\>) */
       // NOTE(jda) - Keep logLevel static because the device factory function
       //             needs to have a valid value for the initial Device creation
       static uint32_t logLevel;
 
-      std::function<void(const char *)> error_fcn{[](const char*){}};
+      std::function<void(const char *)>
+      msg_fcn { [](const char*){} };
+
+      std::function<void(OSPError, const char*)>
+      error_fcn { [](OSPError, const char*){} };
+
+      std::function<void(const char *)>
+      trace_fcn { [](const char*){} };
+
+      OSPError    lastErrorCode = OSP_NO_ERROR;
+      std::string lastErrorMsg  = "no error";// no braced initializer for MSVC12
 
     private:
 
       bool committed {false};
     };
+
+    // Shorthand functions to query current API device //
+
+    OSPRAY_SDK_INTERFACE bool    deviceIsSet();
+    OSPRAY_SDK_INTERFACE Device& currentDevice();
+
+    OSPRAY_SDK_INTERFACE
+    std::string generateEmbreeDeviceCfg(const Device &device);
 
     /*! \brief registers a internal ospray::<ClassName> renderer under
         the externally accessible name "external_name"

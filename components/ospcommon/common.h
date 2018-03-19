@@ -20,6 +20,7 @@
 // std
 #include <mutex>
 #include <stdexcept>
+#include <algorithm> // std::min etc on windows
 
 #ifdef _WIN32
 // ----------- windows only -----------
@@ -68,7 +69,7 @@ typedef int ssize_t;
 #ifdef _WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
-#define NOTIMPLEMENTED    throw std::runtime_error(std::string(__PRETTY_FUNCTION__)+": not implemented...");
+#define NOTIMPLEMENTED throw std::runtime_error(std::string(__PRETTY_FUNCTION__)+": not implemented...");
 
 #define SCOPED_LOCK(x) \
   std::lock_guard<std::mutex> _lock(x); \
@@ -80,19 +81,20 @@ namespace ospcommon {
 
   /*! return system time in seconds */
   OSPCOMMON_INTERFACE double getSysTime();
-  OSPCOMMON_INTERFACE void doAssertion(const char *file, int line, const char *expr, const char *expl);
+  OSPCOMMON_INTERFACE void doAssertion(const char *file, int line,
+                                       const char *expr, const char *expl);
   /*! remove specified num arguments from an ac/av arglist */
-  OSPCOMMON_INTERFACE void removeArgs(int &ac, char **&av, int where, int howMany);
+  OSPCOMMON_INTERFACE void removeArgs(int &ac, const char **&av,
+                                      int where, int howMany);
   OSPCOMMON_INTERFACE void loadLibrary(const std::string &name);
   OSPCOMMON_INTERFACE void *getSymbol(const std::string &name);
-
 
 #ifdef _WIN32
 #  define osp_snprintf sprintf_s
 #else
 #  define osp_snprintf snprintf
 #endif
-  
+
   /*! added pretty-print function for large numbers, printing 10000000 as "10M" instead */
   inline std::string prettyDouble(const double val) {
     const double absVal = abs(val);
@@ -128,44 +130,6 @@ namespace ospcommon {
     return result;
   }
 #undef osp_snprintf
-
-  template <typename T>
-  inline std::pair<bool, T> getEnvVar(const std::string &/*var*/)
-  {
-    static_assert(!std::is_same<T, float>::value &&
-                  !std::is_same<T, int>::value &&
-                  !std::is_same<T, std::string>::value,
-                  "You can only get an int, float, or std::string "
-                  "when using ospray::getEnvVar<T>()!");
-    return {false, {}};
-  }
-
-  template <>
-  inline std::pair<bool, float>
-  getEnvVar<float>(const std::string &var)
-  {
-    auto *str = getenv(var.c_str());
-    bool found = (str != nullptr);
-    return {found, found ? (float)atof(str) : 0.f};
-  }
-
-  template <>
-  inline std::pair<bool, int>
-  getEnvVar<int>(const std::string &var)
-  {
-    auto *str = getenv(var.c_str());
-    bool found = (str != nullptr);
-    return {found, found ? atoi(str) : 0};
-  }
-
-  template <>
-  inline std::pair<bool, std::string>
-  getEnvVar<std::string>(const std::string &var)
-  {
-    auto *str = getenv(var.c_str());
-    bool found = (str != nullptr);
-    return {found, found ? std::string(str) : std::string{}};
-  }
 
   // NOTE(jda) - Implement make_unique() as it didn't show up until C++14...
   template<typename T, typename ...Args>

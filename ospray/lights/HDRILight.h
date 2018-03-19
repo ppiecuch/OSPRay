@@ -26,7 +26,7 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE HDRILight : public Light
   {
     HDRILight();
-    virtual ~HDRILight();
+    virtual ~HDRILight() override;
     virtual std::string toString() const override;
     virtual void commit() override;
 
@@ -41,5 +41,5 @@ namespace ospray {
     float intensity {1.f};   //!< Amount of light emitted
   };
 
-}
+} // ::ospray
 

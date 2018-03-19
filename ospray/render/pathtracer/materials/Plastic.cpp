@@ -19,23 +19,28 @@
 
 namespace ospray {
   namespace pathtracer {
-    struct Plastic : public ospray::Material {
+
+    struct Plastic : public ospray::Material
+    {
       //! \brief common function to help printf-debugging
       /*! Every derived class should overrride this! */
-      virtual std::string toString() const { return "ospray::pathtracer::Plastic"; }
+      virtual std::string toString() const  override
+      { return "ospray::pathtracer::Plastic"; }
+
+      Plastic()
+      {
+        ispcEquivalent = ispc::PathTracer_Plastic_create();
+      }
 
       //! \brief commit the material's parameters
-      virtual void commit() {
-        if (getIE() != nullptr) return;
-
+      virtual void commit() override
+      {
         const vec3f pigmentColor = getParam3f("pigmentColor",vec3f(1.f));
         const float eta          = getParamf("eta",1.4f);
         const float roughness    = getParamf("roughness",0.01f);
-        // const float rcpRoughness = rcpf(roughness);
-        const float thickness    = getParamf("thickness",1.0f);
 
-        ispcEquivalent = ispc::PathTracer_Plastic_create
-          ((const ispc::vec3f&)pigmentColor,eta,roughness,thickness);
+        ispc::PathTracer_Plastic_set
+          (getIE(), (const ispc::vec3f&)pigmentColor,eta,roughness);
       }
     };
 

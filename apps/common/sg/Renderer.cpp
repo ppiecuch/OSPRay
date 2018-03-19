@@ -20,150 +20,211 @@
 
 namespace ospray {
   namespace sg {
-    using std::cout;
-    using std::endl;
 
     Renderer::Renderer()
-      // : ospFrameBuffer(NULL)
-    {}
+    {
+      createChild("rendererType", "string", std::string("scivis"),
+                  NodeFlags::required |
+                  NodeFlags::valid_whitelist |
+                  NodeFlags::gui_combo,
+                  "scivis: standard whitted style ray tracer. "
+                  "pathtracer/pt: photo-realistic path tracer");
+      child("rendererType").setWhiteList({std::string("scivis"),
+                                          std::string("sv"),
+                                          std::string("raytracer"),
+                                          std::string("rt"),
+                                          std::string("ao"),
+                                          std::string("ao1"),
+                                          std::string("ao2"),
+                                          std::string("ao4"),
+                                          std::string("ao8"),
+                                          std::string("ao16"),
+                                          std::string("dvr"),
+                                          std::string("raycast"),
+                                          std::string("raycast_Ng"),
+                                          std::string("raycast_Ns"),
+                                          std::string("primID"),
+                                          std::string("geomID"),
+                                          std::string("instID"),
+                                          std::string("pathtracer"),
+                                          std::string("pt")});
+      createChild("world",
+                  "World").setDocumentation("model containing scene objects");
+      createChild("camera", "PerspectiveCamera");
+      createChild("frameBuffer", "FrameBuffer");
+      createChild("lights");
 
-    int Renderer::renderFrame()
-    { 
-      if (!integrator) return 1;
-      if (!frameBuffer) return 2;
-      if (!camera) return 3;
-      if (!world) return 4;
+      createChild("bgColor", "vec3f", vec3f(0.9f, 0.9f, 0.9f),
+                  NodeFlags::required |
+                  NodeFlags::valid_min_max |
+                  NodeFlags::gui_color);
 
-      assert(integrator->ospRenderer);
+      createChild("spp", "int", 1,
+                  NodeFlags::required | NodeFlags::gui_slider,
+                  "the number of samples rendered per pixel. The higher "
+                  "the number, the smoother the resulting image.");
+      child("spp").setMinMax(-8,128);
 
-      if (!world->ospModel) {
-        RenderContext rootContext;
-        // geometries need the integrator to create materials
-        rootContext.integrator = integrator;
-        world->render(rootContext);
-        assert(world->ospModel);
-      }
+      createChild("minContribution", "float", 0.001f,
+                  NodeFlags::required |
+                  NodeFlags::valid_min_max |
+                  NodeFlags::gui_slider,
+                  "sample contributions below this value will be neglected"
+                  " to speed-up rendering.");
+      child("minContribution").setMinMax(0.f, 0.1f);
 
-      integrator->setWorld(world);
-      integrator->setCamera(camera);
-      integrator->commit();
-      camera->commit();
+      createChild("varianceThreshold", "float", 0.f,
+                  NodeFlags::required |
+                  NodeFlags::valid_min_max |
+                  NodeFlags::gui_slider,
+                  "the percent (%) threshold of pixel difference to enable"
+                  " tile rendering early termination.");
+      child("varianceThreshold").setMinMax(0.f, 25.f);
 
-      ospSet1f(camera->ospCamera,"aspect",frameBuffer->getSize().x/float(frameBuffer->getSize().y));
-      ospCommit(camera->ospCamera);
-      ospRenderFrame(frameBuffer->getOSPHandle(),
-                     integrator->getOSPHandle(),
-                     OSP_FB_COLOR|OSP_FB_ACCUM);
-      accumID++;
-      
-      return 0;
+      //TODO: move these to seperate SciVisRenderer
+      createChild("shadowsEnabled", "bool", true);
+      createChild("maxDepth", "int", 5,
+                  NodeFlags::required | NodeFlags::valid_min_max,
+                  "maximum number of ray bounces").setMinMax(0,999);
+      createChild("aoSamples", "int", 1,
+                  NodeFlags::required |
+                  NodeFlags::valid_min_max |
+                  NodeFlags::gui_slider,
+                  "AO samples per frame.").setMinMax(0,128);
+
+      createChild("aoDistance", "float", 10000.f,
+                  NodeFlags::required | NodeFlags::valid_min_max,
+                  "maximum distance ao rays will trace to."
+                  " Useful if you do not want a large interior of a"
+                  " building to be completely black from occlusion.");
+      child("aoDistance").setMinMax(1e-20f, 1e20f);
+
+      createChild("epsilon", "float", 1e-3f,
+                  NodeFlags::required | NodeFlags::valid_min_max,
+                  "epsilon step for secondary ray generation.  Adjust"
+                  " if you see speckles or a lack of lighting.");
+      child("epsilon").setMinMax(1e-20f, 1e20f);
+      createChild("autoEpsilon", "bool", true, NodeFlags::required,
+        "automatically adjust epsilon step by world bounds");
+
+      createChild("oneSidedLighting", "bool", true, NodeFlags::required);
+      createChild("aoTransparencyEnabled", "bool", true, NodeFlags::required);
     }
 
-    /*! re-start accumulation (for progressive rendering). make sure
-      that this function gets called at lesat once every time that
-      anything changes that might change the appearance of the
-      converged image (e.g., camera position, scene, frame size,
-      etc) */
-    void Renderer::resetAccumulation()
+    std::string Renderer::toString() const
     {
-      if (accumID == 0) {
-        // cout << "accumID already 0..." << endl;
-      } else {
-        accumID = 0;
-        // cout << "resetting accum" << endl;
-        if (frameBuffer)
-        frameBuffer->clear(); 
-      }
+      return "ospray::sg::Renderer";
     }
 
-    //! create a default camera
-    std::shared_ptr<sg::Camera> Renderer::createDefaultCamera(vec3f up)
+    void Renderer::traverse(RenderContext &ctx, const std::string& operation)
     {
-      // create a default camera
-      std::shared_ptr<sg::PerspectiveCamera> camera = std::make_shared<sg::PerspectiveCamera>();
-      if (world) {
-      
-        // now, determine world bounds to automatically focus the camera
-        box3f worldBounds = world->getBounds();
-        if (worldBounds == box3f(empty)) {
-          cout << "#osp:qtv: world bounding box is empty, using default camera pose" << endl;
-        } else {
-          cout << "#osp:qtv: found world bounds " << worldBounds << endl;
-          cout << "#osp:qtv: focussing default camera on world bounds" << endl;
+      if (operation == "render") {
+        preRender(ctx);
+        postRender(ctx);
+      }
+      else
+        Node::traverse(ctx,operation);
+    }
 
-          camera->setAt(center(worldBounds));
-          if (up == vec3f(0,0,0))
-            up = vec3f(0,1,0);
-          camera->setUp(up);
-          camera->setFrom(center(worldBounds) + .3f*vec3f(-1,+3,+1.5)*worldBounds.size());
+    void Renderer::postRender(RenderContext &)
+    {
+      auto fb = (OSPFrameBuffer)child("frameBuffer").valueAs<OSPObject>();
+      variance = ospRenderFrame(fb, ospRenderer, OSP_FB_COLOR | OSP_FB_ACCUM);
+    }
+
+    void Renderer::preRender(RenderContext& ctx)
+    {
+      ctx.ospRenderer = ospRenderer;
+    }
+
+    void Renderer::preCommit(RenderContext &ctx)
+    {
+      if (child("camera").hasChild("aspect") &&
+          child("frameBuffer")["size"].lastModified() >
+          child("camera")["aspect"].lastCommitted()) {
+
+        auto fbSize = child("frameBuffer")["size"].valueAs<vec2i>();
+        child("camera")["aspect"] = fbSize.x / float(fbSize.y);
+      }
+      auto rendererType = child("rendererType").valueAs<std::string>();
+      if (!ospRenderer || rendererType != createdType) {
+        traverse(ctx, "modified");
+        ospRenderer = ospNewRenderer(rendererType.c_str());
+        assert(ospRenderer);
+        createdType = rendererType;
+        ospCommit(ospRenderer);
+        setValue((OSPObject)ospRenderer);
+      }
+      ctx.ospRenderer = ospRenderer;
+    }
+
+    void Renderer::postCommit(RenderContext &ctx)
+    {
+      if (lastModified() > frameMTime || childrenLastModified() > frameMTime) {
+        ospFrameBufferClear(
+          (OSPFrameBuffer)child("frameBuffer").valueAs<OSPObject>(),
+          OSP_FB_COLOR | OSP_FB_ACCUM
+        );
+
+        if (lightsData == nullptr ||
+          lightsBuildTime < child("lights").childrenLastModified())
+        {
+          // create and setup light list
+          std::vector<OSPLight> lights;
+          for(auto &lightNode : child("lights").children())
+          {
+            auto light = lightNode.second->valueAs<OSPLight>();
+            if (light)
+              lights.push_back(light);
+          }
+
+          if (lightsData)
+            ospRelease(lightsData);
+          lightsData = ospNewData(lights.size(), OSP_LIGHT, &lights[0]);
+          ospCommit(lightsData);
+          lightsBuildTime.renew();
         }
+
+        // complete setup of renderer
+        ospSetObject(ospRenderer,"camera", child("camera").valueAs<OSPObject>());
+        ospSetObject(ospRenderer, "lights", lightsData);
+        if (child("world").childrenLastModified() > frameMTime)
+        {
+          child("world").traverse(ctx, "render");
+          ospSetObject(ospRenderer, "model",  child("world").valueAs<OSPObject>());
+          if (child("autoEpsilon").valueAs<bool>()) {
+            const box3f bounds = child("world")["bounds"].valueAs<box3f>();
+            const float diam = length(bounds.size());
+            float logDiam = ospcommon::log(diam);
+            if (logDiam < 0.f)
+            {
+              logDiam = -1.f/logDiam;
+            }
+            const float epsilon = 1e-5f*logDiam;
+            ospSet1f(ospRenderer, "epsilon", epsilon);
+            ospSet1f(ospRenderer, "aoDistance", diam*0.3);
+          }
+
+        }
+        ospCommit(ospRenderer);
+        frameMTime.renew();
       }
-      camera->commit();
-      return std::dynamic_pointer_cast<sg::Camera>(camera);
+
     }
 
-    void Renderer::setCamera(const std::shared_ptr<sg::Camera> &camera) 
+    OSPPickResult Renderer::pick(const vec2f &pickPos)
     {
-      this->camera = camera;
-      if (camera) 
-        this->camera->commit();
-      // if (this->camera) {
-      //   this->camera->commit();
-      // }
-      if (integrator)
-        integrator->setCamera(camera); 
-// camera && integrator && integrator->ospRenderer) {
-//         ospSetObject(integrator->ospRenderer,"camera",camera->ospCamera);
-//         ospCommit(integrator->ospRenderer);
-//       }
-      resetAccumulation();
+      OSPPickResult result;
+      ospPick(&result, ospRenderer, (const osp::vec2f&)pickPos);
+      return result;
     }
 
-    void Renderer::setIntegrator(const std::shared_ptr<sg::Integrator> &integrator) 
-    {      
-      this->integrator = integrator;
-      if (integrator) {
-        integrator->commit();
-      }
-      resetAccumulation();
-    }
-
-    void Renderer::setWorld(const std::shared_ptr<World> &world)
+    float Renderer::getLastVariance() const
     {
-      this->world = world;
-      allNodes.clear();
-      uniqueNodes.clear();
-      if (world) {
-        allNodes.serialize(world,sg::Serialization::DONT_FOLLOW_INSTANCES);
-        uniqueNodes.serialize(world,sg::Serialization::DO_FOLLOW_INSTANCES);
-      } else 
-        std::cout << "#osp:sg:renderer: no world defined, yet\n#ospQTV: (did you forget to pass a scene file name on the command line?)" << std::endl;
-
-      resetAccumulation();
-      std::cout << "#osp:sg:renderer: new world with " << world->nodes.size() << " nodes" << endl;
+      return variance;
     }
 
-    //! find the last camera in the scene graph
-    std::shared_ptr<sg::Camera> Renderer::getLastDefinedCamera() const
-    {
-      std::shared_ptr<sg::Camera> lastCamera;
-      for (std::shared_ptr<Serialization::Object> obj : uniqueNodes.object) {
-        std::shared_ptr<sg::Camera> asCamera = std::dynamic_pointer_cast<sg::Camera>(obj->node);
-        if (asCamera) lastCamera = asCamera;
-      }
-      return lastCamera;
-    }
-    
-    //! find the last integrator in the scene graph
-    std::shared_ptr<sg::Integrator> Renderer::getLastDefinedIntegrator() const
-    {
-      std::shared_ptr<sg::Integrator> lastIntegrator;
-      for (std::shared_ptr<Serialization::Object> obj : uniqueNodes.object) {
-        std::shared_ptr<sg::Integrator> asIntegrator = std::dynamic_pointer_cast<sg::Integrator>(obj->node);
-        if (asIntegrator) lastIntegrator = asIntegrator;
-      }
-      return lastIntegrator;
-    }
-    
-  }
-}
+    OSP_REGISTER_SG_NODE(Renderer);
+
+  } // ::ospray::sg
+} // ::ospray

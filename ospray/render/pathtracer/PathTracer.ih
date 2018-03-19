@@ -28,10 +28,13 @@
 struct PathTracer {
   Renderer super;
 
-  int32 maxDepth;
-  float minContribution;
+  int32 rouletteDepth;
   float maxRadiance;
   Texture2D* uniform backplate;
+  // coefficients of plane equation defining geometry to catch shadows for
+  // compositing; disabled if normal is zero-length
+  vec4f shadowCatcherPlane;
+  bool shadowCatcher; // preprocessed
 
   const uniform Light *uniform *uniform lights;
   uint32 numLights;

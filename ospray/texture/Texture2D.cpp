@@ -22,7 +22,7 @@ namespace ospray {
   Texture2D::~Texture2D()
   {
     if (!(flags & OSP_TEXTURE_SHARED_BUFFER))
-      delete[] (unsigned char *)data;
+      delete [] (unsigned char *)data;
   }
 
   std::string Texture2D::toString() const
@@ -30,9 +30,10 @@ namespace ospray {
     return "ospray::Texture2D";
   }
 
-  Texture2D *Texture2D::createTexture(const vec2i &size,
-      const OSPTextureFormat type, void *data, const int flags) 
+  Texture2D *Texture2D::createTexture(const vec2i &_size,
+      const OSPTextureFormat type, void *data, const int flags)
   {
+    auto size = _size;
     Texture2D *tx = new Texture2D;
 
     tx->size = size;

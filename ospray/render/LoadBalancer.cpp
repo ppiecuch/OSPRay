@@ -33,7 +33,7 @@ namespace ospray {
 
     void *perFrameData = renderer->beginFrame(fb);
 
-    parallel_for(fb->getTotalTiles(), [&](int taskIndex) {
+    tasking::parallel_for(fb->getTotalTiles(), [&](int taskIndex) {
       const size_t numTiles_x = fb->getNumTiles().x;
       const size_t tile_y = taskIndex / numTiles_x;
       const size_t tile_x = taskIndex - tile_y*numTiles_x;
@@ -43,9 +43,15 @@ namespace ospray {
       if (fb->tileError(tileID) <= renderer->errorThreshold)
         return;
 
+#define MAX_TILE_SIZE 128
+#if TILE_SIZE > MAX_TILE_SIZE
+      auto tilePtr = make_unique<Tile>(tileID, fb->size, accumID);
+      auto &tile   = *tilePtr;
+#else
       Tile __aligned(64) tile(tileID, fb->size, accumID);
+#endif
 
-      parallel_for(numJobs(renderer->spp, accumID), [&](int tIdx) {
+      tasking::parallel_for(numJobs(renderer->spp, accumID), [&](int tIdx) {
         renderer->renderTile(perFrameData, tile, tIdx);
       });
 

@@ -16,51 +16,28 @@
 
 #include "OSPCommon.h"
 #include "api/Device.h"
-// embree
-#include "embree2/rtcore.h"
+
+#include <map>
 
 namespace ospray {
 
-  /*! 64-bit malloc. allows for alloc'ing memory larger than 64 bits */
+  /*! 64-bit malloc. allows for alloc'ing memory larger than 4GB */
   extern "C" void *malloc64(size_t size)
   {
     return ospcommon::alignedMalloc(size);
   }
 
-  /*! 64-bit malloc. allows for alloc'ing memory larger than 64 bits */
+  /*! 64-bit malloc. allows for alloc'ing memory larger than 4GB */
   extern "C" void free64(void *ptr)
   {
     return ospcommon::alignedFree(ptr);
   }
 
-  WarnOnce::WarnOnce(const std::string &s) 
-    : s(s) 
+  WarnOnce::WarnOnce(const std::string &s, uint32_t postAtLogLevel)
+    : s(s)
   {
-    std::string msg = "Warning: " + s + " (only reporting first occurrence)\n";
-    postErrorMsg(msg);
-  }
-  
-  /*! for debugging. compute a checksum for given area range... */
-  void *computeCheckSum(const void *ptr, size_t numBytes)
-  {
-    long *end = (long *)((char *)ptr + (numBytes - (numBytes%8)));
-    long *mem = (long *)ptr;
-    long sum = 0;
-    long i = 0;
-
-    while (mem < end) {
-      sum += (i+13) * *mem;
-      ++i;
-      ++mem;
-    }
-    return (void *)sum;
-  }
-
-  void removeArgs(int &ac, char **&av, int where, int howMany)
-  {
-    for (int i=where+howMany;i<ac;i++)
-      av[i-howMany] = av[i];
-    ac -= howMany;
+    postStatusMsg(postAtLogLevel) << "Warning: " << s
+                                  << " (only reporting first occurrence)";
   }
 
   void initFromCommandLine(int *_ac, const char ***_av)
@@ -69,13 +46,13 @@ namespace ospray {
 
     if (_ac && _av) {
       int &ac = *_ac;
-      char ** &av = *(char ***)_av;
+      auto &av = *_av;
       for (int i=1;i<ac;) {
         std::string parm = av[i];
         if (parm == "--osp:debug") {
           device->findParam("debug", true)->set(true);
           // per default enable logging to cout; may be overridden later
-          device->error_fcn = [](const char *msg){ std::cout << msg; };
+          device->msg_fcn = [](const char *msg){ std::cout << msg; };
           removeArgs(ac,av,i,1);
         } else if (parm == "--osp:verbose") {
           device->findParam("logLevel", true)->set(1);
@@ -89,41 +66,34 @@ namespace ospray {
         } else if (parm == "--osp:logoutput") {
           std::string dst = av[i+1];
 
-          if (dst == "cout")
-            device->error_fcn = [](const char *msg){ std::cout << msg; };
-          else if (dst == "cerr")
-            device->error_fcn = [](const char *msg){ std::cerr << msg; };
+          if (dst == "cout" || dst == "cerr")
+            device->findParam("logOutput", true)->set(av[i+1]);
           else
-            postErrorMsg("You must use 'cout' or 'cerr' for --osp:logoutput!");
+            postStatusMsg("You must use 'cout' or 'cerr' for --osp:logoutput!");
+
+          removeArgs(ac,av,i,2);
+        } else if (parm == "--osp:erroroutput") {
+          std::string dst = av[i+1];
+
+          if (dst == "cout" || dst == "cerr")
+            device->findParam("errorOutput", true)->set(av[i+1]);
+          else {
+            postStatusMsg("You must use 'cout' or 'cerr' for"
+                          " --osp:erroroutput!");
+          }
 
           removeArgs(ac,av,i,2);
         } else if (parm == "--osp:numthreads" || parm == "--osp:num-threads") {
           device->findParam("numThreads", true)->set(atoi(av[i+1]));
+          removeArgs(ac,av,i,2);
+        } else if (parm == "--osp:setaffinity" || parm == "--osp:affinity") {
+          device->findParam("setAffinity", true)->set(atoi(av[i+1]));
           removeArgs(ac,av,i,2);
         } else {
           ++i;
         }
       }
     }
-  }
-
-  void error_handler(const RTCError code, const char *str)
-  {
-    printf("Embree: ");
-    switch (code) {
-      case RTC_UNKNOWN_ERROR    : printf("RTC_UNKNOWN_ERROR"); break;
-      case RTC_INVALID_ARGUMENT : printf("RTC_INVALID_ARGUMENT"); break;
-      case RTC_INVALID_OPERATION: printf("RTC_INVALID_OPERATION"); break;
-      case RTC_OUT_OF_MEMORY    : printf("RTC_OUT_OF_MEMORY"); break;
-      case RTC_UNSUPPORTED_CPU  : printf("RTC_UNSUPPORTED_CPU"); break;
-      default                   : printf("invalid error code"); break;
-    }
-    if (str) { 
-      printf(" ("); 
-      while (*str) putchar(*str++); 
-      printf(")\n"); 
-    }
-    abort();
   }
 
   size_t sizeOf(const OSPDataType type) {
@@ -182,8 +152,9 @@ namespace ospray {
     throw std::runtime_error(error.str());
   }
 
-  OSPDataType typeForString(const char *string) {
-    if (string == NULL)                return(OSP_UNKNOWN);
+  OSPDataType typeForString(const char *string)
+  {
+    if (string == nullptr)             return(OSP_UNKNOWN);
     if (strcmp(string, "char"  ) == 0) return(OSP_CHAR);
     if (strcmp(string, "double") == 0) return(OSP_DOUBLE);
     if (strcmp(string, "float" ) == 0) return(OSP_FLOAT);
@@ -264,7 +235,8 @@ namespace ospray {
     throw std::runtime_error(error.str());
   }
 
-  size_t sizeOf(const OSPTextureFormat type) {
+  size_t sizeOf(const OSPTextureFormat type)
+  {
     switch (type) {
       case OSP_TEXTURE_RGBA8:
       case OSP_TEXTURE_SRGBA:          return sizeof(uint32);
@@ -288,7 +260,7 @@ namespace ospray {
     return ospray::api::Device::current->logLevel;
   }
 
-  int loadLocalModule(const std::string &name)
+  OSPError loadLocalModule(const std::string &name)
   {
     std::string libName = "ospray_module_" + name;
     loadLibrary(libName);
@@ -302,28 +274,70 @@ namespace ospray {
 
     void (*initMethod)() = (void(*)())initSym;
 
-    //NOTE(jda) - don't use magic numbers!
     if (!initMethod)
-      return 2;
+      return OSP_INVALID_ARGUMENT;
 
     try {
       initMethod();
     } catch (...) {
-      return 3;
+      return OSP_UNKNOWN_ERROR;
     }
 
-    return 0;
+    return OSP_NO_ERROR;
   }
 
-  void postErrorMsg(const std::stringstream &msg, uint32_t postAtLogLevel)
+  StatusMsgStream postStatusMsg(uint32_t postAtLogLevel)
   {
-    postErrorMsg(msg.str(), postAtLogLevel);
+    return StatusMsgStream(postAtLogLevel);
   }
 
-  void postErrorMsg(const std::string &msg, uint32_t postAtLogLevel)
+  void postStatusMsg(const std::stringstream &msg, uint32_t postAtLogLevel)
   {
-    if (logLevel() >= postAtLogLevel)
-      ospray::api::Device::current->error_fcn(msg.c_str());
+    postStatusMsg(msg.str(), postAtLogLevel);
+  }
+
+  void postStatusMsg(const std::string &msg, uint32_t postAtLogLevel)
+  {
+    if (logLevel() >= postAtLogLevel && ospray::api::Device::current.ptr)
+      ospray::api::Device::current->msg_fcn((msg + '\n').c_str());
+  }
+
+  void handleError(OSPError e, const std::string &message)
+  {
+    if (api::deviceIsSet()) {
+      auto &device = api::currentDevice();
+
+      device.lastErrorCode = e;
+      device.lastErrorMsg  = message;
+
+      device.error_fcn(e, message.c_str());
+    } else {
+      // NOTE: No device, but something should still get printed for the user to
+      //       debug the calling application.
+      std::cerr << "#osp: INITIALIZATION ERROR --> " << message << std::endl;
+    }
+  }
+
+  void postTraceMsg(const std::string &message)
+  {
+    if (api::deviceIsSet()) {
+      auto &device = api::currentDevice();
+      device.trace_fcn(message.c_str());
+    }
+  }
+
+  size_t translatedHash(size_t v)
+  {
+    static std::map<size_t, size_t> id_translation;
+
+    auto itr = id_translation.find(v);
+    if (itr == id_translation.end()) {
+      static size_t newIndex = 0;
+      id_translation[v] = newIndex;
+      return newIndex++;
+    } else {
+      return id_translation[v];
+    }
   }
 
 } // ::ospray

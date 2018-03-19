@@ -19,60 +19,75 @@
     sends them to random other ranks; every time a message is received
     it's simply bounced to anohter random node */
 
+#include "ospcommon/tasking/tasking_system_handle.h"
 #include "maml/maml.h"
 #include <atomic>
-#include <sys/times.h>
+#include <chrono>
+#include <thread>
+#include <random>
 
-int numRanks = 0;
-std::atomic<size_t> numReceived;
+static int numRanks = 0;
+static std::atomic<size_t> numReceived;
 
 struct BounceHandler : public maml::MessageHandler
 {
-  virtual void incoming(const std::shared_ptr<maml::Message> &message)
+  std::mt19937 rng;
+  std::uniform_int_distribution<> rank_distrib;
+
+  BounceHandler() : rng(std::random_device{}()), rank_distrib(0, numRanks - 1)
+  {}
+
+  void incoming(const std::shared_ptr<maml::Message> &message) override
   {
     ++numReceived;
-    int nextRank = (int)(drand48()*numRanks);
-    maml::sendTo(MPI_COMM_WORLD,nextRank,message);
+    int nextRank = rank_distrib(rng);
+    maml::sendTo(MPI_COMM_WORLD, nextRank, message);
   }
 };
-  
+
 extern "C" int main(int ac, char **av)
 {
   MPI_CALL(Init(&ac, &av));
-  maml::init(ac,av);
-  srand48(times(NULL));
+  ospcommon::tasking::initTaskingSystem();
 
-  int numRuns = 1000000;
   int rank = -1;
-  MPI_CALL(Comm_size(MPI_COMM_WORLD,&numRanks));
-  MPI_CALL(Comm_rank(MPI_COMM_WORLD,&rank));
+  MPI_CALL(Comm_size(MPI_COMM_WORLD, &numRanks));
+  MPI_CALL(Comm_rank(MPI_COMM_WORLD, &rank));
+
+  std::mt19937 rng(std::random_device{}());
+  std::uniform_int_distribution<int> distrib(0, 255);
+  std::uniform_int_distribution<> rank_distrib(0, numRanks - 1);
 
   int numMessages = 100;
   int payloadSize = 100000;
-  
+
   BounceHandler handler;
-  maml::registerHandlerFor(MPI_COMM_WORLD,&handler);
+  maml::registerHandlerFor(MPI_COMM_WORLD, &handler);
 
   char *payload = (char*)malloc(payloadSize);
-  for (int i=0;i<payloadSize;i++)
-    payload[i] = drand48()*256;
+  for (int i = 0; i < payloadSize; i++)
+    payload[i] = distrib(rng);
 
   maml::start();
-  
+
   double t0 = ospcommon::getSysTime();
-  for (int mID=0;mID<numMessages;mID++) {
-    int r = int(drand48()*numRanks);
-    maml::sendTo(MPI_COMM_WORLD,r,std::make_shared<maml::Message>(payload,payloadSize));
+  for (int mID = 0; mID < numMessages; mID++) {
+    int r = rank_distrib(rng);
+    maml::sendTo(MPI_COMM_WORLD, r,
+                 std::make_shared<maml::Message>(payload, payloadSize));
   }
-  
+
   while (1) {
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     double t1 = ospcommon::getSysTime();
-    std::string numBytes = ospcommon::prettyNumber((size_t)numReceived*payloadSize);
+    std::string numBytes =
+      ospcommon::prettyNumber((size_t)numReceived*payloadSize);
     double rate = (size_t)numReceived * payloadSize / (t1-t0);
     std::string rateString = ospcommon::prettyNumber(rate);
+
     printf("rank %i: received %li messages (%sbytes) in %lf secs; that is %sB/s\n",
-           rank,(size_t)numReceived,numBytes.c_str(),t1-t0,rateString.c_str());
+           rank, (size_t)numReceived, numBytes.c_str(),
+           t1-t0, rateString.c_str());
   }
 
   /* this will never terminate ... */

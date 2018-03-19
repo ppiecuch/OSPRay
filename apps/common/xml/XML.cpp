@@ -27,25 +27,26 @@ namespace ospray {
     { std::stringstream ss; ss << v.x << " " << v.y << " " << v.z; return ss.str(); }
 
     /*! checks if given node has given property */
-    bool Node::hasProp(const std::string &name) const
+    bool Node::hasProp(const std::string &propName) const
     {
-      return (properties.find(name) != properties.end());
+      return (properties.find(propName) != properties.end());
     }
 
     /*! return value of property with given name if present, else return 'fallbackValue' */
-    std::string Node::getProp(const std::string &name, const std::string &fallbackValue) const
+    std::string Node::getProp(const std::string &propName,
+                              const std::string &fallbackValue) const
     {
-      if (!hasProp(name)) return fallbackValue;
-      return properties.find(name)->second;
+      if (!hasProp(propName)) return fallbackValue;
+      return properties.find(propName)->second;
     }
 
     /*! return value of property with given name if present; and throw an exception if not */
-    std::string Node::getProp(const std::string &name) const
+    std::string Node::getProp(const std::string &propName) const
     {
-      if (!hasProp(name))
+      if (!hasProp(propName))
         return "";
       // throw std::runtime_error("given xml::Node does have the queried property '"+name+"'");
-      return properties.find(name)->second;
+      return properties.find(propName)->second;
     }
 
     inline bool isWhite(char s) {
@@ -65,7 +66,7 @@ namespace ospray {
         throw std::runtime_error(err.str());
       }
     }
-    
+
     inline void expect(char *&s, const char w0, const char w1)
     {
       if (*s != w0 && *s != w1) {
@@ -75,13 +76,13 @@ namespace ospray {
         throw std::runtime_error(err.str());
       }
     }
-    
+
     inline void consume(char *&s, const char w)
     {
       expect(s,w);
       ++s;
     }
-    
+
     inline void consumeComment(char *&s)
     {
       consume(s,'<');
@@ -93,7 +94,7 @@ namespace ospray {
       consume(s,'-');
       consume(s,'>');
     }
-    
+
     inline void consume(char *&s, const char *word)
     {
       const char *in = word;
@@ -114,10 +115,11 @@ namespace ospray {
       if (!begin || !end)
         throw std::runtime_error("invalid substring in osp::xml::makeString");
       if (begin == end) return "";
+
       char *mem = new char[end-begin+1];
+      memcpy(mem,begin,end-begin);
       mem[end-begin] = 0;
 
-      memcpy(mem,begin,end-begin);
       std::string s = mem;
       delete [] mem;
       return s;
@@ -153,7 +155,7 @@ namespace ospray {
       if (isalpha(*s) || *s == '_') {
         char *begin = s;
         ++s;
-        while (isalpha(*s) || isdigit(*s) || *s == '_') {
+        while (isalpha(*s) || isdigit(*s) || *s == '_' || *s == '.') {
           ++s;
         }
         char *end = s;
@@ -189,7 +191,6 @@ namespace ospray {
       return false;
     }
 
-    
     std::shared_ptr<Node> parseNode(char *&s, XMLDoc *doc)
     {
       consume(s,'<');
@@ -219,12 +220,14 @@ namespace ospray {
           continue;
         if (*s == '<' && s[1] == '/') {
           consume(s,"</");
-          std::string name = "";
-          parseIdentifier(s,name);
-          if (name != node->name)
+          std::string nodeName;
+          parseIdentifier(s, nodeName);
+          if (nodeName != node->name) {
             throw std::runtime_error("invalid XML node - started with'<"
                                      + node->name +
-                                     "...'>, but ended with '</"+name+">");
+                                     "...'>, but ended with '</"+
+                                     nodeName + ">");
+          }
           consume(s,">");
           break;
           // either end of current node
@@ -260,7 +263,8 @@ namespace ospray {
         consume(s,"?>");
         return true;
       }
-      if (!isWhite(*s)) return false; ++s;
+      if (!isWhite(*s)) return false;
+      ++s;
 
       skipWhites(s);
 
@@ -360,7 +364,6 @@ namespace ospray {
         (void)rc;
         std::shared_ptr<XMLDoc> doc = std::make_shared<XMLDoc>();
         doc->fileName = fn;
-        bool valid = false;
         parseXML(doc,mem);
         delete[] mem;
         fclose(file);

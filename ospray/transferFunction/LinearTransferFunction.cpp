@@ -14,18 +14,10 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "common/Data.h"
-#include "common/OSPCommon.h"
 #include "transferFunction/LinearTransferFunction.h"
 #include "LinearTransferFunction_ispc.h"
 
 namespace ospray {
-
-  LinearTransferFunction::~LinearTransferFunction() 
-  {
-    if (ispcEquivalent != nullptr)
-      ispc::LinearTransferFunction_destroy(ispcEquivalent); 
-  }
 
   void LinearTransferFunction::commit()
   {

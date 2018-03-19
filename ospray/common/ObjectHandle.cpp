@@ -20,43 +20,54 @@
 
 namespace ospray {
 
-  std::map<int64,Ref<ospray::ManagedObject> > objectByHandle;
-  std::stack<int64> freedHandles;
+  static std::map<int64,Ref<ospray::ManagedObject>> objectByHandle;
+  static std::stack<int64> freedHandles;
 
   //! next unassigned ID on this node
   /*! we start numbering with 1 to make sure that "0:0" is an
     invalid handle (so we can typecast between (64-bit) handles
     and (64-bit)OSPWhatEver pointers */
-  int32 nextFreeLocalID = 1;
-    
+  static int32 nextFreeLocalID = 1;
+
   void ObjectHandle::free()
   {
     freedHandles.push((int64)*this);
   }
 
-  ObjectHandle ObjectHandle::alloc()
+  ObjectHandle::ObjectHandle()
   {
-    ObjectHandle h;
     if (freedHandles.empty()) {
-      //      h.i32.owner = app.rank;
-      h.i32.ID = nextFreeLocalID++;
+      i32.ID    = nextFreeLocalID++;
+      i32.owner = 0;
     } else {
-      h = freedHandles.top();
+      i64 = freedHandles.top();
       freedHandles.pop();
     }
-    return h;
+  }
+
+  ObjectHandle::ObjectHandle(int64 i) : i64(i)
+  {
+  }
+
+  ObjectHandle::ObjectHandle(const ObjectHandle &other) : i64(other.i64)
+  {
+  }
+
+  ObjectHandle &ObjectHandle::operator=(const ObjectHandle &other)
+  {
+    i64 = other.i64;
+    return *this;
   }
 
   /*! define the given handle to refer to given object */
-  void ObjectHandle::assign(const ObjectHandle &handle,
-                            const ManagedObject *object)
+  void ObjectHandle::assign(const ObjectHandle &handle, ManagedObject *object)
   {
-    objectByHandle[handle] = (ManagedObject*)object;
+    objectByHandle[handle] = object;
   }
 
-  void ObjectHandle::assign(const ManagedObject *object) const
+  void ObjectHandle::assign(ManagedObject *object) const
   {
-    objectByHandle[*this] = (ManagedObject*)object;
+    objectByHandle[*this] = object;
   }
 
   void ObjectHandle::freeObject() const
@@ -67,7 +78,22 @@ namespace ospray {
     objectByHandle.erase(it);
   }
 
-  bool ObjectHandle::defined() const 
+  int32 ObjectHandle::ownerRank() const
+  {
+    return i32.owner;
+  }
+
+  int32 ObjectHandle::objID() const
+  {
+    return i32.ID;
+  }
+
+  ospray::ObjectHandle::operator int64() const
+  {
+    return i64;
+  }
+
+  bool ObjectHandle::defined() const
   {
     auto it = objectByHandle.find(i64);
     return it != objectByHandle.end();
@@ -78,7 +104,14 @@ namespace ospray {
     if (i64 == 0) return nullptr;
 
     auto it = objectByHandle.find(i64);
-    Assert(it != objectByHandle.end());
+    if (it == objectByHandle.end()) {
+#ifndef NDEBUG
+      // iw - made this into a warning only; the original code had
+      // this throw an actual exceptoin, but that may be overkill
+      std::cout << "#osp: WARNING: ospray is trying to look up object handle "+std::to_string(i64)+" that isn't defined!" << std::endl;
+#endif
+      return nullptr;
+    }
     return it->second.ptr;
   }
 
@@ -90,7 +123,7 @@ namespace ospray {
 
     return(nullHandle);
   }
-    
+
   OSPRAY_SDK_INTERFACE const ObjectHandle nullHandle(0);
 
 } // ::ospray

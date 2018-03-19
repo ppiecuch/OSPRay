@@ -20,6 +20,7 @@
 
 namespace ospray {
   namespace sg {
+<<<<<<< HEAD
     struct FrameBuffer;
     struct Renderer {
       Renderer();
@@ -49,30 +50,39 @@ namespace ospray {
 
       // //! set a default camera
       // void setDefaultCamera() { setCamera(createDefaultCamera()); }
+=======
+>>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
-      /*! render a frame. return 0 if successful, any non-zero number if not */
-      virtual int renderFrame();
+    class FrameBuffer;
 
-      // =======================================================
-      // state variables
-      // =======================================================
-      std::shared_ptr<sg::World>       world;
-      std::shared_ptr<sg::Camera>      camera;
-      std::shared_ptr<sg::FrameBuffer> frameBuffer;
-      std::shared_ptr<sg::Integrator>  integrator;
-      // std::shared_ptr<Frame>  frame;
+    struct OSPSG_INTERFACE Renderer : public Renderable
+    {
+      Renderer();
+      virtual std::string toString() const override;
 
-      // state variables
-      /*! all _unique_ nodes (i.e, even instanced nodes are listed
-          only once */
-      Serialization uniqueNodes;
-      /*! _all_ nodes (i.e, instanced nodes are listed once for each
-          time they are instanced */
-      Serialization allNodes;
+      // renderer renders the scene into the framebuffer on render call.
+      //  It will call render on model when commit when model modified
+      virtual void traverse(RenderContext &ctx,
+                            const std::string& operation) override;
+      void preRender(RenderContext &ctx) override;
+      void postRender(RenderContext &ctx) override;
+      void preCommit(RenderContext &ctx) override;
+      void postCommit(RenderContext &ctx) override;
+      OSPPickResult pick(const vec2f &pickPos);
+      float getLastVariance() const;
 
-      //! accumulation ID
-      size_t accumID;
+    private:
+
+      // Data members //
+
+      OSPRenderer ospRenderer {nullptr};
+      OSPData lightsData {nullptr};
+      TimeStamp lightsBuildTime;
+      TimeStamp frameMTime;
+      float variance {inf};
+      std::string createdType = "none";
     };
-  }
-}
+
+  } // ::ospray::sg
+} // ::ospray
 

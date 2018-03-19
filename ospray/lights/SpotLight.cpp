@@ -17,12 +17,6 @@
 #include "SpotLight.h"
 #include "SpotLight_ispc.h"
 
-#ifdef _WIN32
-#  define _USE_MATH_DEFINES
-#  include <math.h> // M_PI
-#endif
-
-
 namespace ospray {
 
   SpotLight::SpotLight()
@@ -35,7 +29,6 @@ namespace ospray {
     return "ospray::SpotLight";
   }
 
-  //!< Copy understood parameters into class members
   void SpotLight::commit()
   {
     Light::commit();
@@ -48,14 +41,14 @@ namespace ospray {
     radius    = getParam1f("radius", 0.f);
 
     // check ranges and pre-compute parameters
-    const vec3f power = color * intensity;
+    vec3f power = color * intensity;
     direction = normalize(direction);
     openingAngle = clamp(openingAngle, 0.f, 180.f);
     penumbraAngle = clamp(penumbraAngle, 0.f, 0.5f*openingAngle);
     const float cosAngleMax = ospcommon::cos(deg2rad(0.5f*openingAngle));
     const float cosAngleMin = ospcommon::cos(deg2rad(0.5f*openingAngle - penumbraAngle));
     const float cosAngleScale = 1.0f/(cosAngleMin - cosAngleMax);
-    
+
     ispc::SpotLight_set(getIE(),
                         (ispc::vec3f&)position,
                         (ispc::vec3f&)direction,

@@ -57,9 +57,7 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
   uniform FrameBuffer *uniform fb     = self->fb;
   uniform Camera      *uniform camera = self->camera;
 
-  float pixel_du = .5f, pixel_dv = .5f;
-  float lens_du = 0.f,  lens_dv = 0.f;
-  uniform int32 spp = self->spp;
+  const uniform int32 spp = self->spp;
 
   if (spp >= 1) {
     ScreenSample screenSample;
@@ -97,8 +95,8 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
       vec3f col = make_vec3f(0.f);
       const uint32 pixel = z_order.xs[index] + (z_order.ys[index] * TILE_SIZE);
       for (uniform uint32 s = 0; s < spp; s++) {
-        pixel_du = precomputedHalton2(startSampleID+s);
-        pixel_dv = precomputedHalton3(startSampleID+s);
+        const float pixel_du = precomputedHalton2(startSampleID+s);
+        const float pixel_dv = precomputedHalton3(startSampleID+s);
         screenSample.sampleID.z = startSampleID+s;
 
         cameraSample.screen.x = (screenSample.sampleID.x + pixel_du)
@@ -120,10 +118,8 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
       setRGBAZ(tile,pixel,col,screenSample.alpha,screenSample.z);
     }
   } else {
-    if (tile.accumID >= 0) {
-      pixel_du = precomputedHalton2(tile.accumID);
-      pixel_dv = precomputedHalton3(tile.accumID);
-    }
+    const float pixel_du = precomputedHalton2(tile.accumID);
+    const float pixel_dv = precomputedHalton3(tile.accumID);
 
     ScreenSample screenSample;
     screenSample.sampleID.z = tile.accumID;
@@ -131,6 +127,9 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
     screenSample.alpha = 0.f;
 
     CameraSample cameraSample;
+    // TODO: fix correlations / better RNG
+    cameraSample.lens.x = precomputedHalton3(tile.accumID);
+    cameraSample.lens.y = precomputedHalton5(tile.accumID);
 
     const uniform int blocks = tile.accumID > 0
                                || spp > 0 ? 1 : min(1 << -2 * spp,
@@ -179,21 +178,27 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
   }
 }
 
+export void Renderer_set(void *uniform _self
+    , void *uniform _model
+    , void *uniform _camera
+    , const uniform float epsilon
+    , const uniform int32 spp
+    , const uniform int32 maxDepth
+    , const uniform float minContribution
+    , const uniform vec4f &bgColor
+    , void *uniform _maxDepthTexture
+    );
+
 void Renderer_Constructor(uniform Renderer *uniform self,
                           void *uniform cppE)
 {
   self->cppEquivalent = cppE;
-  self->model  = NULL;
-  self->camera = NULL;
-  self->fb     = NULL;
-  self->spp    = 1;
-  self->backgroundEnabled = true;
-  self->maxDepthTexture = NULL;
   self->renderSample = Renderer_default_renderSample;
   self->renderTile   = Renderer_default_renderTile;
   self->beginFrame   = Renderer_default_beginFrame;
   self->endFrame     = Renderer_default_endFrame;
-  self->toneMap      = NULL;
+  self->fb = NULL;
+  Renderer_set(self, NULL, NULL, 1e-6f, 1, 20, 0.001f, make_vec4f(0.f), NULL);
 }
 
 void Renderer_Constructor(uniform Renderer *uniform self,
@@ -208,18 +213,20 @@ void Renderer_Constructor(uniform Renderer *uniform self,
   self->spp    = spp;
 }
 
+
+// Exports (called from C++)
+//////////////////////////////////////////////////////////////////////////////
+
 export void Renderer_renderTile(void *uniform _self,
                                 void *uniform perFrameData,
                                 uniform Tile &tile,
                                 uniform int jobID)
 {
-  //print("Renderer_renderTile\n");
   uniform Renderer *uniform self = (uniform Renderer *uniform)_self;
   self->renderTile(self, perFrameData, tile, jobID);
 }
 
-export void *uniform Renderer_beginFrame(void *uniform _self,
-                                void *uniform _fb)
+export void *uniform Renderer_beginFrame(void *uniform _self, void *uniform _fb)
 {
   uniform Renderer *uniform self = (uniform Renderer *uniform)_self;
   uniform FrameBuffer *uniform fb = (uniform FrameBuffer *uniform)_fb;
@@ -227,28 +234,30 @@ export void *uniform Renderer_beginFrame(void *uniform _self,
 }
 
 
-export void Renderer_endFrame(void *uniform _self,
-                              void *uniform perFrameData)
+export void Renderer_endFrame(void *uniform _self, void *uniform perFrameData)
 {
   uniform Renderer *uniform self = (uniform Renderer *uniform)_self;
   self->endFrame(self, perFrameData);
 }
 
-export void Renderer_set(void *uniform _self,
-                         void *uniform _model,
-                         void *uniform _camera,
-                         const uniform float epsilon,
-                         const uniform int32 spp,
-                         const uniform bool backgroundEnabled,
-                         const uniform vec3f &bgColor,
-                         void *uniform _maxDepthTexture)
+export void Renderer_set(void *uniform _self
+    , void *uniform _model
+    , void *uniform _camera
+    , const uniform float epsilon
+    , const uniform int32 spp
+    , const uniform int32 maxDepth
+    , const uniform float minContribution
+    , const uniform vec4f &bgColor
+    , void *uniform _maxDepthTexture
+    )
 {
   uniform Renderer *uniform self = (uniform Renderer *uniform)_self;
   self->model  = (uniform Model *uniform)_model;
   self->camera = (uniform Camera *uniform)_camera;
   self->epsilon = epsilon;
   self->spp = spp;
-  self->backgroundEnabled = backgroundEnabled;
+  self->maxDepth = maxDepth;
+  self->minContribution = minContribution;
   self->bgColor = bgColor;
   self->maxDepthTexture = (uniform Texture2D *uniform)_maxDepthTexture;
 

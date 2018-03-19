@@ -53,9 +53,9 @@ ROOT_DIR=$PWD
 DEP_DIR=$ROOT_DIR/deps
 
 DEP_LOCATION=http://sdvis.org/ospray/download/dependencies/linux
-DEP_EMBREE=embree-2.14.0.x86_64.linux
+DEP_EMBREE=embree-2.17.0.x86_64.linux
 DEP_ISPC=ispc-v1.9.1-linux
-DEP_TBB=tbb2017_20161128oss
+DEP_TBB=tbb2018_20170726oss
 DEP_TARBALLS="$DEP_EMBREE.tar.gz $DEP_ISPC.tar.gz ${DEP_TBB}_lin.tgz"
 
 
@@ -66,15 +66,6 @@ if [ -z $CC ]; then
   echo " a different supported compiler (gcc/clang) if desired."
   export CC=icc
   export CXX=icpc
-fi
-
-# to make sure we do not include nor link against wrong TBB
-# NOTE: if we are not verifying CentOS6 defaults, we are likely using
-#       a different compiler which requires LD_LIBRARY_PATH!
-if [ -n $OSPRAY_RELEASE_NO_VERIFY ]; then
-  unset CPATH
-  unset LIBRARY_PATH
-  unset LD_LIBRARY_PATH
 fi
 
 #### Fetch dependencies (TBB+Embree+ISPC) ####
@@ -112,44 +103,36 @@ cp $DEP_DIR/OSPRay_readme_$BRANCH.pdf readme.pdf
 # set release and RPM settings
 cmake \
 -D OSPRAY_BUILD_ISA=ALL \
--D OSPRAY_USE_EXTERNAL_EMBREE=ON \
 -D OSPRAY_MODULE_MPI=ON \
 -D TBB_ROOT=$DEP_DIR/$DEP_TBB \
 -D ISPC_EXECUTABLE=$DEP_DIR/$DEP_ISPC/ispc \
--D USE_IMAGE_MAGICK=OFF \
+-D OSPRAY_SG_CHOMBO=OFF \
+-D OSPRAY_SG_OPENIMAGEIO=OFF \
+-D OSPRAY_SG_VTK=OFF \
 -D OSPRAY_ZIP_MODE=OFF \
 -D OSPRAY_INSTALL_DEPENDENCIES=OFF \
--D CMAKE_INSTALL_PREFIX=/usr \
+-D CPACK_PACKAGING_INSTALL_PREFIX=/usr \
 ..
 
 # create RPM files
 make -j `nproc` preinstall
 
-# if we define 'OSPRAY_RELEASE_NO_VERIFY' to anything, then we
-#   don't verify link dependencies for CentOS6
-if [ -z $OSPRAY_RELEASE_NO_VERIFY ]; then
-  check_symbols libospray.so GLIBC   2 4 0
-  check_symbols libospray.so GLIBCXX 3 4 11
-  check_symbols libospray.so CXXABI  1 3 0
-fi
+check_symbols libospray.so GLIBC   2 4 0
+check_symbols libospray.so GLIBCXX 3 4 11
+check_symbols libospray.so CXXABI  1 3 0
 
 make -j `nproc` package
 
 # read OSPRay version
 OSPRAY_VERSION=`sed -n 's/#define OSPRAY_VERSION "\(.*\)"/\1/p' ospray/version.h`
 
-# rename RPMs to have component name before version
-for i in ospray-${OSPRAY_VERSION}-1.*.rpm ; do 
-  newname=`echo $i | sed -e "s/ospray-\(.\+\)-\([a-z_]\+\)\.rpm/ospray-\2-\1.rpm/"`
-  mv $i $newname
-done
-
-tar czf ospray-${OSPRAY_VERSION}.x86_64.rpm.tar.gz ospray-*-${OSPRAY_VERSION}-1.x86_64.rpm
+tar czf ospray-${OSPRAY_VERSION}.x86_64.rpm.tar.gz ospray-*-${OSPRAY_VERSION}-*.rpm
 
 # change settings for zip mode
 cmake \
 -D OSPRAY_ZIP_MODE=ON \
 -D OSPRAY_INSTALL_DEPENDENCIES=ON \
+-D CPACK_PACKAGING_INSTALL_PREFIX=/ \
 -D CMAKE_INSTALL_INCLUDEDIR=include \
 -D CMAKE_INSTALL_LIBDIR=lib \
 -D CMAKE_INSTALL_DOCDIR=doc \

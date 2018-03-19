@@ -16,12 +16,8 @@
 
 //ospray
 #include "Light.h"
-#include "common/Library.h"
 #include "common/Util.h"
-// ispc exports
 #include "Light_ispc.h"
-//system
-#include <map>
 
 #define creatorFct litCreatorFct
 
@@ -39,7 +35,6 @@ namespace ospray {
     return "ospray::Light";
   }
 
-  //! Create a new Light object of given type
   Light *Light::createLight(const char *type)
   {
     return createInstanceHelper<Light, OSP_LIGHT>(type);

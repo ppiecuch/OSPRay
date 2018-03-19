@@ -14,32 +14,28 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "sg/camera/PerspectiveCamera.h"
+#include "PerspectiveCamera.h"
 
 namespace ospray {
   namespace sg {
 
-    PerspectiveCamera::PerspectiveCamera() 
-      : Camera("perspective"),
-        from(0,-1,0), at(0,0,0), up(0,0,1), aspect(1),
-        fovy(60)
+    PerspectiveCamera::PerspectiveCamera()
+      : Camera("perspective")
     {
-      create();
+      createChild("aspect", "float", 1.f,
+                      NodeFlags::required |
+                      NodeFlags::valid_min_max).setMinMax(1e-31f, 1e31f);
+      createChild("fovy", "float", 60.f,
+                      NodeFlags::required | NodeFlags::valid_min_max |
+                      NodeFlags::gui_slider).setMinMax(.1f, 360.f);
+      createChild("apertureRadius", "float", 0.f,
+                      NodeFlags::valid_min_max).setMinMax(0.f, 1e31f);
+      createChild("focusDistance", "float", 1.f,
+                      NodeFlags::valid_min_max).setMinMax(0.f, 1e31f);
     }
 
-    void PerspectiveCamera::commit() 
-    {
-      if (!ospCamera) create(); 
-      
-      ospSetVec3f(ospCamera,"pos",(const osp::vec3f&)from);
-      vec3f dir = (at - from);
-      ospSetVec3f(ospCamera,"dir",(const osp::vec3f&)dir);
-      ospSetVec3f(ospCamera,"up",(const osp::vec3f&)up);
-      ospSetf(ospCamera,"aspect",aspect);
-      ospSetf(ospCamera,"fovy",fovy);
-      ospCommit(ospCamera);      
-    }
-    
+    OSP_REGISTER_SG_NODE(PerspectiveCamera);
+
   } // ::ospray::sg
 } // ::ospray
 

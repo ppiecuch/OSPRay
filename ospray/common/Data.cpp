@@ -17,25 +17,18 @@
 // ospray
 #include "Data.h"
 #include "ospray/ospray.h"
-// stl
-#include <sstream>
 
 namespace ospray {
 
-  Data::Data(size_t numItems, OSPDataType type, void *init, int flags) :
+  Data::Data(size_t numItems, OSPDataType type, const void *init, int flags) :
     numItems(numItems),
     numBytes(numItems * sizeOf(type)),
     flags(flags),
     type(type)
   {
-    /* two notes here:
-       a) i'm using embree's 'new' to enforce alignment
-       b) i'm adding 16 bytes to size to enforce 4-float padding (which embree
-          requires in some buffers
-    */
     if (flags & OSP_DATA_SHARED_BUFFER) {
       Assert2(init != NULL, "shared buffer is NULL");
-      data = init;
+      data = const_cast<void *>(init);
     } else {
       data = alignedMalloc(numBytes+16);
       if (init)
@@ -45,19 +38,20 @@ namespace ospray {
     }
 
     managedObjectType = OSP_DATA;
-
-    // std::cout << "checksum when creating data array" << std::endl;
-    // PRINT(numBytes);
-    // PRINT((int*)computeCheckSum(init,numBytes));
   }
 
   Data::~Data()
   {
     if (type == OSP_OBJECT) {
       Data **child = (Data **)data;
-      for (uint32_t i = 0; i < numItems; i++) if (child[i]) child[i]->refDec();
+      for (uint32_t i = 0; i < numItems; i++) {
+        if (child[i])
+          child[i]->refDec();
+      }
     }
-    if (!(flags & OSP_DATA_SHARED_BUFFER)) alignedFree(data);
+
+    if (!(flags & OSP_DATA_SHARED_BUFFER))
+      alignedFree(data);
   }
 
   /*! commit this object - for this object type, make sure that all

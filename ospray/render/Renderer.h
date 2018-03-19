@@ -37,7 +37,7 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE Renderer : public ManagedObject
   {
     Renderer() = default;
-    virtual ~Renderer() = default;
+    virtual ~Renderer() override = default;
 
     /*! \brief creates an abstract renderer class of given type
 
@@ -45,16 +45,20 @@ namespace ospray {
       in either ospray proper or any already loaded module. For
       renderer types specified in special modules, make sure to call
       ospLoadModule first. */
+<<<<<<< HEAD
     static Renderer *createRenderer(const char *identifier);
     static void registerRenderer(const char *identifier, Renderer *(*creator)());
     static std::vector<std::string> registeredRenderers();
+=======
+    static Renderer *createInstance(const char *identifier);
+>>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     virtual void commit() override;
     virtual std::string toString() const override;
-    
+
     /*! \brief render one frame, and put it into given frame buffer */
     virtual float renderFrame(FrameBuffer *fb, const uint32 fbChannelFlags);
-    
+
     //! \brief called to initialize a new frame
     /*! this function gets called exactly once (on each node) at the
       beginning of each frame, and allows the renderer to do whatever
@@ -93,12 +97,12 @@ namespace ospray {
     /*! adaptive accumulation: variance-based error to reach */
     float errorThreshold {0.f};
 
-    /*! \brief whether the background should be rendered (e.g. for compositing the background may be disabled) */
-    bool backgroundEnabled {true};
+    /*! \brief the background color */
+    vec4f bgColor {0.f};
 
     /*! \brief maximum depth texture provided as an optional parameter to the renderer, used for early ray termination
 
-      The texture format should be OSP_FLOAT and texture filtering
+      The texture format should be OSP_TEXTURE_R32F and texture filtering
       should be set to nearest-neighbor interpolation:
       (OSP_TEXTURE_FILTER_NEAREST). */
     Ref<Texture2D> maxDepthTexture;
@@ -128,7 +132,8 @@ namespace ospray {
       of this renderer.
   */
 #define OSP_REGISTER_RENDERER(InternalClass, external_name) \
-  OSP_REGISTER_OBJECT(Renderer, renderer, InternalClass, external_name)
+  OSP_REGISTER_OBJECT(::ospray::Renderer, renderer, \
+                      InternalClass, external_name)
 
 } // ::ospray
 

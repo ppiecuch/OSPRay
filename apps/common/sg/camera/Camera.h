@@ -23,27 +23,45 @@ namespace ospray {
   namespace sg {
 
     /*! a camera node - the generic camera node */
-    struct Camera : public sg::Node {
-      Camera(const std::string &type) : type(type), ospCamera(NULL) {};
-      /*! \brief returns a std::string with the c++ name of this class */
-      virtual    std::string toString() const { return "ospray::sg::Camera"; }
+    struct OSPSG_INTERFACE Camera : public sg::Node
+    {
+      Camera(const std::string &type);
+
+      virtual std::string toString() const override;
+
+      virtual void postCommit(RenderContext &ctx) override;
+
+    protected:
+
+      // Data members //
+
       /*! camera type, i.e., 'ao', 'obj', 'pathtracer', ... */
-      const std::string type; 
-
-      virtual void create() { 
-        if (ospCamera) destroy();
-        ospCamera = ospNewCamera(type.c_str());
-        commit();
-      };
-      virtual void commit() {}
-      virtual void destroy() {
-        if (!ospCamera) return;
-        ospRelease(ospCamera);
-        ospCamera = 0;
-      }
-
-      OSPCamera ospCamera;
+      const std::string type;
+      OSPCamera ospCamera {nullptr};
     };
+
+    // Inlined Camera definitions /////////////////////////////////////////////
+
+    inline Camera::Camera(const std::string &type) : type(type)
+    {
+      setValue(ospNewCamera(type.c_str()));
+      createChild("pos", "vec3f", vec3f(0, -1, 0));
+      // XXX SG is too restrictive: OSPRay cameras accept non-normalized directions
+      createChild("dir", "vec3f", vec3f(0, 0, 0),
+                       NodeFlags::required | NodeFlags::valid_min_max |
+                       NodeFlags::gui_slider).setMinMax(vec3f(-1), vec3f(1));
+      createChild("up", "vec3f", vec3f(0, 0, 1),NodeFlags::required);
+    }
+
+    inline std::string Camera::toString() const
+    {
+      return "ospray::sg::Camera";
+    }
+
+    inline void Camera::postCommit(RenderContext &)
+    {
+      ospCommit(valueAs<OSPCamera>());
+    }
 
   } // ::ospray::sg
 } // ::ospray

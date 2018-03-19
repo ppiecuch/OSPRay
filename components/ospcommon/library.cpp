@@ -39,7 +39,7 @@ namespace ospcommon {
     std::string fullName = file+".dll";
     lib = LoadLibrary(fullName.c_str());
 #else
-#if defined(__MACOSX__)
+#if defined(__MACOSX__) || defined(__APPLE__)
     std::string fullName = "lib"+file+".dylib";
 #else
     std::string fullName = "lib"+file+".so";
@@ -62,14 +62,14 @@ namespace ospcommon {
       // to log out the error that occurred when calling LoadLibrary
       throw std::runtime_error("could not open module lib "+name);
 #else
-      std::string error = dlerror();
+      const char* error = dlerror();
       throw std::runtime_error("could not open module lib "+name
           +" due to "+error);
 #endif
     }
   }
 
-  Library::Library(void* const lib) : lib(lib) {}
+  Library::Library(void* const _lib) : lib(_lib) {}
 
   void* Library::getSymbol(const std::string& sym) const
   {

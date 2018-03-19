@@ -14,175 +14,90 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#undef NDEBUG
-
 #include "TransferFunction.h"
 
 namespace ospray {
   namespace sg {
-    using std::cout;
-    using std::endl;
 
-    //! constructor
-    TransferFunction::TransferFunction() 
-      : ospTransferFunction(nullptr),
-        ospColorData(nullptr),
-        ospAlphaData(nullptr),
-        valueRange(0.f,1.f),
-        numSamples(128)
+    TransferFunction::TransferFunction()
     {
-      setDefaultValues(); 
+      setValue((OSPTransferFunction)nullptr);
+      createChild("valueRange", "vec2f", vec2f(0.f, 1.f));
+      createChild("numSamples", "int", 256);
+
+      auto colors = createChild("colors",
+                                "DataVector3f").nodeAs<DataVector3f>();
+
+      // 'Jet' transfer function
+      colors->v.emplace_back(0       , 0, 0.562493);
+      colors->v.emplace_back(0       , 0, 1       );
+      colors->v.emplace_back(0       , 1, 1       );
+      colors->v.emplace_back(0.500008, 1, 0.500008);
+      colors->v.emplace_back(1       , 1, 0       );
+      colors->v.emplace_back(1       , 0, 0       );
+      colors->v.emplace_back(0.500008, 0, 0       );
+
+      auto alpha = createChild("alpha", "DataVector2f").nodeAs<DataVector2f>();
+      alpha->v.emplace_back(0.f, 0.f);
+      alpha->v.emplace_back(1.f, 1.f);
+
+      createChild("opacities", "DataVector1f");
     }
 
-    // //! \brief Sets a new 'texture map' to be used for the color mapping
-    void TransferFunction::setColorMap(const std::vector<vec3f> &colorArray)
+    float TransferFunction::interpolatedAlpha(const DataBuffer &alpha,
+                                              float x)
     {
-      if (ospColorData) { ospRelease(ospColorData); ospColorData = nullptr; }
-      this->colorArray.clear();
-      for (uint32_t i = 0; i < colorArray.size(); ++i)
-        this->colorArray.push_back({i, colorArray[i]});
-    }
+      auto firstAlpha = alpha.get<vec2f>(0);
+      if (x <= firstAlpha.x)
+        return firstAlpha.y;
 
-    //! \brief Sets a new 'texture map' to be used for the alpha mapping
-    void TransferFunction::setAlphaMap(const std::vector<vec2f> &alphaArray)
-    {
-      if (ospAlphaData) { ospRelease(ospAlphaData); ospAlphaData = nullptr; }
-      this->alphaArray.clear();
-      for (const auto &alpha : alphaArray)
-        this->alphaArray.push_back({alpha.x, alpha.y});
-    }
-
-    float TransferFunction::getInterpolatedAlphaValue(float x)
-    {
-      if (x <= alphaArray.front().first)
-        return alphaArray.front().second;
-      for (uint32_t i = 1; i < alphaArray.size(); i++) {
-        if (x <= alphaArray[i].first) {
-          return
-            alphaArray[i-1].second +
-            (alphaArray[i].second - alphaArray[i-1].second)
-            * (x-alphaArray[i-1].first) 
-            / (alphaArray[i].first - alphaArray[i-1].first)
-            ;
+      for (uint32_t i = 1; i < alpha.size(); i++) {
+        auto current  = alpha.get<vec2f>(i);
+        auto previous = alpha.get<vec2f>(i - 1);
+        if (x <= current.x) {
+          const float t = (x - previous.x) / (current.x - previous.x);
+          return (1.0 - t) * previous.y + t * current.y;
         }
       }
-      return alphaArray.back().second;
+
+      auto lastAlpha = alpha.get<vec2f>(alpha.size() - 1);
+      return lastAlpha.y;
     }
 
-    void TransferFunction::setValueRange(const vec2f &range)
-    { 
-      valueRange = range; 
-      lastModified = TimeStamp::now();
-    }
-
-    //! \brief commit the current field values to ospray
-    void TransferFunction::commit() 
+    void TransferFunction::calculateOpacities()
     {
-      ospSetVec2f(ospTransferFunction,"valueRange",osp::vec2f{valueRange.x,valueRange.y});
-      if (ospColorData == nullptr) {
-        // for now, no resampling - just use the colors ...
-        vec3f *colors = (vec3f*)alloca(sizeof(vec3f)*colorArray.size());
-        for (uint32_t i = 0; i < colorArray.size(); i++)
-          colors[i] = colorArray[i].second;
-        ospColorData = ospNewData(colorArray.size(),OSP_FLOAT3,colors); 
-        ospCommit(ospColorData);
-        ospSetData(ospTransferFunction,"colors",ospColorData);
-        lastModified = TimeStamp::now();
-      }
-      if (ospAlphaData == nullptr) {
-        float *alpha = (float*)alloca(sizeof(float)*numSamples);
-        float x0 = alphaArray.front().first;
-        float dx = (alphaArray.back().first - x0) / (numSamples-1);
+      auto numSamples = child("numSamples").valueAs<int>();
 
-        for (int i=0;i<numSamples;i++)
-          alpha[i] = getInterpolatedAlphaValue(i * dx);
+      float x0 = 0.f;
+      float dx = (1.f - x0) / (numSamples-1);
 
-        ospAlphaData = ospNewData(numSamples,OSP_FLOAT,alpha); 
-        ospCommit(ospAlphaData);
-        ospSetData(ospTransferFunction,"opacities",ospAlphaData);
-        lastModified = TimeStamp::now();
-      }
-      if (lastModified > lastCommitted) {
-        lastCommitted = rdtsc();
-        ospCommit(ospTransferFunction);
-      }
+      auto alpha     = child("alpha").nodeAs<DataBuffer>();
+      auto opacities = child("opacities").nodeAs<DataVector1f>();
+
+      opacities->v.clear();
+      for (int i = 0; i < numSamples; i++)
+        opacities->push_back(interpolatedAlpha(*alpha, i * dx));
     }
 
-    void TransferFunction::render(RenderContext &ctx)
+    void TransferFunction::preCommit(RenderContext &)
     {
+      auto ospTransferFunction = valueAs<OSPTransferFunction>();
       if (!ospTransferFunction) {
         ospTransferFunction = ospNewTransferFunction("piecewise_linear");
+        setValue(ospTransferFunction);
       }
-      commit();
+
+      calculateOpacities();
     }
 
-    void TransferFunction::setFromXML(const xml::Node &node, 
-                                      const unsigned char *binBasePtr) 
+    void TransferFunction::postCommit(RenderContext &)
     {
-      setDefaultValues();
-
-      // const std::string name = node->getProp("name","");
-      // if (name != "")
-      //   registerNamedNode(name,this);
-      
-      xml::for_each_child_of(node,[&](const xml::Node &child) {
-          // -------------------------------------------------------
-          // colors
-          // -------------------------------------------------------
-          if (child.name == "colors" || child.name == "color") {
-            colorArray.clear();
-            char *cont = strdup(child.content.c_str());
-            assert(cont);
-            
-            const char *c = strtok(cont,",\n");
-            while (c) {
-              colorArray.push_back(std::pair<float,vec3f>(colorArray.size(),toVec3f(c)));
-              c = strtok(nullptr,",\n");
-            }
-            
-            free(cont);
-          }
-
-          // -------------------------------------------------------
-          // alpha
-          // -------------------------------------------------------
-          if (child.name == "alphas" || child.name == "alpha") {
-            alphaArray.clear();
-            char *cont = strdup(child.content.c_str());
-
-            assert(cont);
-            const char *c = strtok(cont,",\n");
-            while (c) {
-              vec2f cp = toVec2f(c);
-              alphaArray.push_back(std::pair<float,float>(cp.x,cp.y));
-              c = strtok(nullptr,",\n");
-            }
-
-            free(cont);
-          }
-        });
+      ospCommit(valueAs<OSPTransferFunction>());
     }
-    
-    //! \brief Initialize this node's value from given corresponding XML node 
-    void TransferFunction::setDefaultValues()
+
+    void TransferFunction::setFromXML(const xml::Node&, const unsigned char *)
     {
-      static float col[7][3] = {{0         , 0           , 0.562493 },
-                                {0         , 0           , 1        },
-                                {0         , 1           , 1        },
-                                {0.500008  , 1           , 0.500008 },
-                                {1         , 1           , 0        },
-                                {1         , 0           , 0        },
-                                {0.500008  , 0           , 0        }};
-      
-      colorArray.clear();
-      for (int i=0;i<7;i++)
-        colorArray.push_back(std::pair<float,vec3f>(i,vec3f(col[i][0],col[i][1],col[i][2])));
-      
-      alphaArray.clear();
-      alphaArray.push_back(std::pair<float,float>(0.f,0.f));
-      alphaArray.push_back(std::pair<float,float>(1.f,1.f));
-      // for (int i=0;i<colorArray.size();i++)
-      //   alphaArray.push_back(std::pair<float,float>(i,1.f)); //i/float(colorArray.size()-1));
+      NOT_IMPLEMENTED;
     }
 
     std::string TransferFunction::toString() const
@@ -190,6 +105,7 @@ namespace ospray {
       return "ospray::sg::TransferFunction";
     }
 
-    OSP_REGISTER_SG_NODE(TransferFunction)
+    OSP_REGISTER_SG_NODE(TransferFunction);
+
   } // ::ospray::sg
 } // ::ospray

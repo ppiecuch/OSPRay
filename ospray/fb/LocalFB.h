@@ -18,11 +18,13 @@
 
 // ospray
 #include "fb/FrameBuffer.h"
+#include "fb/TileError.h"
 
 namespace ospray {
 
   /*! local frame buffer - frame buffer that exists on local machine */
-  struct OSPRAY_SDK_INTERFACE LocalFrameBuffer : public FrameBuffer {
+  struct OSPRAY_SDK_INTERFACE LocalFrameBuffer : public FrameBuffer
+  {
     void      *colorBuffer; /*!< format depends on
                                FrameBuffer::colorBufferFormat, may be
                                NULL */
@@ -38,7 +40,7 @@ namespace ospray {
                      bool hasAccumBuffer,
                      bool hasVarianceBuffer,
                      void *colorBufferToUse=nullptr);
-    virtual ~LocalFrameBuffer();
+    virtual ~LocalFrameBuffer() override;
 
     //! \brief common function to help printf-debugging
     /*! \detailed Every derived class should overrride this! */
@@ -47,6 +49,7 @@ namespace ospray {
     void setTile(Tile &tile) override;
     int32 accumID(const vec2i &tile) override;
     float tileError(const vec2i &tile) override;
+    void beginFrame() override;
     float endFrame(const float errorThreshold) override;
 
     const void *mapColorBuffer() override;

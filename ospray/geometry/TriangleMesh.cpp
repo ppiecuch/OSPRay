@@ -18,15 +18,9 @@
 #include "TriangleMesh.h"
 #include "common/Model.h"
 #include "../include/ospray/ospray.h"
-// embree 
-#include "embree2/rtcore.h"
-#include "embree2/rtcore_scene.h"
-#include "embree2/rtcore_geometry.h"
 // ispc exports
 #include "TriangleMesh_ispc.h"
 #include <cmath>
-
-#define RTC_INVALID_ID RTC_INVALID_GEOMETRY_ID
 
 namespace ospray {
 
@@ -36,9 +30,7 @@ namespace ospray {
   }
 
   TriangleMesh::TriangleMesh() 
-    : eMesh(RTC_INVALID_ID)
   {
-    this->ispcMaterialPtrs = nullptr;
     this->ispcEquivalent = ispc::TriangleMesh_create(this);
   }
 
@@ -52,11 +44,12 @@ namespace ospray {
     static int numPrints = 0;
     numPrints++;
     if (numPrints == 5) {
-      postErrorMsg("(all future printouts for triangle mesh creation "
-                   "will be omitted)\n", 2);
+      postStatusMsg(2) << "(all future printouts for triangle mesh creation "
+                       << "will be omitted)";
     }
     
-    if (numPrints < 5) postErrorMsg("ospray: finalizing trianglemesh ...\n", 2);
+    if (numPrints < 5)
+      postStatusMsg(2) << "ospray: finalizing trianglemesh ...";
 
     Assert(model && "invalid model pointer");
 
@@ -99,13 +92,11 @@ namespace ospray {
     this->prim_materialID  = prim_materialIDData ? (uint32_t*)prim_materialIDData->data : nullptr;
     this->materialList  = materialListData ? (ospray::Material**)materialListData->data : nullptr;
     
-    if (materialList && !ispcMaterialPtrs) {
+    if (materialList) {
       const int num_materials = materialListData->numItems;
-      ispcMaterialPtrs = new void*[num_materials];
-      for (int i = 0; i < num_materials; i++) {
-        assert(this->materialList[i] != nullptr && "Materials in list should never be NULL");
-        this->ispcMaterialPtrs[i] = this->materialList[i]->getIE();
-      }
+      ispcMaterialPtrs.resize(num_materials);
+      for (int i = 0; i < num_materials; i++)
+        ispcMaterialPtrs[i] = materialList[i]->getIE();
     } 
 
     size_t numTris  = -1;
@@ -133,6 +124,7 @@ namespace ospray {
     default:
       throw std::runtime_error("unsupported trianglemesh.vertex data type");
     }
+
     if (normalData) switch (normalData->type) {
     case OSP_FLOAT3:  numCompsInNor = 3; break;
     case OSP_FLOAT:
@@ -157,11 +149,9 @@ namespace ospray {
       bounds.extend(*(vec3f*)(vertex + i));
 
     if (numPrints < 5) {
-      std::stringstream msg;
-      msg << "  created triangle mesh (" << numTris << " tris "
-          << ", " << numVerts << " vertices)" << std::endl;
-      msg << "  mesh bounds " << bounds << std::endl;
-      postErrorMsg(msg, 2);
+      postStatusMsg(2) << "  created triangle mesh (" << numTris << " tris "
+                       << ", " << numVerts << " vertices)\n"
+                       << "  mesh bounds " << bounds;
     }
 
     ispc::TriangleMesh_set(getIE(),model->getIE(),eMesh,
@@ -175,8 +165,8 @@ namespace ospray {
                            (ispc::vec4f*)color,
                            (ispc::vec2f*)texcoord,
                            geom_materialID,
-                           getMaterial()?getMaterial()->getIE():nullptr,
-                           ispcMaterialPtrs,
+                           getMaterial() ? getMaterial()->getIE() : nullptr,
+                           materialList ? ispcMaterialPtrs.data() : nullptr,
                            (uint32_t*)prim_materialID,
                            colorData && colorData->type == OSP_FLOAT4,
                            huge_mesh);

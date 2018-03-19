@@ -25,7 +25,7 @@ namespace ospray {
     Note that different renderers will probably define different materials, so the same "logical" material (such a as a "diffuse gray" material) may look differently */
   struct OSPRAY_SDK_INTERFACE Material : public ManagedObject
   {
-    virtual ~Material() = default;
+    virtual ~Material() override = default;
     virtual std::string toString() const override;
     virtual void commit() override;
 
@@ -68,6 +68,7 @@ namespace ospray {
       of this material.
   */
 #define OSP_REGISTER_MATERIAL(InternalClass, external_name) \
-  OSP_REGISTER_OBJECT(Material, material, InternalClass, external_name)
+  OSP_REGISTER_OBJECT(::ospray::Material, material, \
+                      InternalClass, external_name)
 
 } // ::ospray

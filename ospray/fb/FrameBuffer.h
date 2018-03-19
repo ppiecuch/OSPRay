@@ -35,7 +35,7 @@ namespace ospray {
                 bool hasDepthBuffer,
                 bool hasAccumBuffer,
                 bool hasVarianceBuffer = false);
-    virtual ~FrameBuffer() = default;
+    virtual ~FrameBuffer() override = default;
 
     virtual const void *mapDepthBuffer() = 0;
     virtual const void *mapColorBuffer() = 0;
@@ -64,7 +64,7 @@ namespace ospray {
     virtual int32 accumID(const vec2i &tile) = 0;
     virtual float tileError(const vec2i &tile) = 0;
 
-    void beginFrame();
+    virtual void beginFrame();
 
     //! returns error of frame
     virtual float endFrame(const float errorThreshold) = 0;
@@ -93,23 +93,5 @@ namespace ospray {
     int32 frameID;
 
     Ref<PixelOp::Instance> pixelOp;
-  };
-
-  // manages error per tile and adaptive regions, for variance estimation / stopping
-  class OSPRAY_SDK_INTERFACE TileError
-  {
-    public:
-      TileError(const vec2i &numTiles);
-      virtual ~TileError();
-      void clear();
-      float operator[](const vec2i &tile) const;
-      void update(const vec2i &tile, const float error);
-      float refine(const float errorThreshold);
-
-    protected:
-      vec2i numTiles;
-      int tiles;
-      float *tileErrorBuffer; /*!< holds error per tile, for variance estimation / stopping */
-      std::vector<box2i> errorRegion; // image regions (in #tiles) which do not yet estimate the error on tile base
   };
 } // ::ospray

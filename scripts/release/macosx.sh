@@ -31,9 +31,9 @@ ROOT_DIR=$PWD
 DEP_DIR=$ROOT_DIR/deps
 
 DEP_LOCATION=http://sdvis.org/ospray/download/dependencies/osx
-DEP_EMBREE=embree-2.14.0.x86_64.macosx
+DEP_EMBREE=embree-2.17.0.x86_64.macosx
 DEP_ISPC=ispc-v1.9.1-osx
-DEP_TBB=tbb2017_20161128oss
+DEP_TBB=tbb2018_20170726oss
 DEP_TARBALLS="$DEP_EMBREE.tar.gz $DEP_ISPC.tar.gz ${DEP_TBB}_osx.tgz"
 
 
@@ -87,11 +87,12 @@ cp $DEP_DIR/OSPRay_readme_$BRANCH.pdf readme.pdf
 # set release and installer settings
 cmake \
 -D OSPRAY_BUILD_ISA=ALL \
--D OSPRAY_USE_EXTERNAL_EMBREE=ON \
 -D OSPRAY_MODULE_MPI=ON \
 -D TBB_ROOT=$DEP_DIR/$DEP_TBB \
 -D ISPC_EXECUTABLE=$DEP_DIR/$DEP_ISPC/ispc \
--D USE_IMAGE_MAGICK=OFF \
+-D OSPRAY_SG_CHOMBO=OFF \
+-D OSPRAY_SG_OPENIMAGEIO=OFF \
+-D OSPRAY_SG_VTK=OFF \
 -D OSPRAY_ZIP_MODE=OFF \
 -D OSPRAY_INSTALL_DEPENDENCIES=OFF \
 -D CMAKE_INSTALL_PREFIX=/opt/local \

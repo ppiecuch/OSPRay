@@ -29,16 +29,14 @@ namespace ospray {
     that 'size' is the tile size used by the frame buffer, _NOT_
     necessariy 'end-begin'. 'color' and 'depth' arrays are always
     alloc'ed in TILE_SIZE pixels */
-  struct TileDesc {
-    ALIGNED_STRUCT
-
-    /*! constructor */
+  struct TileDesc
+  {
     TileDesc(DistributedFrameBuffer *dfb,
              const vec2i &begin,
              size_t tileID,
              size_t ownerID);
 
-    virtual ~TileDesc() {}
+    virtual ~TileDesc() = default;
 
     /*! returns whether this tile is one of this particular
         node's tiles */
@@ -46,7 +44,7 @@ namespace ospray {
 
     DistributedFrameBuffer *dfb;
     vec2i   begin;
-    size_t  tileID,ownerID;
+    size_t  tileID, ownerID;
   };
 
   // -------------------------------------------------------
@@ -55,7 +53,8 @@ namespace ospray {
       do not have a RGBA-I8 color field, because typically that'll
       be done by the postop and send-to-master op, and not stored in
       the DFB tile itself */
-  struct TileData : public TileDesc {
+  struct TileData : public TileDesc
+  {
     TileData(DistributedFrameBuffer *dfb,
              const vec2i &begin,
              size_t tileID,
@@ -89,45 +88,44 @@ namespace ospray {
     vec4f __aligned(64) color[TILE_SIZE*TILE_SIZE];
   };
 
-  // -------------------------------------------------------
-  /*! specialized tile for plain sort-first rendering, where each
-      tile is written only exactly once. */
-  struct WriteOnlyOnceTile : public TileData {
 
-    /*! constructor */
-    WriteOnlyOnceTile(DistributedFrameBuffer *dfb,
-                      const vec2i &begin,
-                      size_t tileID,
-                      size_t ownerID)
-      : TileData(dfb,begin,tileID,ownerID)
+  // -------------------------------------------------------
+  /*! specialized tile for plain sort-first rendering, but where the same tile
+      region could be computed multiple times (with different accumId). */
+  class WriteMultipleTile : public TileData
+  {
+   public:
+    WriteMultipleTile(DistributedFrameBuffer *dfb
+        , const vec2i &begin
+        , size_t tileID
+        , size_t ownerID
+        )
+      : TileData(dfb, begin, tileID, ownerID)
+        , writeOnceTile(true)
     {}
 
-    /*! called exactly once at the beginning of each frame */
     void newFrame() override;
 
-    /*! called exactly once for each ospray::Tile that needs to get
-      written into / composited into this dfb tile.
-
-      for a write-once tile, we expect this to be called exactly
-      once per tile, so there's not a lot to do in here than
-      accumulating the tile data and telling the parent that we're
-      done.
-    */
+    // accumulate into ACCUM and VARIANCE, and for last tile read-out
     void process(const ospray::Tile &tile) override;
+
+   private:
+    int maxAccumID;
+    size_t instances;
+    bool writeOnceTile;
+    // serialize when multiple instances of this tile arrive at the same time
+    std::mutex mutex;
+    // defer accumulation to get correct variance estimate
+    ospray::Tile bufferedTile;
+    bool tileBuffered;
   };
 
   // -------------------------------------------------------
-  /*! specialized tile for doing Z-compositing. this does not have
-      additional data, but a different write op. */
-  struct ZCompositeTile : public TileData {
-
-    /*! constructor */
-    ZCompositeTile(DistributedFrameBuffer *dfb,
-                   const vec2i &begin,
-                   size_t tileID,
-                   size_t ownerID)
-      : TileData(dfb,begin,tileID,ownerID)
-    {}
+  /*! specialized tile for doing Z-compositing. */
+  struct ZCompositeTile : public TileData
+  {
+    ZCompositeTile(DistributedFrameBuffer *dfb, const vec2i &begin,
+                   size_t tileID, size_t ownerID, size_t numWorkers);
 
     /*! called exactly once at the beginning of each frame */
     void newFrame() override;
@@ -140,26 +138,25 @@ namespace ospray {
         tile */
     size_t numPartsComposited;
 
+    size_t numWorkers;
+
     /*! since we do not want to mess up the existing accumulatation
         buffer in the parent tile we temporarily composite into this
         buffer until all the composites have been done. */
     ospray::Tile compositedTileData;
-    Mutex mutex;
+    std::mutex mutex;
   };
 
   /*! specialized tile implementation that first buffers all
       ospray::Tile's until all input tiles are available, then sorts
       them by closest z component per tile, and only tthen does
       front-to-back compositing of those tiles */
-  struct AlphaBlendTile_simple : public TileData {
-
-    /*! constructor */
+  struct AlphaBlendTile_simple : public TileData
+  {
     AlphaBlendTile_simple(DistributedFrameBuffer *dfb,
-                   const vec2i &begin,
-                   size_t tileID,
-                   size_t ownerID)
-      : TileData(dfb,begin,tileID,ownerID)
-    {}
+                          const vec2i &begin,
+                          size_t tileID,
+                          size_t ownerID);
 
     /*! called exactly once at the beginning of each frame */
     void newFrame() override;
@@ -168,7 +165,8 @@ namespace ospray {
         written into / composited into this dfb tile */
     void process(const ospray::Tile &tile) override;
 
-    struct BufferedTile {
+    struct BufferedTile
+    {
       ospray::Tile tile;
 
       /*! determines order of this tile relative to other tiles.
@@ -177,11 +175,12 @@ namespace ospray {
         increasing 'BufferedTile::sortOrder' value */
       float sortOrder;
     };
+
     std::vector<BufferedTile *> bufferedTile;
     int currentGeneration;
     int expectedInNextGeneration;
     int missingInCurrentGeneration;
-    Mutex mutex;
+    std::mutex mutex;
   };
 
 } // namespace ospray

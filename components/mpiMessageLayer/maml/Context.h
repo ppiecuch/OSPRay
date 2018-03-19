@@ -17,19 +17,24 @@
 #pragma once
 
 #include "maml.h"
-#include <vector>
+//ospcommon
+#include "ospcommon/AsyncLoop.h"
+#include "ospcommon/containers/TransactionalBuffer.h"
+//stl
+#include <future>
 #include <map>
-#include <thread>
 #include <mutex>
-#include <condition_variable>
+#include <vector>
 
 namespace maml {
 
   /*! the singleton object that handles all the communication */
-  struct Context {
-    Context();
-    
-    static Context *singleton;
+  struct OSPRAY_MAML_INTERFACE Context
+  {
+    Context() = default;
+    ~Context();
+
+    static std::unique_ptr<Context> singleton;
 
     /*! register a new incoing-message handler. if any message comes in
       on the given communicator we'll call this handler */
@@ -40,7 +45,9 @@ namespace maml {
       thread safe the app should _not_ do any MPI calls until 'stop()'
       has been called */
     void start();
-    
+
+    bool isRunning() const;
+
     /*! stops the maml layer; maml will no longer perform any MPI calls;
       if the mpi layer is not thread safe the app is then free to use
       MPI calls of its own, but it should not expect that this node
@@ -53,13 +60,17 @@ namespace maml {
         stopped */
     void send(std::shared_ptr<Message> msg);
 
-    /*! the thread (function) that executes all MPI commands to
-        send/receive messages via MPI. 
+  private:
 
-        Some notes: 
+    // Helper functions //
+
+    /*! the thread (function) that executes all MPI commands to
+        send/receive messages via MPI.
+
+        Some notes:
 
         - this thread does MPI calls (only!) between calls of start()
-        and end(). unless you cal start(), nothing will ever get sent
+        and stop(). unless you call start(), nothing will ever get sent
         or received.
 
         - it only looks for incoming messages on communicators for
@@ -67,44 +78,54 @@ namespace maml {
         to a comm, nothing will ever get received from this comm (you
         may still send on it, though!)
 
-        - messages to be sent are retried from 'outbox'; messages that
-          are received get put to 'inbox' and the 'iboxcondition' gets
+        - messages to be sent are retrieved from 'outbox'; messages that
+          are received get put to 'inbox' and the 'inboxcondition' gets
           triggered. it's another thread's job to execute those
           messages
     */
-    void mpiThread();
+    void mpiSendAndRecieveTask();
 
-    /*! the thread that executes messages that the receiveer thread
+    /*! the thread that executes messages that the receiver thread
         put into the inbox */
-    void inboxThread();
+    void processInboxTask();
 
-    /*! make sure all outgoing messages get sent... */
-    void flush();
+    void processInboxMessages();
 
-    bool                    canDoMPICalls;
-    std::mutex              canDoMPIMutex;
-    std::condition_variable canDoMPICondition;
-    
-    std::thread mpiThreadHandle;
-    std::thread inboxThreadHandle;
+    void sendMessagesFromOutbox();
+    void pollForAndRecieveMessages();
 
-    std::mutex                          handlersMutex;
-    std::map<MPI_Comm,MessageHandler *> handlers;
+    void waitOnSomeSendRequests();
+    void waitOnSomeRecvRequests();
 
-    /*! new messsages that still need to get sent */
-    std::mutex                             outboxMutex;
-    std::vector<std::shared_ptr<Message> > outbox;
+    void flushRemainingMessages();
 
-    /*! new messsages that have been received but not yet executed */
-    std::mutex                             inboxMutex;
-    std::condition_variable                inboxCondition;
-    std::vector<std::shared_ptr<Message> > inbox;
+    // Data members //
 
-    /*! used to execute a flush: this condition gets triggered when
-      all messages in the outbox have been (fully) sent */
-    bool                    flushed;
-    std::mutex              flushMutex;
-    std::condition_variable flushCondition;
+    bool tasksAreRunning {false};
+
+    std::future<void> sendReceiveFuture;
+    std::future<void> processInboxFuture;
+
+    ospcommon::TransactionalBuffer<std::shared_ptr<Message>> inbox;
+    ospcommon::TransactionalBuffer<std::shared_ptr<Message>> outbox;
+
+    // NOTE(jda) - sendCache/pendingSends MUST correspond with each other by
+    //             their index in their respective vectors...
+    std::vector<std::shared_ptr<Message>> sendCache;
+    std::vector<MPI_Request>              pendingSends;
+
+    // NOTE(jda) - recvCache/pendingRecvs MUST correspond with each other by
+    //             their index in their respective vectors...
+    std::vector<std::shared_ptr<Message>> recvCache;
+    std::vector<MPI_Request>              pendingRecvs;
+
+    std::map<MPI_Comm, MessageHandler *> handlers;
+
+    bool useTaskingSystem {true};
+
+    // NOTE(jda) - these are only used when _not_ using the tasking sytem...
+    std::unique_ptr<ospcommon::AsyncLoop> sendReceiveThread;
+    std::unique_ptr<ospcommon::AsyncLoop> processInboxThread;
   };
-  
+
 } // ::maml

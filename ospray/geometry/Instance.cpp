@@ -41,15 +41,15 @@ namespace ospray {
     xfm.l.vz = getParam3f("xfm.l.vz",vec3f(0.f,0.f,1.f));
     xfm.p   = getParam3f("xfm.p",vec3f(0.f,0.f,0.f));
 
-    instancedScene = (Model *)getParamObject("model",NULL);
+    instancedScene = (Model *)getParamObject("model", nullptr);
     assert(instancedScene);
 
     if (!instancedScene->embreeSceneHandle) {
-      instancedScene->finalize();
+      instancedScene->commit();
     }
 
-    embreeGeomID = rtcNewInstance(model->embreeSceneHandle,
-                                  instancedScene->embreeSceneHandle);
+    embreeGeomID = rtcNewInstance2(model->embreeSceneHandle,
+                                   instancedScene->embreeSceneHandle);
 
     const box3f b = instancedScene->bounds;
     if (b.empty()) {
@@ -79,9 +79,9 @@ namespace ospray {
     bounds.extend(xfmPoint(xfm,v110));
     bounds.extend(xfmPoint(xfm,v111));
 
-    rtcSetTransform(model->embreeSceneHandle,embreeGeomID,
-                    RTC_MATRIX_COLUMN_MAJOR,
-                    (const float *)&xfm);
+    rtcSetTransform2(model->embreeSceneHandle,embreeGeomID,
+                     RTC_MATRIX_COLUMN_MAJOR,
+                     (const float *)&xfm);
     AffineSpace3f rcp_xfm = rcp(xfm);
     areaPDF.resize(instancedScene->geometry.size());
     ispc::InstanceGeometry_set(getIE(),
@@ -89,6 +89,12 @@ namespace ospray {
                                (ispc::AffineSpace3f&)rcp_xfm,
                                instancedScene->getIE(),
                                &areaPDF[0]);
+    for (auto volume : instancedScene->volume) {
+      ospSet3f((OSPObject)volume.ptr, "xfm.l.vx", xfm.l.vx.x, xfm.l.vx.y, xfm.l.vx.z);
+      ospSet3f((OSPObject)volume.ptr, "xfm.l.vy", xfm.l.vy.x, xfm.l.vy.y, xfm.l.vy.z);
+      ospSet3f((OSPObject)volume.ptr, "xfm.l.vz", xfm.l.vz.x, xfm.l.vz.y, xfm.l.vz.z);
+      ospSet3f((OSPObject)volume.ptr, "xfm.p", xfm.p.x, xfm.p.y, xfm.p.z);
+    }
   }
 
   OSP_REGISTER_GEOMETRY(Instance,instance);

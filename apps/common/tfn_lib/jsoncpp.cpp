@@ -1,3 +1,10 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
+#pragma clang diagnostic ignored "-Wcovered-switch-default"
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#pragma clang diagnostic ignored "-Wsigned-enum-bitfield"
+#pragma clang diagnostic ignored "-Wunused-macros"
+
 /// Json-cpp amalgated source (http://jsoncpp.sourceforge.net/).
 /// It is intended to be used with #include "json/json.h"
 
@@ -6,28 +13,28 @@
 // //////////////////////////////////////////////////////////////////////
 
 /*
-The JsonCpp library's source code, including accompanying documentation, 
+The JsonCpp library's source code, including accompanying documentation,
 tests and demonstration applications, are licensed under the following
 conditions...
 
-The author (Baptiste Lepilleur) explicitly disclaims copyright in all 
-jurisdictions which recognize such a disclaimer. In such jurisdictions, 
+The author (Baptiste Lepilleur) explicitly disclaims copyright in all
+jurisdictions which recognize such a disclaimer. In such jurisdictions,
 this software is released into the Public Domain.
 
 In jurisdictions which do not recognize Public Domain property (e.g. Germany as of
 2010), this software is Copyright (c) 2007-2010 by Baptiste Lepilleur, and is
 released under the terms of the MIT License (see below).
 
-In jurisdictions which recognize Public Domain property, the user of this 
-software may choose to accept it either as 1) Public Domain, 2) under the 
-conditions of the MIT License (see below), or 3) under the terms of dual 
+In jurisdictions which recognize Public Domain property, the user of this
+software may choose to accept it either as 1) Public Domain, 2) under the
+conditions of the MIT License (see below), or 3) under the terms of dual
 Public Domain/MIT License conditions described here, as they choose.
 
 The MIT License is about as close to Public Domain as a license can get, and is
 described in clear, concise terms at:
 
    http://en.wikipedia.org/wiki/MIT_License
-   
+
 The full text of the MIT License follows:
 
 ========================================================================
@@ -207,7 +214,7 @@ static inline void fixNumericLocale(char* begin, char* end) {
 #include <limits>
 
 #if defined(_MSC_VER)
-#if !defined(WINCE) && defined(__STDC_SECURE_LIB__) && _MSC_VER >= 1500 // VC++ 9.0 and above 
+#if !defined(WINCE) && defined(__STDC_SECURE_LIB__) && _MSC_VER >= 1500 // VC++ 9.0 and above
 #define snprintf sprintf_s
 #elif _MSC_VER >= 1900 // VC++ 14.0 and above
 #define snprintf std::snprintf
@@ -668,7 +675,9 @@ bool Reader::readObject(Token& tokenStart) {
       Value numberName;
       if (!decodeNumber(tokenName, numberName))
         return recoverFromError(tokenObjectEnd);
-      name = JSONCPP_STRING(numberName.asCString());
+      const char* numberNameCString = numberName.asCString();
+      if(numberNameCString != NULL)
+        name = JSONCPP_STRING(numberNameCString);
     } else {
       break;
     }
@@ -3540,7 +3549,6 @@ Value const& Value::operator[](CppTL::ConstString const& key) const
 }
 #endif
 
-Value& Value::append(const Value& value) { return (*this)[size()] = value; }
 
 Value Value::get(char const* key, char const* cend, Value const& defaultValue) const
 {
@@ -4096,7 +4104,7 @@ Value& Path::make(Value& root) const {
 #endif
 #endif
 
-#if defined(__BORLANDC__)  
+#if defined(__BORLANDC__)
 #include <float.h>
 #define isfinite _finite
 #define snprintf _snprintf
@@ -4176,7 +4184,8 @@ JSONCPP_STRING valueToString(double value, bool useSpecialFloats, unsigned int p
   char buffer[32];
   int len = -1;
 
-  char formatString[6];
+  //3 non-format characters + 11 characters for %d + 1 for \0
+  char formatString[15];
   sprintf(formatString, "%%.%dg", precision);
 
   // Print into the buffer. We need not request the alternative representation
@@ -5165,7 +5174,7 @@ StreamWriter* StreamWriterBuilder::newStreamWriter() const
   JSONCPP_STRING cs_str = settings_["commentStyle"].asString();
   bool eyc = settings_["enableYAMLCompatibility"].asBool();
   bool dnp = settings_["dropNullPlaceholders"].asBool();
-  bool usf = settings_["useSpecialFloats"].asBool(); 
+  bool usf = settings_["useSpecialFloats"].asBool();
   unsigned int pre = settings_["precision"].asUInt();
   CommentStyle::Enum cs = CommentStyle::All;
   if (cs_str == "All") {
@@ -5256,6 +5265,4 @@ JSONCPP_OSTREAM& operator<<(JSONCPP_OSTREAM& sout, Value const& root) {
 // //////////////////////////////////////////////////////////////////////
 
 
-
-
-
+#pragma clang diagnostic pop

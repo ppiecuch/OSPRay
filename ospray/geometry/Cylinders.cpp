@@ -48,16 +48,15 @@ namespace ospray {
     cylinderData      = getParamData("cylinders");
     materialList      = getParamData("materialList");
     colorData         = getParamData("color");
+    texcoordData      = getParamData("texcoord");
 
     if (cylinderData.ptr == nullptr || bytesPerCylinder == 0) {
       throw std::runtime_error("#ospray:geometry/cylinders: no 'cylinders'"
                                " data specified");
     }
     numCylinders = cylinderData->numBytes / bytesPerCylinder;
-    std::stringstream msg;
-    msg << "#osp: creating 'cylinders' geometry, #cylinders = "
-        << numCylinders << std::endl;
-    postErrorMsg(msg, 2);
+    postStatusMsg(2) << "#osp: creating 'cylinders' geometry, #cylinders = "
+                     << numCylinders;
 
     if (_materialList) {
       free(_materialList);
@@ -77,16 +76,20 @@ namespace ospray {
     const char* cylinderPtr = (const char*)cylinderData->data;
     bounds = empty;
     for (uint32_t i = 0; i < numCylinders; i++, cylinderPtr += bytesPerCylinder) {
-      const float r = offset_radius < 0 ? radius : *(float*)(cylinderPtr + offset_radius);
-      const vec3f v0 = *(vec3f*)(cylinderPtr + offset_v0);
-      const vec3f v1 = *(vec3f*)(cylinderPtr + offset_v1);
+      const float r = offset_radius < 0 ? radius : *(const float*)(cylinderPtr + offset_radius);
+      const vec3f v0 = *(const vec3f*)(cylinderPtr + offset_v0);
+      const vec3f v1 = *(const vec3f*)(cylinderPtr + offset_v1);
       bounds.extend(box3f(v0 - r, v0 + r));
       bounds.extend(box3f(v1 - r, v1 + r));
     }
 
+    auto colComps = colorData && colorData->type == OSP_FLOAT3 ? 3 : 4;
     ispc::CylindersGeometry_set(getIE(),model->getIE(),
                                 cylinderData->data,_materialList,
-                                colorData?(ispc::vec4f*)colorData->data:nullptr,
+                                texcoordData ? texcoordData->data : nullptr,
+                                colorData ? colorData->data : nullptr,
+                                colComps * sizeof(float),
+                                colorData && colorData->type == OSP_FLOAT4,
                                 numCylinders,bytesPerCylinder,
                                 radius,materialID,
                                 offset_v0,offset_v1,

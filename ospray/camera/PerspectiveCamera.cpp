@@ -15,14 +15,7 @@
 // ======================================================================== //
 
 #include "PerspectiveCamera.h"
-#include <limits>
-// ispc-side stuff
 #include "PerspectiveCamera_ispc.h"
-
-#ifdef _WIN32
-#  define _USE_MATH_DEFINES
-#  include <math.h> // M_PI
-#endif
 
 namespace ospray {
 
@@ -51,12 +44,12 @@ namespace ospray {
     stereoMode = (StereoMode)getParam1i("stereoMode", OSP_STEREO_NONE);
     // the default 63.5mm represents the average human IPD
     interpupillaryDistance = getParamf("interpupillaryDistance", 0.0635f);
-    
+
     // ------------------------------------------------------------------
     // now, update the local precomputed values
     // ------------------------------------------------------------------
     dir = normalize(dir);
-    vec3f dir_du = normalize(cross(dir, up));
+    vec3f dir_du = normalize(cross(dir, up)); // right-handed coordinate system
     vec3f dir_dv;
     if (architectural)
       dir_dv = normalize(up); // orient film to be parallel to 'up' and shift such that 'dir' is centered
@@ -79,7 +72,7 @@ namespace ospray {
       case OSP_STEREO_NONE:
         break;
     }
-    
+
     float imgPlane_size_y = 2.f*tanf(deg2rad(0.5f*fovy));
     float imgPlane_size_x = imgPlane_size_y * aspect;
 
@@ -94,18 +87,19 @@ namespace ospray {
       dir_du *= focusDistance;
       dir_dv *= focusDistance;
       dir_00 *= focusDistance;
-      scaledAperture = apertureRadius / imgPlane_size_x;
+      scaledAperture = apertureRadius / (imgPlane_size_x * focusDistance);
     }
 
-    ispc::PerspectiveCamera_set(getIE(),
-                                (const ispc::vec3f&)org,
-                                (const ispc::vec3f&)dir_00,
-                                (const ispc::vec3f&)dir_du,
-                                (const ispc::vec3f&)dir_dv,
-                                scaledAperture,
-                                aspect,
-                                stereoMode == OSP_STEREO_SIDE_BY_SIDE,
-                                (const ispc::vec3f&)ipd_offset);
+    ispc::PerspectiveCamera_set(getIE()
+        , (const ispc::vec3f&)org
+        , (const ispc::vec3f&)dir_00
+        , (const ispc::vec3f&)dir_du
+        , (const ispc::vec3f&)dir_dv
+        , scaledAperture
+        , aspect
+        , stereoMode == OSP_STEREO_SIDE_BY_SIDE
+        , (const ispc::vec3f&)ipd_offset
+        );
   }
 
   OSP_REGISTER_CAMERA(PerspectiveCamera,perspective);

@@ -15,7 +15,7 @@
 ## ======================================================================== ##
 
 # ISPC versions to look for, in decending order (newest first)
-SET(ISPC_VERSION_WORKING "1.9.1" "1.9.0")
+SET(ISPC_VERSION_WORKING "1.9.1")
 LIST(GET ISPC_VERSION_WORKING -1 ISPC_VERSION_REQUIRED)
 SET(ISPC_VERSION_RECOMMENDED_KNC "1.9.0")
 
@@ -25,10 +25,10 @@ IF (NOT ISPC_EXECUTABLE)
     SET(ISPC_DIR_SUFFIX "osx")
   ELSEIF(WIN32)
     SET(ISPC_DIR_SUFFIX "windows")
-    IF (MSVC14)
-      LIST(APPEND ISPC_DIR_SUFFIX "windows-vs2015")
-    ELSE()
+    IF (MSVC_VERSION LESS 1900)
       LIST(APPEND ISPC_DIR_SUFFIX "windows-vs2013")
+    ELSE()
+      LIST(APPEND ISPC_DIR_SUFFIX "windows-vs2015")
     ENDIF()
   ELSE()
     SET(ISPC_DIR_SUFFIX "linux")
@@ -41,7 +41,11 @@ IF (NOT ISPC_EXECUTABLE)
     ENDFOREACH()
   ENDFOREACH()
 
+<<<<<<< HEAD
   FIND_PROGRAM(ISPC_EXECUTABLE ispc ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX} PATHS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
+=======
+  FIND_PROGRAM(ISPC_EXECUTABLE ispc HINTS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
+>>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
   IF (NOT ISPC_EXECUTABLE)
     MESSAGE("********************************************")
     MESSAGE("Could not find ISPC (looked in PATH and ${ISPC_DIR_HINT})")
@@ -82,6 +86,15 @@ MACRO (INCLUDE_DIRECTORIES_ISPC)
   SET(ISPC_INCLUDE_DIR ${ISPC_INCLUDE_DIR} ${ARGN})
 ENDMACRO ()
 
+# ##################################################################
+# add macro ADD_DEFINITIONS_ISPC() that allows to specify
+# ISPC pre-processor definitions
+# ##################################################################
+SET(ISPC_DEFINITIONS "")
+MACRO (ADD_DEFINITIONS_ISPC)
+  SET(ISPC_DEFINITIONS ${ISPC_DEFINITIONS} ${ARGN})
+ENDMACRO ()
+
 MACRO (OSPRAY_ISPC_COMPILE)
   SET(ISPC_ADDITIONAL_ARGS "")
   SET(ISPC_TARGETS ${OSPRAY_ISPC_TARGET_LIST})
@@ -94,7 +107,7 @@ MACRO (OSPRAY_ISPC_COMPILE)
   ELSE()
     SET(ISPC_ARCHITECTURE "x86")
   ENDIF()
-  
+
   SET(ISPC_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
   INCLUDE_DIRECTORIES(${ISPC_TARGET_DIR})
 
@@ -150,26 +163,19 @@ MACRO (OSPRAY_ISPC_COMPILE)
 
     # if we have multiple targets add additional object files
     LIST(LENGTH ISPC_TARGETS NUM_TARGETS)
-    IF (NUM_TARGETS EQUAL 1)
-      # workaround link issues to Embree ISPC exports:
-      # we add a 2nd target to force ISPC to add the ISA suffix during name
-      # mangling
-      SET(ISPC_TARGET_ARGS "${ISPC_TARGETS},sse2")
-      LIST(APPEND ISPC_TARGETS sse2)
+    IF (NUM_TARGETS GREATER 1)
+      FOREACH(target ${ISPC_TARGETS})
+        STRING(REPLACE "-i32x16" "" target ${target}) # strip avx512(knl|skx)-i32x16
+        SET(results ${results} "${outdir}/${fname}.dev_${target}${ISPC_TARGET_EXT}")
+      ENDFOREACH()
     ENDIF()
-    FOREACH(target ${ISPC_TARGETS})
-      # in v1.9.0 ISPC changed the ISA suffix of avx512knl-i32x16 to just 'avx512knl'
-      IF (${target} STREQUAL "avx512knl-i32x16" AND NOT ISPC_VERSION VERSION_LESS "1.9.0")
-        SET(target "avx512knl")
-      ENDIF()
-      SET(results ${results} "${outdir}/${fname}.dev_${target}${ISPC_TARGET_EXT}")
-    ENDFOREACH()
 
     ADD_CUSTOM_COMMAND(
       OUTPUT ${results} ${ISPC_TARGET_DIR}/${fname}_ispc.h
       COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
       COMMAND ${ISPC_EXECUTABLE}
-      -I ${CMAKE_CURRENT_SOURCE_DIR} 
+      ${ISPC_DEFINITIONS}
+      -I ${CMAKE_CURRENT_SOURCE_DIR}
       ${ISPC_INCLUDE_DIR_PARMS}
       --arch=${ISPC_ARCHITECTURE}
       --addressing=32
@@ -179,7 +185,7 @@ MACRO (OSPRAY_ISPC_COMPILE)
       --opt=fast-math
       ${ISPC_ADDITIONAL_ARGS}
       -h ${ISPC_TARGET_DIR}/${fname}_ispc.h
-      -MMM  ${outdir}/${fname}.dev.idep 
+      -MMM  ${outdir}/${fname}.dev.idep
       -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}
       ${input}
       DEPENDS ${input} ${deps}

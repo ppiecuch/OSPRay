@@ -17,11 +17,6 @@
 #include "QuadLight.h"
 #include "QuadLight_ispc.h"
 
-#ifdef _WIN32
-#  define _USE_MATH_DEFINES
-#  include <math.h> // M_PI
-#endif
-
 namespace ospray {
 
   QuadLight::QuadLight()
@@ -43,7 +38,7 @@ namespace ospray {
     color     = getParam3f("color", vec3f(1.f));
     intensity = getParam1f("intensity", 1.f);
 
-    const vec3f radiance = color * intensity;
+    vec3f radiance = color * intensity;
 
     ispc::QuadLight_set(getIE(),
                         (ispc::vec3f&)position,

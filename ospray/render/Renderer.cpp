@@ -35,22 +35,23 @@ namespace ospray {
   {
     epsilon = getParam1f("epsilon", 1e-6f);
     spp = getParam1i("spp", 1);
+    const int32 maxDepth = getParam1i("maxDepth", 20);
+    const float minContribution = getParam1f("minContribution", 0.001f);
     errorThreshold = getParam1f("varianceThreshold", 0.f);
-    backgroundEnabled = getParam1i("backgroundEnabled", 1);
     maxDepthTexture = (Texture2D*)getParamObject("maxDepthTexture", nullptr);
     model = (Model*)getParamObject("model", getParamObject("world"));
 
     if (maxDepthTexture) {
       if (maxDepthTexture->type != OSP_TEXTURE_R32F
           || !(maxDepthTexture->flags & OSP_TEXTURE_FILTER_NEAREST)) {
-        static WarnOnce warning("expected maxDepthTexture provided to the "
-                                "renderer to be type OSP_TEXTURE_R32F and have "
+        static WarnOnce warning("maxDepthTexture provided to the renderer "
+                                "needs to be of type OSP_TEXTURE_R32F and have "
                                 "the OSP_TEXTURE_FILTER_NEAREST flag");
       }
     }
 
-    vec3f bgColor;
-    bgColor = getParam3f("bgColor", vec3f(1.f));
+    vec3f bgColor3 = getParam3f("bgColor", vec3f(getParam1f("bgColor", 0.f)));
+    bgColor = getParam4f("bgColor", vec4f(bgColor3, 0.f));
 
     if (getIE()) {
       ManagedObject* camera = getParamObject("camera");
@@ -60,18 +61,20 @@ namespace ospray {
         epsilon *= diameter;
       }
 
-      ispc::Renderer_set(getIE(),
-                         model ? model->getIE() : nullptr,
-                         camera ? camera->getIE() : nullptr,
-                         epsilon,
-                         spp,
-                         backgroundEnabled,
-                         (ispc::vec3f&)bgColor,
-                         maxDepthTexture ? maxDepthTexture->getIE() : nullptr);
+      ispc::Renderer_set(getIE()
+          , model ? model->getIE() : nullptr
+          , camera ? camera->getIE() : nullptr
+          , epsilon
+          , spp
+          , maxDepth
+          , minContribution
+          , (ispc::vec4f&)bgColor
+          , maxDepthTexture ? maxDepthTexture->getIE() : nullptr
+          );
     }
   }
 
-  Renderer *Renderer::createRenderer(const char *type)
+  Renderer *Renderer::createInstance(const char *type)
   {
     return createInstanceHelper<Renderer, OSP_RENDERER>(type);
   }
@@ -108,10 +111,7 @@ namespace ospray {
 
   float Renderer::renderFrame(FrameBuffer *fb, const uint32 channelFlags)
   {
-     // double T0 = getSysTime();
     return TiledLoadBalancer::instance->renderFrame(this,fb,channelFlags);
-     // double T1 = getSysTime();
-     // printf("time per frame %lf ms\n",(T1-T0)*1e3f);
   }
 
   OSPPickResult Renderer::pick(const vec2f &screenPos)

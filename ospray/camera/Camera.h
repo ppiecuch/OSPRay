@@ -26,14 +26,18 @@ namespace ospray {
       perspectivecamera etc for that */
   struct OSPRAY_SDK_INTERFACE Camera : public ManagedObject
   {
-    virtual ~Camera() = default;
+    virtual ~Camera() override = default;
 
     virtual std::string toString() const override;
 
     virtual void commit() override;
 
+<<<<<<< HEAD
     static Camera *createCamera(const char *identifier);
     static void registerCamera(const char *identifier, Camera *(*creator)());
+=======
+    static Camera *createInstance(const char *identifier);
+>>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     // Data members //
 
@@ -45,6 +49,8 @@ namespace ospray {
     // to simulate sensor shift
     vec2f  imageStart; // lower left corner
     vec2f  imageEnd; // upper right corner
+    float shutterOpen; // start time of camera shutter
+    float shutterClose; // end time of camera shutter
   };
 
   /*! \brief registers a internal ospray::'ClassName' camera under
@@ -57,6 +63,6 @@ namespace ospray {
       of this camera.
   */
 #define OSP_REGISTER_CAMERA(InternalClass, external_name) \
-  OSP_REGISTER_OBJECT(Camera, camera, InternalClass, external_name)
+  OSP_REGISTER_OBJECT(::ospray::Camera, camera, InternalClass, external_name)
 
 } // ::ospray

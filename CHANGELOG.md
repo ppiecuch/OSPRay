@@ -1,10 +1,126 @@
 Version History
 ---------------
 
+### Changes in v1.4.2:
+
+-   Several cleanups and bug fixes
+    -   Fixed memory leak where the Embree BVH was never released when an
+        OSPModel was released
+    -   Fixed a crash when API logging was enabled in certain situations
+    -   Fixed a crash in MPI mode when creating lights without a renderer
+    -   Fixed an issue with camera lens samples not initilized when spp <= 0
+    -   Fixed an issue in ospExampleViewer when specifying multiple data files
+-   The C99 tutorial is now indicated as the default; the C++ wrappers do not
+    change the semantics of the API (memory management) so the C99 version
+    should be considered first when learning the API
+
+### Changes in v1.4.1:
+
+-   Several cleanups and bug fixes
+    -   Improved precision of ray intersection with streamlines,
+        spheres, and cylinder geometries
+    -   Fixed address overflow in framebuffer, in practice image size is
+        now limited only by available memory
+    -   Fixed several deadlocks and race conditions
+    -   Fix shadow computation in SciVis renderer, objects behind light
+        sources do not occlude anymore
+    -   No more image jittering with MPI rendering when no accumulation
+        buffer is used
+-   Improved path tracer materials
+    -   Also support RGB `eta`/`k` for Metal
+    -   Added Alloy material, a "metal" with textured color
+-   Minimum required Embree version is now v2.15
+
+### Changes in v1.4.0:
+
+-   New adaptive mesh refinement (AMR) and unstructured tetrahedral
+    volume types
+-   Dynamic load balancing is now implemented for the `mpi_offload`
+    device
+-   Many improvements and fixes to the available path tracer materials
+    -   Specular lobe of OBJMaterial uses Blinn-Phong for more realistic
+        highlights
+    -   Metal accepts spectral samples of complex refraction index
+    -   ThinGlass behaves consistent to Glass and can texture
+        attenuation color
+-   Added Russian roulette termination to path tracer
+-   SciVis OBJMaterial accepts texture coordinate transformations
+-   Applications can now access depth information in MPI distributed
+    uses of OSPRay (both `mpi_offload` and `mpi_distributed` devices)
+-   Many robustness fixes for both the `mpi_offload` and
+    `mpi_distributed` devices through improvements to the `mpi_common`
+    and `mpi_maml` infrastructure libraries
+-   Major sample app cleanups:
+    -   `ospray_sg` library is the new basis for building apps, which is
+        a scenegraph implementation
+    -   Old (unused) libraries have been removed: miniSG, commandline,
+        importer, loaders, and scripting
+    -   Some removed functionality (such as scripting) may be
+        reintroduced in the new infrastructure later, though most
+        features have remained and have been improved
+    -   Optional improved texture loading has been transitioned from
+        ImageMagick to OpenImageIO
+-   Many cleanups, bug fixes, and improvements to `ospray_common` and
+    other support libraries
+-   This will be the last release in which we support MSVC12 (Visual
+    Studio 2013). Future releases will require VS2015 or newer
+
+### Changes in v1.3.1:
+
+-   Improved robustness of OSPRay CMake `find_package` config
+    -   Fixed bugs related to CMake configuration when using the OSPRay
+        SDK from an install
+-   Fixed issue with Embree library when installing with
+    `OSPRAY_INSTALL_DEPENDENCIES` enabled
+
+### Changes in v1.3.0:
+
+-   New MPI distributed device to support MPI distributed applications
+    using OSPRay collectively for "in-situ" rendering (currently in
+    "alpha")
+    -   Enabled via new `mpi_distributed` device type
+    -   Currently only supports `raycast` renderer, other renderers will
+        be supported in the future
+    -   All API calls are expected to be exactly replicated (object
+        instances and parameters) except scene data (geometries and
+        volumes)
+    -   The original MPI device is now called the `mpi_offload` device
+        to differentiate between the two implementations
+-   Support of Intel® AVX-512 for next generation Intel® Xeon® processor
+    (codename Skylake), thus new minimum ISPC version is 1.9.1
+-   Thread affinity of OSPRay's tasking system can now be controlled via
+    either device parameter `setAffinity`, or commandline parameter
+    `osp:setaffinity`, or environment variable `OSPRAY_SET_AFFINITY`
+-   Changed behavior of the background color in the SciVis renderer:
+    `bgColor` now includes alpha and is always blended (no
+    `backgroundEnabled` anymore). To disable the background don't set
+    bgColor, or set it to transparent black (0, 0, 0, 0)
+-   Geometries "`spheres`" and "`cylinders`" now support texture
+    coordinates
+-   The GLUT- and Qt-based demo viewer applications have been replaced
+    by an example viewer with minimal dependencies
+    -   Building the sample applications now requires GCC 4.9
+        (previously 4.8) for features used in the C++ standard library;
+        OSPRay itself can still be built with GCC 4.8
+    -   The new example viewer based on `ospray::sg` (called
+        `ospExampleViewerSg`) is the single application we are
+        consolidating to, `ospExampleViewer` will remain only as a
+        deprecated viewer for compatibility with the old `ospGlutViewer`
+        application
+-   Deprecated `ospCreateDevice()`; use `ospNewDevice()` instead
+-   Improved error handling
+    -   Various API functions now return an `OSPError` value
+    -   `ospDeviceSetStatusFunc` replaces the deprecated
+        `ospDeviceSetErrorMsgFunc`
+    -   New API functions to query the last error
+        (`ospDeviceGetLastErrorCode()` and `ospDeviceGetLastErrorMsg()`)
+        or to register an error callback with `ospDeviceSetErrorFunc()`
+    -   Fixed bug where exceptions could leak to C applications
+
 ### Changes in v1.2.1:
 
 -   Various bugfixes related to MPI distributed rendering, ISPC issues
-    on Windows, and other build related issues.
+    on Windows, and other build related issues
 
 ### Changes in v1.2.0:
 
@@ -23,7 +139,7 @@ Version History
     via new material "`Luminous`"
 -   Lights can optionally made invisible by using the new parameter
     `isVisible` (only relevant for path tracer)
--   OSPRay Devices are now extendable through modules and the SDK.
+-   OSPRay Devices are now extendable through modules and the SDK
     -   Devices can be created and set current, creating an alternative
         method for initializing the API
     -   New API functions for committing parameters on Devices
@@ -34,7 +150,7 @@ Version History
         and performance
     -   New API function `ospDeviceSetErrorMsgFunc()` to specify a
         callback for handling message outputs from OSPRay
-    -   Add ability to remove user set parameter values with new
+    -   Added ability to remove user set parameter values with new
         `ospRemoveParam()` API function
     -   The MPI device is now provided via a module, removing the need
         for having separately compiled versions of OSPRay with and
@@ -130,7 +246,7 @@ Version History
         -   GLUT viewer now supports volume rendering
         -   Command mode with preliminary scripting capabilities,
             enabled by pressing '`:`' key (not available when using
-            Intel C++ compiler (icc))
+            Intel C++ Compiler (icc))
     -   Enhanced support of sample applications on Windows
 -   New minimum ISPC version is 1.9.0
 -   Support of Intel® AVX-512 for second generation Intel Xeon Phi

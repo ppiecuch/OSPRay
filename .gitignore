@@ -11,6 +11,8 @@ tags
 *.rpm
 *.zip
 *.bak
+*.patch
+.vscode
 deps
 tbb
 embree
@@ -19,3 +21,4 @@ ospray-doc
 !/modules
 /modules/*
 !/modules/mpi
+!/modules/pluggableGeometryExample

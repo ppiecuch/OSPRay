@@ -46,8 +46,6 @@ namespace ospray {
       case OSP_FB_RGBA32F:
         colorBuffer = (vec4f*)alignedMalloc(sizeof(vec4f)*size.x*size.y);
         break;
-      default:
-        throw std::runtime_error("color buffer format not supported");
       }
     }
 
@@ -144,8 +142,17 @@ namespace ospray {
     return tileErrorRegion[tile];
   }
 
+  void LocalFrameBuffer::beginFrame()
+  {
+    FrameBuffer::beginFrame();
+    if (pixelOp)
+      pixelOp->beginFrame();
+  }
+
   float LocalFrameBuffer::endFrame(const float errorThreshold)
   {
+    if (pixelOp)
+      pixelOp->endFrame();
     return tileErrorRegion.refine(errorThreshold);
   }
 
