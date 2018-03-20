@@ -1,5 +1,3 @@
-#pragma once
-
 // ======================================================================== //
 // Copyright 2009-2017 Intel Corporation                                    //
 //                                                                          //
@@ -16,32 +14,11 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-<<<<<<< HEAD:apps/volumeViewer/IsovalueWidget.h
 #pragma once
 
-#include <ospray/ospray.h>
-<<<<<<< HEAD
-#include "ospray/common/OSPCommon.h"
-#include <QtWidgets>
-=======
-#include "ospcommon/vec.h"
-#include <QtGui>
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
-
-class IsosurfaceEditor;
-
-class IsovalueWidget : public QWidget
-{
-Q_OBJECT
-
-public:
-
-  IsovalueWidget(IsosurfaceEditor *isosurfaceEditor);
-=======
 #include "ospcommon/FileName.h"
 #include "ospcommon/vec.h"
 #include <cstdio>
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9:modules/mpi/apps/gensv/raw_reader.h
 
 namespace gensv {
 

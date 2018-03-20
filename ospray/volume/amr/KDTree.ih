@@ -16,22 +16,11 @@
 
 #pragma once
 
-<<<<<<< HEAD:apps/volumeViewer/SliceWidget.h
 #include <ospray/ospray.h>
-<<<<<<< HEAD
-#include "ospray/common/OSPCommon.h"
-#include <QtWidgets>
-=======
-#include "ospcommon/box.h"
-#include <QtGui>
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 
-struct SliceParameters
-=======
 /*! ispc equivalent of the c++-side kdtree that we build over the
     boxes */
 struct KDTreeNode
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9:ospray/volume/amr/KDTree.ih
 {
   uint32 dim_and_ofs;
   uint32 pos_or_numItems;

@@ -45,13 +45,7 @@ namespace ospray {
       in either ospray proper or any already loaded module. For
       renderer types specified in special modules, make sure to call
       ospLoadModule first. */
-<<<<<<< HEAD
-    static Renderer *createRenderer(const char *identifier);
-    static void registerRenderer(const char *identifier, Renderer *(*creator)());
-    static std::vector<std::string> registeredRenderers();
-=======
     static Renderer *createInstance(const char *identifier);
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     virtual void commit() override;
     virtual std::string toString() const override;

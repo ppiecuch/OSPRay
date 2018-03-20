@@ -41,11 +41,7 @@ IF (NOT ISPC_EXECUTABLE)
     ENDFOREACH()
   ENDFOREACH()
 
-<<<<<<< HEAD
   FIND_PROGRAM(ISPC_EXECUTABLE ispc ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX} PATHS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
-=======
-  FIND_PROGRAM(ISPC_EXECUTABLE ispc HINTS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
   IF (NOT ISPC_EXECUTABLE)
     MESSAGE("********************************************")
     MESSAGE("Could not find ISPC (looked in PATH and ${ISPC_DIR_HINT})")

@@ -20,38 +20,6 @@
 
 namespace ospray {
   namespace sg {
-<<<<<<< HEAD
-    struct FrameBuffer;
-    struct Renderer {
-      Renderer();
-
-      /*! re-start accumulation (for progressive rendering). make sure
-          that this function gets called at lesat once every time that
-          anything changes that might change the appearance of the
-          converged image (e.g., camera position, scene, frame size,
-          etc) */
-      void resetAccumulation();
-
-      void setWorld(const std::shared_ptr<sg::World> &world);
-      void setCamera(const std::shared_ptr<sg::Camera> &camera);
-      void setIntegrator(const std::shared_ptr<sg::Integrator> &integrator);
-
-      // -------------------------------------------------------
-      // query functions
-      // -------------------------------------------------------
-      
-      //! find the last camera in the scene graph
-      std::shared_ptr<sg::Camera> getLastDefinedCamera() const;
-      //! find the last integrator in the scene graph
-      std::shared_ptr<sg::Integrator> getLastDefinedIntegrator() const;
-      
-      //! create a default camera
-      std::shared_ptr<sg::Camera> createDefaultCamera(vec3f up=vec3f(0,1,0));
-
-      // //! set a default camera
-      // void setDefaultCamera() { setCamera(createDefaultCamera()); }
-=======
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     class FrameBuffer;
 

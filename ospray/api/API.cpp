@@ -81,16 +81,12 @@ inline std::string toString(OSPObject obj)
 
 using namespace ospray;
 
-<<<<<<< HEAD
 namespace ospray
 {
   void staticInit();
 }
 
-inline ospray::api::Device *createMpiDevice()
-=======
 inline Device *createMpiDevice(const std::string &type)
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 {
   Device *device = nullptr;
 
@@ -116,20 +112,14 @@ inline Device *createMpiDevice(const std::string &type)
 extern "C" OSPError ospInit(int *_ac, const char **_av)
 OSPRAY_CATCH_BEGIN
 {
-<<<<<<< HEAD
 #ifdef ENABLE_STATIC_LIB
   ospray::staticInit();
 #endif
 
-  if (ospray::api::Device::current) {
-    throw std::runtime_error("OSPRay error: device already exists "
-                             "(did you call ospInit twice?)");
-=======
   auto &currentDevice = Device::current;
 
   if (currentDevice) {
     throw std::runtime_error("device already exists [ospInit() called twice?]");
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
   }
 
   auto OSP_MPI_LAUNCH = utility::getEnvVar<std::string>("OSPRAY_MPI_LAUNCH");

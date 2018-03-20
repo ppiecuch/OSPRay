@@ -32,12 +32,7 @@ namespace ospray {
 
     virtual void commit() override;
 
-<<<<<<< HEAD
-    static Camera *createCamera(const char *identifier);
-    static void registerCamera(const char *identifier, Camera *(*creator)());
-=======
     static Camera *createInstance(const char *identifier);
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9
 
     // Data members //
 

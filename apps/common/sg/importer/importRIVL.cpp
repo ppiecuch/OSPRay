@@ -16,13 +16,9 @@
 
 #undef NDEBUG
 
-<<<<<<< HEAD:apps/common/sg/importer/ImportRIVL.cpp
 #define WARN_ON_INCLUDING_OSPCOMMON 1
 
 #include "sg/SceneGraph.h"
-=======
-#include "SceneGraph.h"
->>>>>>> b3895aa7441b54166df005f20578fb5106226bb9:apps/common/sg/importer/importRIVL.cpp
 #include "sg/common/Texture2D.h"
 #include "sg/geometry/TriangleMesh.h"
 // stl
