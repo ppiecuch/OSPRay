@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2017 Intel Corporation                                    ##
+## Copyright 2009-2018 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -35,6 +35,7 @@ function(ospray_verify_embree_features)
   ospray_check_embree_feature(INTERSECTION_FILTER_RESTORE "intersection filter")
   ospray_check_embree_feature(GEOMETRY_TRIANGLES "triangle geometries")
   ospray_check_embree_feature(GEOMETRY_USER "user geometries")
+  ospray_check_embree_feature(GEOMETRY_HAIR "spline curve geometries")
   ospray_check_embree_feature(RAY_PACKETS "ray packets")
   ospray_check_embree_feature(BACKFACE_CULLING "backface culling" OFF)
 endfunction()

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,6 +17,7 @@
 #include "mpiCommon/MPICommon.h"
 #include "mpiCommon/MPIBcastFabric.h"
 #include "mpi/MPIOffloadDevice.h"
+#include "api/ISPCDevice.h"
 #include "common/Model.h"
 #include "common/Data.h"
 #include "common/Library.h"
@@ -113,7 +114,7 @@ namespace ospray {
 
       auto embreeDevice =
           rtcNewDevice(generateEmbreeDeviceCfg(*device).c_str());
-      device->embreeDevice = embreeDevice;
+      api::ISPCDevice::embreeDevice = embreeDevice;
       EmbreeDeviceScopeGuard guard;
       guard.embreeDevice = embreeDevice;
 

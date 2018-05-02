@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -87,6 +87,7 @@ namespace ospcommon {
   OSPCOMMON_INTERFACE void removeArgs(int &ac, const char **&av,
                                       int where, int howMany);
   OSPCOMMON_INTERFACE void loadLibrary(const std::string &name);
+  OSPCOMMON_INTERFACE void loadDefaultLibrary();
   OSPCOMMON_INTERFACE void *getSymbol(const std::string &name);
 
 #ifdef _WIN32

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "sg/common/Node.h"
-#include "sg/common/Serialization.h"
+#include "../common/Node.h"
+#include "../common/Serialization.h"
 
 namespace ospray {
   namespace sg {
@@ -48,7 +48,7 @@ namespace ospray {
       createChild("pos", "vec3f", vec3f(0, -1, 0));
       // XXX SG is too restrictive: OSPRay cameras accept non-normalized directions
       createChild("dir", "vec3f", vec3f(0, 0, 0),
-                       NodeFlags::required | NodeFlags::valid_min_max |
+                       NodeFlags::required |
                        NodeFlags::gui_slider).setMinMax(vec3f(-1), vec3f(1));
       createChild("up", "vec3f", vec3f(0, 0, 1),NodeFlags::required);
     }

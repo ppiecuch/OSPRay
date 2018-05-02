@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -21,6 +21,11 @@
 #include "StructuredVolume_ispc.h"
 
 namespace ospray {
+
+  StructuredVolume::~StructuredVolume()
+  {
+    if (ispcEquivalent) ispc::StructuredVolume_destroy(ispcEquivalent);
+  }
 
   std::string StructuredVolume::toString() const
   {
@@ -126,8 +131,8 @@ namespace ospray {
   void StructuredVolume::finish()
   {
     // Make the voxel value range visible to the application.
-    if (findParam("voxelRange") == NULL)
-      set("voxelRange", voxelRange);
+    if (!hasParam("voxelRange"))
+      setParam("voxelRange", voxelRange);
     else
       voxelRange = getParam2f("voxelRange", voxelRange);
 

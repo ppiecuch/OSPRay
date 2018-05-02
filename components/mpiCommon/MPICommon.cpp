@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -132,7 +132,7 @@ namespace mpicommon {
     return comm != MPI_COMM_NULL && rank >= 0;
   }
 
-  bool init(int *ac, const char **av)
+  bool init(int *ac, const char **av, bool useCommWorld)
   {
     int initialized = false;
     MPI_CALL(Initialized(&initialized));
@@ -148,9 +148,11 @@ namespace mpicommon {
     }
     mpiIsThreaded = provided == MPI_THREAD_MULTIPLE;
 
-    MPI_CALL(Comm_dup(MPI_COMM_WORLD, &world.comm));
-    MPI_CALL(Comm_rank(world.comm, &world.rank));
-    MPI_CALL(Comm_size(world.comm, &world.size));
+    if (useCommWorld) {
+      MPI_CALL(Comm_dup(MPI_COMM_WORLD, &world.comm));
+      MPI_CALL(Comm_rank(world.comm, &world.rank));
+      MPI_CALL(Comm_size(world.comm, &world.size));
+    }
     return !initialized;
   }
 

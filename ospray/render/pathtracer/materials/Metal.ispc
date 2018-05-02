@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -36,7 +36,7 @@ struct Metal
 ///////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-const varying BSDF* uniform Metal_getBSDF(const uniform PathTraceMaterial* uniform super,
+const varying BSDF* varying Metal_getBSDF(const uniform PathTraceMaterial* uniform super,
                                           uniform ShadingContext* uniform ctx,
                                           const DifferentialGeometry& dg,
                                           const Ray& ray,

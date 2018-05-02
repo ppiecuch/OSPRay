@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -35,7 +35,7 @@ struct Alloy
 ///////////////////////////////////////////////////////////////////////////////
 // Implementation
 
-const varying BSDF* uniform Alloy_getBSDF(const uniform PathTraceMaterial* uniform super,
+const varying BSDF* varying Alloy_getBSDF(const uniform PathTraceMaterial* uniform super,
                                           uniform ShadingContext* uniform ctx,
                                           const DifferentialGeometry& dg,
                                           const Ray& ray,
@@ -44,7 +44,7 @@ const varying BSDF* uniform Alloy_getBSDF(const uniform PathTraceMaterial* unifo
   const uniform Alloy* uniform self = (const uniform Alloy* uniform)super;
   varying linear3f* uniform frame = LinearSpace3f_create(ctx, frame(dg.Ns));
 
-  const vec3f color = self->color
+  const vec3f color = self->color * make_vec3f(dg.color)
     * get3f(self->map_color, dg.st, make_vec3f(1.f));
 
   const vec3f edgeColor = self->edgeColor

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -55,7 +55,6 @@ namespace ospray {
   struct OSPRAY_SDK_INTERFACE Spheres : public Geometry
   {
     Spheres();
-    virtual ~Spheres() override;
 
     virtual std::string toString() const override;
     virtual void finalize(Model *model) override;
@@ -74,8 +73,6 @@ namespace ospray {
     int64 offset_colorID;
 
     Ref<Data> sphereData;
-    Ref<Data> materialList;
-    void     *_materialList {nullptr};
 
     /*! data array from which we read the per-sphere color data; if
       NULL we do not have per-sphere data */

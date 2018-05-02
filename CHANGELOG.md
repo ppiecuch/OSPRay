@@ -1,6 +1,42 @@
 Version History
 ---------------
 
+### Changes in v1.5.0:
+
+-   TetrahedralVolume now generalized to take both tet and hex data, now called
+    `UnstructuredVolume`
+-   New function for creating materials (`ospNewMaterial2`) which takes the
+    renderer type string, not a renderer instance (the old version is now
+    deprecated)
+-   New `tonemapper` PixelOp for tone mapping final frames
+-   Streamlines now support per-vertex radii and smooth interpolation
+-   `ospray_sg` headers are now installed alongside the SDK
+-   Core OSPRay ispc device now implemented as a module
+    -   Devices which implement the public API are no longer required to link
+        the dependencies to core OSPRay (e.g. Embree v2.x)
+    -   By default, `ospInit` will load the ispc module if a device was not
+        created via `--osp:mpi` or `--osp:device:[name]`
+-   MPI devices can now accept an existing world communicator instead of always
+    creating their own
+-   Added ability to control ISPC specific optimization flags via CMake options
+    -   See the various `ISPC_FLAGS_*` variables to control which flags get used
+-   Enhancements to sample applications
+    -   `ospray_sg` (and thus `ospExampleViewer`/`ospBenchmark`) can now be
+        extended with new scene data importers via modules or the SDK
+    -   Updated ospTutorial examples to properly call ospRelease()
+    -   New options in the ospExampleViewer GUI to showcase new features
+        -   SRGB frame buffers, tone mapping, etc.
+-   General bug fixes
+    -   Fixes to geometries with multiple emissive materials
+    -   Improvements to precision of ray-sphere intersections
+
+### Changes in v1.4.3:
+
+-   Several bug fixes
+    -   Fixed potential issue with static initialization order
+    -   Correct compiler flags for Debug config
+    -   Spheres `postIntersect` shading is now 64-bit safer
+
 ### Changes in v1.4.2:
 
 -   Several cleanups and bug fixes
@@ -50,7 +86,7 @@ Version History
 -   Many robustness fixes for both the `mpi_offload` and
     `mpi_distributed` devices through improvements to the `mpi_common`
     and `mpi_maml` infrastructure libraries
--   Major sample app cleanups:
+-   Major sample app cleanups
     -   `ospray_sg` library is the new basis for building apps, which is
         a scenegraph implementation
     -   Old (unused) libraries have been removed: miniSG, commandline,
@@ -119,7 +155,7 @@ Version History
 
 ### Changes in v1.2.1:
 
--   Various bugfixes related to MPI distributed rendering, ISPC issues
+-   Various bug fixes related to MPI distributed rendering, ISPC issues
     on Windows, and other build related issues
 
 ### Changes in v1.2.0:
@@ -145,7 +181,7 @@ Version History
     -   New API functions for committing parameters on Devices
 -   Removed support for the first generation Intel® Xeon Phi™ coprocessor
     (codename Knights Corner)
--   Other minor improvements, updates, and bugfixes:
+-   Other minor improvements, updates, and bug fixes
     -   Updated Embree required version to v2.13.0 for added features
         and performance
     -   New API function `ospDeviceSetErrorMsgFunc()` to specify a
@@ -160,7 +196,7 @@ Version History
 
 ### Changes in v1.1.2:
 
--   Various bugfixes related to normalization, epsilons and debug
+-   Various bug fixes related to normalization, epsilons and debug
     messages
 
 ### Changes in v1.1.1:
@@ -256,7 +292,7 @@ Version History
 -   Enhanced error messages when `ospLoadModule()` fails
 -   Added `OSP_FB_RGBA32F` support in the `DistributedFrameBuffer`
 -   Updated Glass shader in the path tracer
--   Many miscellaneous cleanups, bugfixes, and improvements
+-   Many miscellaneous cleanups, bug fixes, and improvements
 
 ### Changes in v0.10.1:
 
@@ -300,7 +336,7 @@ Version History
     -   `ospray.h` header is now C99 compatible
 -   Removed loaders module, functionality remains inside of
     `ospVolumeViewer`
--   Many miscellaneous cleanups, bugfixes, and improvements:
+-   Many miscellaneous cleanups, bug fixes, and improvements
     -   Fixed data distributed volume rendering bugs when using less
         blocks than workers
     -   Fixes to CMake `find_package()` config
@@ -323,11 +359,11 @@ Version History
 -   Added `ospRemoveVolume()` API call
 -   Added ability to render a subsection of the full view into the
     entire framebuffer in the perspective camera
--   Many miscellaneous cleanups, bugfixes, and improvements:
+-   Many miscellaneous cleanups, bug fixes, and improvements
     -   The depthbuffer is now correctly populated by in the "scivis"
         renderer
     -   Updated default renderer to be "ao1" in ospModelViewer
-    -   Trianglemesh postIntersect shading is now 64-bit safe
+    -   Trianglemesh `postIntersect` shading is now 64-bit safe
     -   Texture2D has been reworked, with many improvements and bug fixes
     -   Fixed bug where MPI device would freeze while rendering frames
         with Intel TBB
@@ -369,7 +405,7 @@ changes.
     -   Soft shadows (light sources: sphere, cone, extended spot, quad)
     -   Transparent shadows
     -   Normal mapping (OBJ material)
--   Volume rendering enhancements:
+-   Volume rendering enhancements
     -   Expanded material support
     -   Support for multiple lights
     -   Support for double precision volumes
@@ -428,7 +464,7 @@ changes.
     unify (and replace) the existing simpler GLUT-based viewers
 -   Added new path tracing renderer (`ospray/render/pathtracer`),
 -   roughly based on the Embree sample path tracer
--   Added new features to the volume renderer:
+-   Added new features to the volume renderer
     -   Gradient shading (lighting)
     -   Implicit isosurfacing
     -   Progressive refinement

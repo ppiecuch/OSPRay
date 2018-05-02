@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2017 Intel Corporation                                    //
+// Copyright 2009-2018 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -81,6 +81,9 @@ namespace ospray {
 
     Model *model {nullptr};
     FrameBuffer *currentFB {nullptr};
+
+    /*! \brief parameter to automatically prevent self-intersection issues */
+    bool autoEpsilon {true};
 
     /*! \brief parameter to prevent self-intersection issues, will be scaled with diameter of the scene */
     float epsilon {1e-6f};
