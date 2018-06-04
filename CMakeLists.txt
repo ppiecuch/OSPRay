@@ -44,11 +44,7 @@ SET(OSPCOMMON_DIR ${COMPONENTS_DIR}/ospcommon)
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 ## Let Qt be found:
-IF(EXISTS "/Developer/Qt/5.6/clang_64")
-    SET(CMAKE_PREFIX_PATH "/Developer/Qt/5.6/clang_64")
-ELSE()
-    SET(CMAKE_PREFIX_PATH "~/Qt/5.6/clang_64")
-ENDIF()
+SET(CMAKE_PREFIX_PATH "~/Qt/5.11/clang_64")
 SET(OSPRAY_VERSION_MAJOR 1)
 SET(OSPRAY_VERSION_MINOR 0)
 SET(OSPRAY_VERSION_PATCH 0)
@@ -71,7 +67,7 @@ SET(OSPRAY_VERSION
 SET(OSPRAY_SOVERSION 0)
 SET(ENABLE_STATIC_LIB ON)
 
-SET(EMBREE_TREE "2.8.0")
+SET(EMBREE_TREE "3.2.0")
 MACRO(PRINT var)
   MESSAGE("${var} = ${${var}}")
 ENDMACRO()
@@ -106,7 +102,6 @@ INCLUDE(ospray_options)
 INCLUDE(ispc)
 
 ##############################################################
-<<<<<<< HEAD
 # OSPRay specific build options and configuration selection
 ##############################################################
 

@@ -93,12 +93,8 @@ endif()
 set(OSPRAY_INCLUDE_DIRS
   ${OSPRAY_INCLUDE_DIR}
   ${OSPRAY_INCLUDE_DIR}/ospray
-<<<<<<< HEAD
   ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}
   ${OSPRAY_INCLUDE_DIR}/ospray/embree-v${EMBREE_TREE}/common
-=======
-  ${OSPRAY_INCLUDE_DIR}/ospray/SDK
->>>>>>> 2f538262e100e9d952cca17787e4f7f913bca708
 )
 
 ###############################################################################
