@@ -32,8 +32,14 @@
 // stl
 #include <algorithm>
 
-namespace ospray {
+extern "C" {
+  RTCDevice ispc_embreeDevice()
+  {
+    return ospray::api::ISPCDevice::embreeDevice;
+  }
+}
 
+namespace ospray {
   namespace api {
 
     RTCDevice ISPCDevice::embreeDevice = nullptr;
@@ -42,7 +48,7 @@ namespace ospray {
     {
       try {
         if (embreeDevice) {
-          rtcDeleteDevice(embreeDevice);
+          rtcReleaseDevice(embreeDevice);
           embreeDevice = nullptr;
         }
       } catch (...) {
@@ -67,15 +73,14 @@ namespace ospray {
       // in the host-stubs, where it shouldn't.
       // -------------------------------------------------------
         embreeDevice = rtcNewDevice(generateEmbreeDeviceCfg(*this).c_str());
-
-        rtcDeviceSetErrorFunction2(embreeDevice, embreeErrorFunc, nullptr);
-
-        RTCError erc = rtcDeviceGetError(embreeDevice);
-        if (erc != RTC_NO_ERROR) {
+        rtcSetDeviceErrorFunction(embreeDevice, embreeErrorFunc, nullptr);
+        RTCError erc = rtcGetDeviceError(embreeDevice);
+        if (erc != RTC_ERROR_NONE) {
           // why did the error function not get called !?
           postStatusMsg() << "#osp:init: embree internal error number " << erc;
-          assert(erc == RTC_NO_ERROR);
+          assert(erc == RTC_ERROR_NONE);
         }
+
       }
 
       TiledLoadBalancer::instance = make_unique<LocalTiledLoadBalancer>();
@@ -266,6 +271,19 @@ namespace ospray {
 
       object->setParam(bufName, f);
     }
+
+    /*! assign (named) float parameter to an object */
+    void ISPCDevice::setBool(OSPObject _object,
+                             const char *bufName,
+                             const bool b)
+    {
+      ManagedObject *object = (ManagedObject *)_object;
+      Assert(object != nullptr  && "invalid object handle");
+      Assert(bufName != nullptr && "invalid identifier for object parameter");
+
+      object->setParam(bufName, b);
+    }
+
     /*! assign (named) float parameter to an object */
     void ISPCDevice::setFloat(OSPObject _object,
                               const char *bufName,
