@@ -6,9 +6,9 @@
 OSPRay
 ======
 
-This is release v1.6.0 of OSPRay. For changes and new features
-see the [changelog](CHANGELOG.md). Also visit http://www.ospray.org for
-more information.
+This is release v1.6.1 of OSPRay. For changes and new features see the
+[changelog](CHANGELOG.md). Also visit http://www.ospray.org for more
+information.
 
 OSPRay Overview
 ===============
@@ -208,9 +208,9 @@ Documentation
 =============
 
 The following [API
-documentation](http://www.sdvis.org/ospray/download/OSPRay_readme_devel.pdf "OSPRay Documentation")
+documentation](http://www.sdvis.org/ospray/download/OSPRay_readme.pdf "OSPRay Documentation")
 of OSPRay can also be found as a [pdf
-document](http://www.sdvis.org/ospray/download/OSPRay_readme_devel.pdf "OSPRay Documentation").
+document](http://www.sdvis.org/ospray/download/OSPRay_readme.pdf "OSPRay Documentation").
 
 For a deeper explanation of the concepts, design, features and
 performance of OSPRay also have a look at the IEEE Vis 2016 paper
@@ -360,7 +360,7 @@ all devices:
 <caption>Parameters shared by all devices.</caption>
 <colgroup>
 <col style="width: 11%" />
-<col style="width: 17%" />
+<col style="width: 18%" />
 <col style="width: 67%" />
 </colgroup>
 <thead>
@@ -1044,11 +1044,12 @@ like the structured volume equivalent, but they only modify the root
 
 ### Unstructured Volumes
 
-Unstructured volumes can contain tetrahedral or hexahedral cell types,
-and are defined by three arrays: vertices, corresponding field values,
-and eight indices per cell (first four are -1 for tetrahedral cells). An
-unstructred volume type is created by passing the type string
-“`unstructured_volume`” to `ospNewVolume`.
+Unstructured volumes can contain tetrahedral, wedge, or hexahedral cell
+types, and are defined by three arrays: vertices, corresponding field
+values, and eight indices per cell (first four are -1 for tetrahedral
+cells, first two are -2 for wedge cells). An unstructured volume type is
+created by passing the type string “`unstructured_volume`” to
+`ospNewVolume`.
 
 Field values can be specified per-vertex (`field`) or per-cell
 (`cellField`). If both values are set, `cellField` takes precedence.
@@ -1060,8 +1061,12 @@ rendering. Note that the index order for each tetrahedron does not
 matter, as OSPRay internally calculates vertex normals to ensure proper
 sampling and interpolation.
 
+For wedge cells, each wedge is formed by a group of six indices into the
+vertices and data value. Vertex ordering is the same as `VTK_WEDGE` -
+three bottom vertices counterclockwise, then top three counterclockwise.
+
 For hexahedral cells, each hexahedron is formed by a group of eight
-indices into the vertics and data value. Vertex ordering is the same as
+indices into the vertices and data value. Vertex ordering is the same as
 `VTK_HEXAHEDRON` – four bottom vertices counterclockwise, then top four
 counterclockwise.
 
@@ -1084,13 +1089,13 @@ counterclockwise.
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">vec3f[]</td>
-<td style="text-align: left;">vertex</td>
+<td style="text-align: left;">vertices</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;"><a href="#data">data</a> array of vertex positions</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float[]</td>
-<td style="text-align: left;">vertex.field</td>
+<td style="text-align: left;">field</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;"><a href="#data">data</a> array of vertex data values to be sampled</td>
 </tr>
@@ -1102,7 +1107,7 @@ counterclockwise.
 </tr>
 <tr class="even">
 <td style="text-align: left;">vec4i[]</td>
-<td style="text-align: left;">index</td>
+<td style="text-align: left;">indices</td>
 <td style="text-align: left;"></td>
 <td style="text-align: left;"><a href="#data">data</a> array of tetrahedra indices (into vertices and field)</td>
 </tr>
@@ -1180,8 +1185,29 @@ triangle mesh recognizes the following parameters:
 
 : Parameters defining a triangle mesh geometry.
 
-The `vertex` and `index` arrays are mandatory to creat a valid triangle
+The `vertex` and `index` arrays are mandatory to create a valid triangle
 mesh.
+
+### Quad Mesh
+
+A mesh consisting of quads is created by calling `ospNewGeometry` with
+type string “`quads`”. Once created, a quad mesh recognizes the
+following parameters:
+
+| Type                   | Name            | Description                                                    |
+|:-----------------------|:----------------|:---------------------------------------------------------------|
+| vec3f(a)\[\]           | vertex          | [data](#data) array of vertex positions                        |
+| vec3f(a)\[\]           | vertex.normal   | [data](#data) array of vertex normals                          |
+| vec4f\[\] / vec3fa\[\] | vertex.color    | [data](#data) array of vertex colors (RGBA/RGB)                |
+| vec2f\[\]              | vertex.texcoord | [data](#data) array of vertex texture coordinates              |
+| vec4i\[\]              | index           | [data](#data) array of quad indices (into the vertex array(s)) |
+
+: Parameters defining a quad mesh geometry.
+
+The `vertex` and `index` arrays are mandatory to create a valid quad
+mesh. A quad is internally handled as a pair of two triangles, thus
+mixing triangles and quad is supported by encoding a triangle as a quad
+with the last two vertex indices being identical (`w=z`).
 
 ### Spheres
 
@@ -1196,10 +1222,10 @@ of specifying the data of center position and radius within a
 <table style="width:98%;">
 <caption>Parameters defining a spheres geometry.</caption>
 <colgroup>
-<col style="width: 17%" />
-<col style="width: 25%" />
-<col style="width: 11%" />
-<col style="width: 42%" />
+<col style="width: 16%" />
+<col style="width: 22%" />
+<col style="width: 26%" />
+<col style="width: 32%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -1241,10 +1267,34 @@ of specifying the data of center position and radius within a
 <td style="text-align: left;">offset (in bytes) of each sphere’s “float radius” within the <code>spheres</code> array (<code>-1</code> means disabled and use <code>radius</code>)</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">vec4f[] / vec3f(a)[]</td>
+<td style="text-align: left;">int</td>
+<td style="text-align: left;">offset_colorID</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">offset (in bytes) of each sphere’s “int colorID” within the <code>spheres</code> array (<code>-1</code> means disabled and use the shared material color)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">vec4f[] / vec3f(a)[] / vec4uc</td>
 <td style="text-align: left;">color</td>
 <td style="text-align: right;">NULL</td>
 <td style="text-align: left;"><a href="#data">data</a> array of colors (RGBA/RGB), color is constant for each sphere</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">int</td>
+<td style="text-align: left;">color_offset</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">offset (in bytes) to the start of the color data in <code>color</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">int</td>
+<td style="text-align: left;">color_format</td>
+<td style="text-align: right;"><code>color.data_type</code></td>
+<td style="text-align: left;">the format of the color data. Can be one of: <code>OSP_FLOAT4</code>, <code>OSP_FLOAT3</code>, <code>OSP_FLOAT3A</code> or <code>OSP_UCHAR4</code>. Defaults to the type of data in <code>color</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">int</td>
+<td style="text-align: left;">color_stride</td>
+<td style="text-align: right;"><code>sizeof(color_format)</code></td>
+<td style="text-align: left;">stride (in bytes) between each color element in the <code>color</code> array. Defaults to the size of a single element of type <code>color_format</code></td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">vec2f[]</td>
@@ -1354,8 +1404,8 @@ table below.
 <table style="width:97%;">
 <caption>Parameters defining a streamlines geometry.</caption>
 <colgroup>
-<col style="width: 23%" />
-<col style="width: 20%" />
+<col style="width: 22%" />
+<col style="width: 21%" />
 <col style="width: 53%" />
 </colgroup>
 <thead>
@@ -1414,11 +1464,11 @@ the radius needs to be smaller than the curvature radius of the Bézier
 curve at each location on the curve.
 
 A streamlines geometry can contain multiple disjoint streamlines, each
-streamline is specified as a list of linear segments (or links)
-referenced via `index`: each entry `e` of the `index` array points the
-first vertex of a link (`vertex[index[e]]`) and the second vertex of the
-link is implicitly the directly following one (`vertex[index[e]+1]`).
-For example, two streamlines of vertices `(A-B-C-D)` and `(E-F-G)`,
+streamline is specified as a list of segments (or links) referenced via
+`index`: each entry `e` of the `index` array points the first vertex of
+a link (`vertex[index[e]]`) and the second vertex of the link is
+implicitly the directly following one (`vertex[index[e]+1]`). For
+example, two streamlines of vertices `(A-B-C-D)` and `(E-F-G)`,
 respectively, would internally correspond to five links (`A-B`, `B-C`,
 `C-D`, `E-F`, and `F-G`), and would be specified via an array of
 vertices `[A,B,C,D,E,F,G]`, plus an array of link indices `[0,1,2,4,5]`.
@@ -1570,9 +1620,9 @@ special parameters:
 <caption>Special parameters understood by the SciVis renderer.</caption>
 <colgroup>
 <col style="width: 18%" />
-<col style="width: 30%" />
+<col style="width: 29%" />
 <col style="width: 17%" />
-<col style="width: 31%" />
+<col style="width: 32%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -1729,13 +1779,13 @@ void ospRemoveVolume(OSPModel, OSPVolume);
 ```
 
 Finally, Models can be configured with parameters for making various
-feature/performance tradeoffs:
+feature/performance trade-offs:
 
 <table style="width:97%;">
 <caption>Parameters understood by Models</caption>
 <colgroup>
 <col style="width: 17%" />
-<col style="width: 21%" />
+<col style="width: 20%" />
 <col style="width: 13%" />
 <col style="width: 45%" />
 </colgroup>
@@ -1750,7 +1800,7 @@ feature/performance tradeoffs:
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">bool</td>
-<td style="text-align: left;">dyanmicScene</td>
+<td style="text-align: left;">dynamicScene</td>
 <td style="text-align: right;">false</td>
 <td style="text-align: left;">use RTC_SCENE_DYNAMIC flag (faster BVH build, slower ray traversal), otherwise uses RTC_SCENE_STATIC flag (faster ray traversal, slightly slower BVH build)</td>
 </tr>
@@ -2117,19 +2167,19 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">metallic</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">mix between dielectric (diffuse and/or specular) and metallic (specular only with complex IOR) in [0-1]</td>
+<td style="text-align: left;">mix between dielectric (diffuse and/or specular) and metallic (specular only with complex IOR) in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">diffuse</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: left;">diffuse reflection weight in [0-1]</td>
+<td style="text-align: left;">diffuse reflection weight in [0–1]</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">specular</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: left;">specular reflection/transmission weight in [0-1]</td>
+<td style="text-align: left;">specular reflection/transmission weight in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2141,7 +2191,7 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">transmission</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">specular transmission weight in [0-1]</td>
+<td style="text-align: left;">specular transmission weight in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">vec3f</td>
@@ -2165,13 +2215,13 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">anisotropy</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">amount of specular anisotropy in [0-1]</td>
+<td style="text-align: left;">amount of specular anisotropy in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">rotation</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">rotation of the direction of anisotropy in [0-1], 1 is going full circle</td>
+<td style="text-align: left;">rotation of the direction of anisotropy in [0–1], 1 is going full circle</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
@@ -2195,13 +2245,13 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">backlight</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">amount of diffuse transmission (thin only) in [0-2], 1 is 50% reflection and 50% transmission, 2 is transmission only</td>
+<td style="text-align: left;">amount of diffuse transmission (thin only) in [0–2], 1 is 50% reflection and 50% transmission, 2 is transmission only</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">coat</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">clear coat layer weight in [0-1]</td>
+<td style="text-align: left;">clear coat layer weight in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2225,7 +2275,7 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">coatRoughness</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">clear coat roughness in [0-1], 0 is perfectly smooth</td>
+<td style="text-align: left;">clear coat roughness in [0–1], 0 is perfectly smooth</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2237,7 +2287,7 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">sheen</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">sheen layer weight in [0-1]</td>
+<td style="text-align: left;">sheen layer weight in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">vec3f</td>
@@ -2249,7 +2299,7 @@ table below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">sheenRoughness</td>
 <td style="text-align: right;">0.2</td>
-<td style="text-align: left;">sheen roughness in [0-1], 0 is perfectly smooth</td>
+<td style="text-align: left;">sheen roughness in [0–1], 0 is perfectly smooth</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2314,7 +2364,7 @@ CarPaint material, pass the type string “`CarPaint`” to
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">flakeDensity</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">density of metallic flakes in [0-1], 0 disables flakes, 1 fully covers the surface with flakes</td>
+<td style="text-align: left;">density of metallic flakes in [0–1], 0 disables flakes, 1 fully covers the surface with flakes</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
@@ -2326,25 +2376,25 @@ CarPaint material, pass the type string “`CarPaint`” to
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">flakeSpread</td>
 <td style="text-align: right;">0.3</td>
-<td style="text-align: left;">flake spread in [0-1]</td>
+<td style="text-align: left;">flake spread in [0–1]</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">flakeJitter</td>
 <td style="text-align: right;">0.75</td>
-<td style="text-align: left;">flake randomness in [0-1]</td>
+<td style="text-align: left;">flake randomness in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">flakeRoughness</td>
 <td style="text-align: right;">0.3</td>
-<td style="text-align: left;">flake roughness in [0-1], 0 is perfectly smooth</td>
+<td style="text-align: left;">flake roughness in [0–1], 0 is perfectly smooth</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">coat</td>
 <td style="text-align: right;">1</td>
-<td style="text-align: left;">clear coat layer weight in [0-1]</td>
+<td style="text-align: left;">clear coat layer weight in [0–1]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2368,7 +2418,7 @@ CarPaint material, pass the type string “`CarPaint`” to
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">coatRoughness</td>
 <td style="text-align: right;">0</td>
-<td style="text-align: left;">clear coat roughness in [0-1], 0 is perfectly smooth</td>
+<td style="text-align: left;">clear coat roughness in [0–1], 0 is perfectly smooth</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
@@ -2717,7 +2767,7 @@ supports the special parameters listed in the table below.
 <colgroup>
 <col style="width: 10%" />
 <col style="width: 32%" />
-<col style="width: 54%" />
+<col style="width: 53%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -2908,15 +2958,6 @@ application driving a display wall may well generate an intermediate
 framebuffer and eventually transfer its pixel to the individual displays
 using an `OSPPixelOp` [pixel operation](#pixel-operation).
 
-A framebuffer can be freed again using
-
-``` {.cpp}
-void ospFreeFrameBuffer(OSPFrameBuffer);
-```
-
-Because OSPRay uses reference counting internally the framebuffer may
-not immediately be deleted at this time.
-
 The application can map the given channel of a framebuffer – and thus
 access the stored pixel information – via
 
@@ -2982,7 +3023,7 @@ below.
 <caption>Parameters accepted by the tone mapper.</caption>
 <colgroup>
 <col style="width: 10%" />
-<col style="width: 15%" />
+<col style="width: 16%" />
 <col style="width: 16%" />
 <col style="width: 54%" />
 </colgroup>
@@ -2999,13 +3040,13 @@ below.
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">contrast</td>
 <td style="text-align: left;">1.6773</td>
-<td style="text-align: left;">contrast (toe of the curve); typically is in [1-2]</td>
+<td style="text-align: left;">contrast (toe of the curve); typically is in [1–2]</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">float</td>
 <td style="text-align: left;">shoulder</td>
 <td style="text-align: left;">0.9714</td>
-<td style="text-align: left;">highlight compression (shoulder of the curve); typically is in [0.9-1]</td>
+<td style="text-align: left;">highlight compression (shoulder of the curve); typically is in [0.9–1]</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">float</td>
