@@ -67,11 +67,6 @@ inline std::string getPidString()
 
 using namespace ospray;
 
-namespace ospray
-{
-  void staticInit();
-}
-
 inline Device *createMpiDevice(const std::string &type)
 {
   Device *device = nullptr;
@@ -98,10 +93,6 @@ inline Device *createMpiDevice(const std::string &type)
 extern "C" OSPError ospInit(int *_ac, const char **_av)
 OSPRAY_CATCH_BEGIN
 {
-#ifdef ENABLE_STATIC_LIB
-  ospray::staticInit();
-#endif
-
   auto &currentDevice = Device::current;
 
   if (currentDevice) {

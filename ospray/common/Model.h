@@ -17,7 +17,6 @@
 #pragma once
 
 // ospray stuff
-#include "common/Managed.h"
 #include "geometry/Geometry.h"
 #include "volume/Volume.h"
 

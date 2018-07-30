@@ -50,6 +50,8 @@ namespace ospray {
     virtual void commit() override;
     virtual std::string toString() const override;
 
+    std::vector<std::string> registeredRenderers();
+
     /*! \brief render one frame, and put it into given frame buffer */
     virtual float renderFrame(FrameBuffer *fb, const uint32 fbChannelFlags);
 

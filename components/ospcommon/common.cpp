@@ -73,7 +73,12 @@ namespace ospcommon {
 
   void *getSymbol(const std::string& name)
   {
+#ifdef OSPRAY_ENABLE_STATIC_LIB
+    static void* handle = dlopen(NULL, RTLD_LAZY);
+    return dlsym(handle, name.c_str());
+#else
     return LibraryRepository::getInstance()->getSymbol(name);
+#endif
   }
 
 } // ::ospcommon

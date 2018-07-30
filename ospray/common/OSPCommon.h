@@ -53,6 +53,10 @@ typedef int ssize_t;
 // NOTE(jda) - This one file is shared between the core OSPRay library and the
 //             ispc module...thus we have to define 2 different EXPORTS macros
 //             here. This needs to be split between the libraries!
+#ifdef OSPRAY_ENABLE_STATIC_LIB
+#  define OSPRAY_INTERFACE
+#  define OSPRAY_DLLEXPORT
+#else
 #ifdef _WIN32
 #  ifdef ospray_EXPORTS
 #    define OSPRAY_INTERFACE __declspec(dllexport)
@@ -64,6 +68,7 @@ typedef int ssize_t;
 #  define OSPRAY_INTERFACE
 #  define OSPRAY_DLLEXPORT
 #endif
+#endif // OSPRAY_ENABLE_STATIC_LIB
 #define OSPRAY_CORE_INTERFACE OSPRAY_INTERFACE
 
 #ifdef _WIN32
@@ -84,9 +89,6 @@ typedef int ssize_t;
       Object *ospray_create_##object_name##__##external_name()                 \
   {                                                                            \
     return new InternalClass;                                                  \
-  }                                                                            \
-  extern "C" void register_plugin_instance_##external_name() {		           \
-      ospray_create_##object_name##__##external_name();                        \
   }                                                                            \
   /* additional declaration to avoid "extra ;" -Wpedantic warnings */          \
   Object *ospray_create_##object_name##__##external_name()

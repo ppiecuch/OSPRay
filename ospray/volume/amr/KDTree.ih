@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <ospray/ospray.h>
-
 /*! ispc equivalent of the c++-side kdtree that we build over the
     boxes */
 struct KDTreeNode

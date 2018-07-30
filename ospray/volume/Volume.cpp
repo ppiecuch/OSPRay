@@ -35,7 +35,7 @@ namespace ospray {
     return "ospray::Volume";
   }
 
-  Volume *Volume::createVolume(const std::string &type)
+  Volume *Volume::createInstance(const std::string &type)
   {
     return createInstanceHelper<Volume, OSP_VOLUME>(type);
   }

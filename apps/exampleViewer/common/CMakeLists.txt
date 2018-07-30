@@ -46,13 +46,13 @@ if (NOT GLFW_FOUND)
   set(GLFW_INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/common/glfw/include
       CACHE INTERNAL "Included GLFW includes")
   set(GLFW_LIBRARY glfw CACHE INTERNAL "Included GLFW libs")
-  set(GLFW_LIBRARIES ${GLFW_LIBRARY} CACHE INTERNAL "Included GLFW libs")
+  set(GLFW_LIBRARIES ${GLFW_LIBRARIES} CACHE INTERNAL "Included GLFW libs")
   message(STATUS "GLFW not found! Building GLFW in the OSPRay source tree")
 else()
   set(GLFW_INCLUDE_DIRS ${GLFW_INCLUDE_DIRS}
       CACHE INTERNAL "Found GLFW includes")
   set(GLFW_LIBRARY ${GLFW_LIBRARY} CACHE INTERNAL "Found GLFW libs")
-  set(GLFW_LIBRARIES ${GLFW_LIBRARY} CACHE INTERNAL "Foudn GLFW libs")
+  set(GLFW_LIBRARIES ${GLFW_LIBRARIES} CACHE INTERNAL "Found GLFW libs")
   message(STATUS "Using GLFW found in the environment")
 endif()
 

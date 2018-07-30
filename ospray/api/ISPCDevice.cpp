@@ -487,7 +487,7 @@ namespace ospray {
     OSPVolume ISPCDevice::newVolume(const char *type)
     {
       Assert(type != nullptr && "invalid volume type identifier");
-      Volume *volume = Volume::createVolume(type);
+      Volume *volume = Volume::createInstance(type);
       if (!volume) {
         if (debugMode) {
           throw std::runtime_error("unknown volume type '" +
@@ -639,6 +639,7 @@ namespace ospray {
   } // ::ospray::api
 } // ::ospray
 
+__attribute__ ((used)) extern "C" OSPRAY_DLLEXPORT void ospray_init_module_ispc();
 extern "C" OSPRAY_DLLEXPORT void ospray_init_module_ispc()
 {
 }

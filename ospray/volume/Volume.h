@@ -42,7 +42,7 @@ namespace ospray {
     virtual std::string toString() const override;
 
     //! Create a volume container of the given type.
-    static Volume *createVolume(const std::string &type);
+    static Volume *createInstance(const std::string &type);
     static void registerVolume(const std::string &type, Volume *(*creator)());
 
     //! Allocate storage and populate the volume.

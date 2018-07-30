@@ -58,7 +58,13 @@ macro(ospray_find_embree EMBREE_VERSION_REQUIRED)
     get_filename_component(EMBREE_LIBRARY ${EMBREE_LIBRARY} REALPATH)
   endif()
 
-  set(EMBREE_LIBRARIES ${EMBREE_LIBRARY})
+  if(NOT EMBREE_LIBRARIES)
+    set(EMBREE_LIBRARIES ${EMBREE_LIBRARY})
+  endif()
+
+  if(EMBREE_ENABLE_STATIC_LIB)
+    add_definitions(-DEMBREE_ENABLE_STATIC_LIB -DENABLE_STATIC_LIB)
+  endif()
 endmacro()
 
 macro(ospray_determine_embree_isa_support)

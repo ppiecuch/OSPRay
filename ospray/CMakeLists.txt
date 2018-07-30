@@ -468,10 +468,13 @@ COMPONENT
   lib
 )
 
+SET(OSPRAY_APP_LIBS ospray)
+
 OPTION(OSPRAY_BUILD_ISPC_DEVICE "Build ISPC Device" ON)
 MARK_AS_ADVANCED(OSPRAY_BUILD_ISPC_DEVICE)
 
 IF(OSPRAY_BUILD_ISPC_DEVICE)
+  ADD_DEFINITIONS(-DBUILD_ISPC_DEVICE)
   OSPRAY_CREATE_LIBRARY(ospray_module_ispc
     ${OSPRAY_ISPC_DEVICE_SOURCES}
   LINK
@@ -481,14 +484,15 @@ IF(OSPRAY_BUILD_ISPC_DEVICE)
   COMPONENT
     lib
   )
+  SET(OSPRAY_APP_LIBS ${OSPRAY_APP_LIBS} ospray_module_ispc)
 ENDIF()
 
 # build ospTutorial, for testing
 ADD_EXECUTABLE(ospTutorial ../apps/ospTutorial.c)
-TARGET_LINK_LIBRARIES(ospTutorial ospray)
+TARGET_LINK_LIBRARIES(ospTutorial ${OSPRAY_APP_LIBS})
 # C++ version
 ADD_EXECUTABLE(ospTutorialCpp ../apps/ospTutorial.cpp)
-TARGET_LINK_LIBRARIES(ospTutorialCpp ospray)
+TARGET_LINK_LIBRARIES(ospTutorialCpp ${OSPRAY_APP_LIBS})
 
 ##############################################################
 # Configure find_package files

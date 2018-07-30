@@ -79,5 +79,9 @@ IF (GLFW_FOUND)
   SET(GLFW_LIBRARIES ${GLFW_LIBRARY})
 ENDIF()
 
+IF(APPLE) # (PP)
+  SET( GLFW_LIBRARIES ${GLFW_LIBRARIES} "-framework Cocoa" "-framework IOKit" "-framework CoreFoundation" "-framework CoreVideo" )
+ENDIF()
+
 MARK_AS_ADVANCED(GLFW_INCLUDE_DIR)
 MARK_AS_ADVANCED(GLFW_LIBRARY)
