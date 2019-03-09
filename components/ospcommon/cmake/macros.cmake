@@ -278,7 +278,7 @@ function(ospray_split_create_args PREFIX)
   set(${PREFIX}_COMPONENT ${MY_COMPONENT} PARENT_SCOPE)
 endfunction()
 
-## Conveniance macro for creating OSPRay libraries ##
+## Convenience macro for creating OSPRay libraries ##
 # Usage
 #
 #   ospray_create_library(<name> source1 [source2 ...]
@@ -307,7 +307,7 @@ macro(ospray_create_library LIBRARY_NAME)
   endif()
 endmacro()
 
-## Conveniance macro for creating OSPRay applications ##
+## Convenience macro for creating OSPRay applications ##
 # Usage
 #
 #   ospray_create_application(<name> source1 [source2 ...]
@@ -341,7 +341,7 @@ macro(ospray_create_application APP_NAME)
   endif()
 endmacro()
 
-## Conveniance macro for creating OSPRay test applications ##
+## Convenience macro for creating OSPRay test applications ##
 # Usage - same as ospray_create_application
 #
 # Will build the app if 'OSPRAY_ENABLE_TESTING=ON' in CMake
@@ -358,6 +358,14 @@ endmacro()
 ## Compiler configuration macros ##
 
 macro(ospray_configure_compiler)
+  if (WIN32)
+    set(OSPRAY_PLATFORM_WIN  1)
+    set(OSPRAY_PLATFORM_UNIX 0)
+  else()
+    set(OSPRAY_PLATFORM_WIN  0)
+    set(OSPRAY_PLATFORM_UNIX 1)
+  endif()
+
   # unhide compiler to make it easier for users to see what they are using
   mark_as_advanced(CLEAR CMAKE_CXX_COMPILER)
 
@@ -405,104 +413,6 @@ macro(ospray_disable_compiler_warnings)
   if (NOT OSPRAY_COMPILER_MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
   endif()
-endmacro()
-
-## Tasking system configuration macro ##
-
-macro(ospray_configure_tasking_system)
-  # -------------------------------------------------------
-  # Setup tasking system build configuration
-  # -------------------------------------------------------
-
-  # NOTE(jda) - Notice that this implies that OSPRAY_CONFIGURE_COMPILER() has
-  #             been called before this macro!
-  if(OSPRAY_COMPILER_ICC)
-    set(CILK_STRING "Cilk")
-  endif()
-
-  set(OSPRAY_TASKING_SYSTEM TBB CACHE STRING
-      "Per-node thread tasking system [TBB,OpenMP,Cilk,LibDispatch,Internal,Debug]")
-
-  set_property(CACHE OSPRAY_TASKING_SYSTEM PROPERTY
-               STRINGS TBB ${CILK_STRING} OpenMP Internal LibDispatch Debug)
-  mark_as_advanced(OSPRAY_TASKING_SYSTEM)
-
-  # NOTE(jda) - Make the OSPRAY_TASKING_SYSTEM build option case-insensitive
-  string(TOUPPER ${OSPRAY_TASKING_SYSTEM} OSPRAY_TASKING_SYSTEM_ID)
-
-  set(OSPRAY_TASKING_TBB         FALSE)
-  set(OSPRAY_TASKING_CILK        FALSE)
-  set(OSPRAY_TASKING_OPENMP      FALSE)
-  set(OSPRAY_TASKING_INTERNAL    FALSE)
-  set(OSPRAY_TASKING_LIBDISPATCH FALSE)
-  set(OSPRAY_TASKING_DEBUG       FALSE)
-
-  if(${OSPRAY_TASKING_SYSTEM_ID} STREQUAL "TBB")
-    set(OSPRAY_TASKING_TBB TRUE)
-  elseif(${OSPRAY_TASKING_SYSTEM_ID} STREQUAL "CILK")
-    set(OSPRAY_TASKING_CILK TRUE)
-  elseif(${OSPRAY_TASKING_SYSTEM_ID} STREQUAL "OPENMP")
-    set(OSPRAY_TASKING_OPENMP TRUE)
-  elseif(${OSPRAY_TASKING_SYSTEM_ID} STREQUAL "INTERNAL")
-    set(OSPRAY_TASKING_INTERNAL TRUE)
-  elseif(${OSPRAY_TASKING_SYSTEM_ID} STREQUAL "LIBDISPATCH")
-    set(OSPRAY_TASKING_LIBDISPATCH TRUE)
-  else()
-    set(OSPRAY_TASKING_DEBUG TRUE)
-  endif()
-
-  unset(TASKING_SYSTEM_LIBS)
-
-  add_library(tasking INTERFACE)
-
-  if(OSPRAY_TASKING_TBB)
-    find_package(TBB REQUIRED)
-    set(TASKING_SYSTEM_DEFINITIONS -DOSPRAY_TASKING_TBB)
-    set(TASKING_SYSTEM_INCLUDES ${TBB_INCLUDE_DIRS})
-    set(TASKING_SYSTEM_LIBS ${TBB_LIBRARIES})
-  else(OSPRAY_TASKING_TBB)
-    unset(TBB_INCLUDE_DIR          CACHE)
-    unset(TBB_LIBRARY              CACHE)
-    unset(TBB_LIBRARY_DEBUG        CACHE)
-    unset(TBB_LIBRARY_MALLOC       CACHE)
-    unset(TBB_LIBRARY_MALLOC_DEBUG CACHE)
-    if(OSPRAY_TASKING_OPENMP)
-      find_package(OpenMP)
-      if (OPENMP_FOUND)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        if(OSPRAY_COMPILER_ICC) # workaround linker issue #115
-          set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -liomp5")
-        endif()
-        set(TASKING_SYSTEM_DEFINITIONS -DOSPRAY_TASKING_OMP)
-      endif()
-    elseif(OSPRAY_TASKING_CILK)
-      set(TASKING_SYSTEM_DEFINITIONS -DOSPRAY_TASKING_CILK)
-      if (OSPRAY_COMPILER_GCC OR OSPRAY_COMPILER_CLANG)
-        ospray_warn_once(UNSAFE_USE_OF_CILK
-            "You are using Cilk with GCC or Clang...use at your own risk!")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcilkplus")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcilkplus")
-      endif()
-    elseif(OSPRAY_TASKING_INTERNAL)
-      set(TASKING_SYSTEM_DEFINITIONS -DOSPRAY_TASKING_INTERNAL)
-    elseif(OSPRAY_TASKING_LIBDISPATCH)
-      find_package(libdispatch REQUIRED)
-      set(TASKING_SYSTEM_INCLUDES ${LIBDISPATCH_INCLUDE_DIRS})
-      set(TASKING_SYSTEM_LIBS ${LIBDISPATCH_LIBRARIES})
-      set(TASKING_SYSTEM_DEFINITIONS -DOSPRAY_TASKING_LIBDISPATCH)
-    else()#Debug
-      # Do nothing, will fall back to scalar code (useful for debugging)
-    endif()
-  endif(OSPRAY_TASKING_TBB)
-
-  target_include_directories(tasking
-  INTERFACE
-    $<BUILD_INTERFACE:${TASKING_SYSTEM_INCLUDES}>
-  )
-
-  target_link_libraries(tasking INTERFACE ${TASKING_SYSTEM_LIBS})
-  target_compile_definitions(tasking INTERFACE ${TASKING_SYSTEM_DEFINITIONS})
 endmacro()
 
 ## MPI configuration macro ##

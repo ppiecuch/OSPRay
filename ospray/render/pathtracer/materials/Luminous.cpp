@@ -15,55 +15,40 @@
 // ======================================================================== //
 
 #include "common/Material.h"
-#include "texture/Texture2D.h"
-#include "ThinGlass_ispc.h"
+#include "Luminous_ispc.h"
 
 namespace ospray {
   namespace pathtracer {
 
-    struct ThinGlass : public ospray::Material
+    struct Luminous : public ospray::Material
     {
+      Luminous()
+      {
+        ispcEquivalent = ispc::PathTracer_Luminous_create();
+      }
+
       //! \brief common function to help printf-debugging
       /*! Every derived class should override this! */
-      virtual std::string toString() const  override
-      { return "ospray::pathtracer::ThinGlass"; }
-
-      ThinGlass()
+      virtual std::string toString() const override
       {
-        ispcEquivalent = ispc::PathTracer_ThinGlass_create();
+        return "ospray::pathtracer::Luminous";
       }
 
       //! \brief commit the material's parameters
-      virtual void commit()  override
+      virtual void commit() override
       {
-        const float eta = getParamf("eta", 1.5f);
-        const vec3f& attenuationColor =
-          getParam3f("attenuationColor",
-              getParam3f("transmission",
-                getParam3f("color", vec3f(1.f))));
-        const float attenuationDistance =
-          getParamf("attenuationDistance", 1.f);
-        const float thickness = getParamf("thickness", 1.f);
+        const vec3f radiance = getParam3f("color", vec3f(1.f)) *
+                               getParam1f("intensity", 1.f);
+        const float transparency = getParam1f("transparency", 0.f);
 
-        Texture2D *map_attenuationColor =
-          (Texture2D*)getParamObject("map_attenuationColor",
-              getParamObject("colorMap", nullptr));
-        affine2f xform_attenuationColor =
-          getTextureTransform("map_attenuationColor")
-          * getTextureTransform("colorMap");
-
-        ispc::PathTracer_ThinGlass_set(getIE()
-            , eta
-            , (const ispc::vec3f&)attenuationColor
-            , map_attenuationColor ? map_attenuationColor->getIE() : nullptr,
-              (const ispc::AffineSpace2f&)xform_attenuationColor
-            , attenuationDistance
-            , thickness
+        ispc::PathTracer_Luminous_set(getIE()
+            , (const ispc::vec3f&)radiance
+            , transparency
             );
       }
     };
 
-    OSP_REGISTER_MATERIAL(pathtracer, ThinGlass, ThinGlass);
-    OSP_REGISTER_MATERIAL(pt, ThinGlass, ThinGlass);
+    OSP_REGISTER_MATERIAL(pathtracer, Luminous, Luminous);
+    OSP_REGISTER_MATERIAL(pt, Luminous, Luminous);
   }
 }
