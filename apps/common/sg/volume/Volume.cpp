@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,7 +17,7 @@
 #include "Volume.h"
 #include "../common/Model.h"
 // core ospray
-#include "ospray/common/OSPCommon.h"
+#include "common/OSPCommon.h"
 
 namespace ospray {
   namespace sg {
@@ -104,9 +104,14 @@ namespace ospray {
       createChild("gridSpacing", "vec3f", vec3f(1.f));
       createChild("isosurfaceEnabled", "bool", false);
       createChild("isosurface", "float",
-                  -std::numeric_limits<float>::infinity(),
-                  NodeFlags::valid_min_max |
+                  128.f,
                   NodeFlags::gui_slider).setMinMax(0.f,255.f);
+    }
+
+    Volume::~Volume()
+    {
+      if (isosurfacesGeometry)
+        ospRelease(isosurfacesGeometry);
     }
 
     std::string Volume::toString() const
@@ -156,11 +161,21 @@ namespace ospray {
     }
 
     //! return bounding box of all primitives
-    box3f StructuredVolume::bounds() const
+    box3f StructuredVolume::computeBounds() const
     {
+      box3f bbox = bounds();
+
+      if (bbox != box3f(empty))
+        return bbox;
+
       auto dimensions  = child("dimensions").valueAs<vec3i>();
       auto gridSpacing = child("gridSpacing").valueAs<vec3f>();
-      return {vec3f(0.f), dimensions * gridSpacing};
+
+      bbox = box3f(vec3f(0.f), dimensions * gridSpacing);
+
+      child("bounds") = bbox;
+
+      return bbox;
     }
 
     void StructuredVolume::preCommit(RenderContext &)
@@ -189,6 +204,9 @@ namespace ospray {
 
       ospVolume = ospNewVolume("shared_structured_volume");
       setValue(ospVolume);
+
+      if (isosurfacesGeometry)
+        ospRelease(isosurfacesGeometry);
 
       isosurfacesGeometry = ospNewGeometry("isosurfaces");
       ospSetObject(isosurfacesGeometry, "volume", ospVolume);
@@ -268,6 +286,9 @@ namespace ospray {
 
       if (!fileLoaded) {
         auto voxelType  = child("voxelType").valueAs<std::string>();
+
+        if (isosurfacesGeometry)
+          ospRelease(isosurfacesGeometry);
 
         isosurfacesGeometry = ospNewGeometry("isosurfaces");
         ospSetObject(isosurfacesGeometry, "volume", ospVolume);

@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2018 Intel Corporation                                    ##
+## Copyright 2009-2019 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -14,12 +14,6 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-include_directories(
-  ${CMAKE_CURRENT_LIST_DIR}/../common/gl3w
-  ${CMAKE_CURRENT_LIST_DIR}/../common/imgui
-  ${GLFW_INCLUDE_DIRS}
-)
-
 ospray_create_library(ospray_imgui3d_sg
   Imgui3dExport.h
   imgui_impl_glfw_gl3.cpp
@@ -27,11 +21,21 @@ ospray_create_library(ospray_imgui3d_sg
   imguiViewer.cpp
   transferFunction.cpp
   cameraManipulator.cpp
+
+  sg_imgui/ospray_sg_ui.cpp
 LINK
   ospray
   ospray_common
   ospray_imgui
   ospray_imgui_util_sg
   ospray_tfn
-  ${GLFW_LIBRARY}
+  glfw
+)
+
+target_include_directories(
+  ospray_imgui3d_sg
+INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}
 )

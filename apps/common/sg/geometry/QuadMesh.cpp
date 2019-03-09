@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -29,15 +29,20 @@ namespace ospray {
       return "ospray::sg::QuadMesh";
     }
 
-    box3f QuadMesh::bounds() const
+    box3f QuadMesh::computeBounds() const
     {
-      box3f bounds = empty;
+      box3f bbox = bounds();
+
+      if (bbox != box3f(empty))
+        return bbox;
+
       if (hasChild("vertex")) {
         auto v = child("vertex").nodeAs<DataBuffer>();
         for (uint32_t i = 0; i < v->size(); i++)
-          bounds.extend(v->get<vec3f>(i));
+          bbox.extend(v->get<vec3f>(i));
       }
-      return bounds;
+      child("bounds") = bbox;
+      return bbox;
     }
 
     void QuadMesh::preCommit(RenderContext &ctx)

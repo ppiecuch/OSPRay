@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -36,6 +36,11 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtksys/SystemTools.hxx>
+
+#ifdef OSPRAY_APPS_SG_VTK_XDMF
+#include <vtkAlgorithmOutput.h>
+#include <vtkXdmfReader.h>
+#endif
 
 #pragma clang diagnostic pop
 
@@ -96,7 +101,9 @@ namespace ospray {
 
         for (int i = 0; i < data->GetNumberOfArrays(); i++) {
           vtkAbstractArray *ad = data->GetAbstractArray(i);
-          int nDataPoints      = ad->GetSize() * ad->GetNumberOfComponents();
+          if (ad->GetNumberOfComponents() != 1)
+            continue;
+          int nDataPoints      = ad->GetSize();
 
           auto array = make_vtkSP(vtkDataArray::SafeDownCast(ad));
 
@@ -203,6 +210,10 @@ namespace ospray {
           loadVTKFile<vtkXMLUnstructuredGridReader>(fileName.c_str());
         else if (extension == "off")
           loadOFFFile(fileName);
+#ifdef OSPRAY_APPS_SG_VTK_XDMF
+        else if (extension == "xdmf")
+          loadVTKFile<vtkXdmfReader>(fileName.c_str());
+#endif
       }
     };
 
@@ -225,5 +236,18 @@ namespace ospray {
           v.createChild("cellFieldName", "string", mesh.cellFieldNames[0]).setWhiteList(mesh.cellFieldNames);
     }
 
+#ifdef OSPRAY_APPS_SG_VTK_XDMF
+    template <>
+    vtkDataSet *TetMesh::readVTKFile<vtkXdmfReader>(const FileName &fileName)
+    {
+      vtkSmartPointer<vtkXdmfReader> reader = vtkSmartPointer<vtkXdmfReader>::New();
+
+      reader->SetFileName(fileName.c_str());
+      reader->Update();
+
+      reader->GetOutputDataObject(0)->Register(reader);
+      return vtkDataSet::SafeDownCast(reader->GetOutputDataObject(0));
+    }
+#endif
   }  // ::ospray::sg
 }  // ::ospray

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -36,11 +36,17 @@ namespace ospray {
       void preCommit(RenderContext &ctx) override;
       void postCommit(RenderContext &ctx) override;
 
-     private:
+      void loadParaViewTF(std::string fileName);
 
-      float interpolatedAlpha(const DataBuffer &alpha, float x);
+      float interpolateOpacity(const DataBuffer &controlPoints, float x);
+      vec3f interpolateColor(const DataBuffer &controlPoints, float x);
 
-      void calculateOpacities();
+      void updateChildDataValues();
+
+    private:
+
+      void computeOpacities();
+      void computeColors();
     };
 
   } // ::ospray::sg

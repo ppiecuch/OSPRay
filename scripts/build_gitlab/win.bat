@@ -1,6 +1,6 @@
 @echo off
 rem ======================================================================== rem
-rem Copyright 2015-2018 Intel Corporation                                    rem
+rem Copyright 2015-2019 Intel Corporation                                    rem
 rem                                                                          rem
 rem Licensed under the Apache License, Version 2.0 (the "License");          rem
 rem you may not use this file except in compliance with the License.         rem
@@ -22,9 +22,11 @@ cd build
 cmake -L ^
 -G "%~1" ^
 -T "%~2" ^
--D "%~3" ^
 -D OSPRAY_BUILD_ISA=ALL ^
 -D OSPRAY_ENABLE_TESTING=ON ^
+-D OSPRAY_AUTO_DOWNLOAD_TEST_IMAGES=OFF ^
+-D OSPRAY_MODULE_BILINEAR_PATCH=ON ^
+-D OSPRAY_MODULE_MPI="%~3" ^
 -D OSPRAY_SG_CHOMBO=OFF ^
 -D OSPRAY_SG_OPENIMAGEIO=OFF ^
 -D OSPRAY_SG_VTK=OFF ^
@@ -36,3 +38,6 @@ cmake --build . --config Release --target ALL_BUILD -- /m /nologo ^
 :abort
 endlocal
 :end
+
+rem propagate any error to calling PowerShell script:
+exit

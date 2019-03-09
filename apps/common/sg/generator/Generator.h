@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -51,11 +51,11 @@ namespace ospray {
     using string_pair = std::pair<std::string, std::string>;
 
 #define OSPSG_REGISTER_GENERATE_FUNCTION(function, name)                       \
-    extern "C" void ospray_sg_generate_##name(                                 \
+    extern "C" OSPRAY_DLLEXPORT void ospray_sg_generate_##name(                \
       std::shared_ptr<Node> world,                                             \
       const std::vector<string_pair> &params)                                  \
     {                                                                          \
-      function(world, params);                                               \
+      function(world, params);                                                 \
     }                                                                          \
     /* additional declaration to avoid "extra ;" -Wpedantic warnings */        \
     void ospray_sg_import_##name()

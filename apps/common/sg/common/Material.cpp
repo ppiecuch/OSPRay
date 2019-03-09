@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,6 +18,8 @@
 
 #include "Material.h"
 #include "Model.h"
+
+#include "ospcommon/utility/StringManip.h"
 
 namespace ospray {
   namespace sg {
@@ -95,7 +97,7 @@ namespace ospray {
       // handle textures
       for (auto &it : properties.children) {
         auto &child = *it.second;
-        if (child.type() == "Texture2D")
+        if (utility::beginsWith(child.type(), "Texture"))
           ospSetObject(mat, it.first.c_str(), child.valueAs<OSPObject>());
       }
       ospCommit(mat);

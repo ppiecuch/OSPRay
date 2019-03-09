@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -24,7 +24,6 @@ namespace ospray {
     Transform::Transform()
       : worldTransform(ospcommon::one)
     {
-      createChild("bounds", "box3f");
       createChild("visible", "bool", true);
       createChild("position", "vec3f");
       createChild("rotation", "vec3f", vec3f(0),
@@ -99,4 +98,4 @@ namespace ospray {
 
   } // ::ospray::sg
 } // ::ospray
-  
+

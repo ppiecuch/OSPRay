@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -40,9 +40,11 @@ float lightAlpha(const uniform SciVisRenderer *uniform self,
   while (1) {
     traceRay(model,ray);
 
+    float eps = 0.f;
     if (ray.geomID >= 0) { // surfaces
       DifferentialGeometry dg;
       postIntersect(model, dg, ray, DG_MATERIALID | DG_TEXCOORD | DG_COLOR);
+      eps = dg.epsilon;
 
       uniform SciVisMaterial *scivisMaterial =
         (uniform SciVisMaterial *)dg.material;
@@ -53,9 +55,9 @@ float lightAlpha(const uniform SciVisRenderer *uniform self,
         material_opacity = dg.color.w;
       } else {
         foreach_unique( mat in scivisMaterial ) {
-          material_opacity = mat->d * get1f(mat->map_d, dg.st, 1.f);
+          material_opacity = mat->d * get1f(mat->map_d, dg, 1.f);
           if (hasAlpha(mat->map_Kd)) {
-            vec4f Kd_from_map = get4f(mat->map_Kd,dg.st);
+            vec4f Kd_from_map = get4f(mat->map_Kd,dg);
             material_opacity *= Kd_from_map.w;
           }
         }
@@ -74,7 +76,7 @@ float lightAlpha(const uniform SciVisRenderer *uniform self,
     float tBegin = max(org_t0, ray.t0);
     float tEnd = min(org_t, ray.t + self->volumeEpsilon);
 
-    if (volume && tBegin < tEnd) { 
+    if (volume && tBegin < tEnd) {
       // print("found volume intersection!\n");
       // Provide ray offset for use with isosurface geometries (this value
       // ignored elsewhere).
@@ -83,13 +85,13 @@ float lightAlpha(const uniform SciVisRenderer *uniform self,
       foreach_unique (v in volume) {
         vec4f volumeColor = SciVisRenderer_computeVolumeInterval(self, v, ray, tBegin, tEnd, 0.98f, true, rayOffset, sampleID, quality);
         material_opacity = volumeColor.w;
-      } 
+      }
 
       alpha = alpha * (1.f - material_opacity);
 
       if (alpha * weight < ALPHA_THRESHOLD)
         return 0.f;
-    } 
+    }
 
 
     if (!volume && ray.geomID < 0)
@@ -97,7 +99,7 @@ float lightAlpha(const uniform SciVisRenderer *uniform self,
     if (--remaining_depth <= 0)
       return alpha;
 
-    ray.t0 = org_t + self->super.epsilon;
+    ray.t0 = org_t + eps;
     ray.t = org_t_max;
     ray.primID = -1;
     ray.geomID = -1;

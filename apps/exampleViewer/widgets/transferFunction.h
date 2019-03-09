@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -31,18 +31,28 @@
 #include <tfn_lib/tfn_lib.h>
 #include "Imgui3dExport.h"
 #include <ospray/ospray_cpp/TransferFunction.h>
-#include "common/sg/transferFunction/TransferFunction.h"
+#include "sg/transferFunction/TransferFunction.h"
 
 namespace ospray {
+  namespace imgui3D {
 
   class OSPRAY_IMGUI3D_INTERFACE TransferFunction
   {
   public:
 
-    TransferFunction(std::shared_ptr<sg::TransferFunction> tfn);
+    TransferFunction(std::shared_ptr<sg::TransferFunction> tfn = nullptr);
     ~TransferFunction();
     TransferFunction(const TransferFunction &t);
     TransferFunction& operator=(const TransferFunction &t);
+
+    void setSGTF(std::shared_ptr<sg::TransferFunction> tf) {
+      if (tf != transferFcn) {
+        fcnChanged = true;
+        transferFcn = tf;
+      }
+    }
+
+    void loadColorMapPresets(std::shared_ptr<sg::Node> tfPresets);
     /* Draw the transfer function editor widget, returns true if the
      * transfer function changed
     */
@@ -55,6 +65,8 @@ namespace ospray {
     void load(const ospcommon::FileName &fileName);
     // Save the current transfer function out to the file
     void save(const ospcommon::FileName &fileName) const;
+
+    void setColorMapByName(std::string name, bool useOpacities = false);
 
     struct Line
     {
@@ -76,6 +88,9 @@ namespace ospray {
       // Remove a point from the line, merging the two segments on either side
       void removePoint(const float &x);
     };
+
+    // Load up the preset color maps
+    void loadColorMapPresets();
 
   private:
 
@@ -114,9 +129,8 @@ namespace ospray {
     // overwriting the user's set opacity data. This is done when loading from a file
     // to show the loaded tfcn, but not when switching from the preset picker.
     void setColorMap(const bool useOpacity);
-    // Load up the preset color maps
-    void loadColorMapPresets();
   };
 
+  }// ::imgui3D
 }// ::ospray
 

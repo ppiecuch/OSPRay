@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -54,7 +54,7 @@ namespace ospray {
     /*! Every derived class should overrride this! */
     virtual std::string toString() const override;
     virtual void commit() override;
-    virtual vec2f projectPoint(const vec3f &p) const override;
+    virtual ProjectedPoint projectPoint(const vec3f &p) const override;
 
     // Data members //
 

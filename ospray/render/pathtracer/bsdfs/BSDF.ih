@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -98,6 +98,7 @@ typedef BSDF_SampleRes (*BSDF_SampleFunc)(const varying BSDF* uniform self,
 
 struct BSDF
 {
+  varying vec3f albedo;
   varying BSDF_Type type;
   uniform BSDF_EvalFunc eval;
   uniform BSDF_SampleFunc sample;
@@ -105,11 +106,13 @@ struct BSDF
 };
 
 inline void BSDF_Constructor(varying BSDF* uniform self,
+                             varying vec3f albedo,
                              varying BSDF_Type type,
                              uniform BSDF_EvalFunc eval,
                              uniform BSDF_SampleFunc sample,
                              const varying linear3f* uniform frame)
 {
+  self->albedo = albedo;
   self->type = type;
   self->eval = eval;
   self->sample = sample;

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -21,16 +21,16 @@ namespace ospray {
 
   FrameBuffer::FrameBuffer(const vec2i &size,
                            ColorBufferFormat colorBufferFormat,
-                           bool hasDepthBuffer,
-                           bool hasAccumBuffer,
-                           bool hasVarianceBuffer)
+                           const uint32 channels)
     : size(size),
       numTiles(divRoundUp(size, getTileSize())),
       maxValidPixelID(size-vec2i(1)),
-      hasDepthBuffer(hasDepthBuffer),
-      hasAccumBuffer(hasAccumBuffer),
-      hasVarianceBuffer(hasVarianceBuffer),
       colorBufferFormat(colorBufferFormat),
+      hasDepthBuffer(channels & OSP_FB_DEPTH),
+      hasAccumBuffer(channels & OSP_FB_ACCUM),
+      hasVarianceBuffer(channels & OSP_FB_VARIANCE && channels & OSP_FB_ACCUM),
+      hasNormalBuffer(channels & OSP_FB_NORMAL),
+      hasAlbedoBuffer(channels & OSP_FB_ALBEDO),
       frameID(-1)
   {
     managedObjectType = OSP_FRAMEBUFFER;

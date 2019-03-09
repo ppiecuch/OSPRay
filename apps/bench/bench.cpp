@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2016-2018 Intel Corporation                                    //
+// Copyright 2016-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -14,9 +14,9 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "pico_bench/pico_bench.h"
+#include "pico_bench.h"
 #include "ospapp/OSPApp.h"
-#include "common/sg/SceneGraph.h"
+#include "sg/SceneGraph.h"
 #include "ospcommon/utility/SaveImage.h"
 
 #include "sg/Renderer.h"
@@ -31,7 +31,7 @@ namespace ospray {
 
     private:
 
-      void render(const std::shared_ptr<sg::Node> &) override;
+      void render(const std::shared_ptr<sg::Frame> &) override;
       int parseCommandLine(int &ac, const char **&av) override;
 
       template <typename T>
@@ -48,26 +48,31 @@ namespace ospray {
                         //             options
     }
 
-    void OSPBenchmark::render(const std::shared_ptr<sg::Node> &root)
+    void OSPBenchmark::render(const std::shared_ptr<sg::Frame> &root)
     {
-      auto renderer = root->nodeAs<sg::Renderer>();
-      auto fb       = renderer->child("frameBuffer").nodeAs<sg::FrameBuffer>();
-
       for (size_t i = 0; i < numWarmupFrames; ++i)
-        renderer->renderFrame(fb, OSP_FB_COLOR | OSP_FB_ACCUM);
+        root->renderFrame();
+
+      // NOTE(jda) - allow 0 bench frames to enable testing only data load times
+      if (numBenchFrames <= 0)
+        return;
 
       auto benchmarker =
           pico_bench::Benchmarker<std::chrono::milliseconds>{ numBenchFrames };
 
       auto stats = benchmarker([&]() {
-        renderer->renderFrame(fb, OSP_FB_COLOR | OSP_FB_ACCUM);
+        root->renderFrame();
         // TODO: measure just ospRenderFrame() time from within ospray_sg
         // return std::chrono::milliseconds{500};
       });
 
       if (!imageOutputFile.empty()) {
+        auto fb = root->child("frameBuffer").nodeAs<sg::FrameBuffer>();
         auto *srcPB = (const uint32_t *)fb->map();
-        utility::writePPM(imageOutputFile + ".ppm", width, height, srcPB);
+        if (fb->format() == OSP_FB_RGBA32F)
+          utility::writePFM(imageOutputFile + ".pfm", width, height, (vec4f*)srcPB);
+        else
+          utility::writePPM(imageOutputFile + ".ppm", width, height, srcPB);
         fb->unmap(srcPB);
       }
 

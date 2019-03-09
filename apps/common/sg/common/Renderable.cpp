@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -37,11 +37,12 @@ namespace ospray {
     box3f Renderable::computeBounds() const
     {
       box3f cbounds = bounds();
-      for (const auto &child : properties.children)
-      {
-        auto tbounds = child.second->bounds();
-          cbounds.extend(tbounds);
+      for (const auto &child : properties.children) {
+        auto rChild = child.second->tryNodeAs<Renderable>();
+        if (rChild.get() != nullptr)
+          cbounds.extend(rChild->computeBounds());
       }
+      child("bounds") = cbounds;
       return cbounds;
     }
 

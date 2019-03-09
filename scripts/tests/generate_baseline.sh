@@ -1,6 +1,6 @@
 #!/bin/bash
 ## ======================================================================== ##
-## Copyright 2016-2018 Intel Corporation                                    ##
+## Copyright 2016-2019 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -18,7 +18,7 @@
 rm -rf img
 mkdir img
 
-regression_tests/ospray_test_suite --dump-img --baseline-dir=img/
+regression_tests/ospray_test_suite --dump-img --baseline-dir=regression_tests/baseline/
 FAILED=$(echo $?)
 
 exit $FAILED

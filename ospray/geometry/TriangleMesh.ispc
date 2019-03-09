@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -68,8 +68,7 @@ static void TriangleMesh_postIntersect(uniform Geometry *uniform _self,
     const vec2f b = gather_vec2f(huge_mesh, texcoord, index.y);
     const vec2f c = gather_vec2f(huge_mesh, texcoord, index.z);
     dg.st = interpolate(bary, a, b, c);
-  } else
-    dg.st = make_vec2f(0.0f, 0.0f);
+  }
 
   if (flags & DG_TANGENTS) {
     uniform bool fallback = true;

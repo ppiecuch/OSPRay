@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -20,12 +20,9 @@
 #include "common/OSPCommon.h"
 #include "common/Data.h"
 #include "common/Material.h"
+#include "api/ISPCDevice.h"
 //embree
 #include "embree3/rtcore.h"
-
-extern "C" {
-  RTCDevice ispc_embreeDevice();
-}
 
 namespace ospray {
 

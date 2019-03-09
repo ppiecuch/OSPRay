@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -27,23 +27,6 @@ namespace ospray {
   std::string PanoramicCamera::toString() const
   {
     return "ospray::PanoramicCamera";
-  }
-
-  void PanoramicCamera::commit()
-  {
-    Camera::commit();
-
-    // ------------------------------------------------------------------
-    // update the local precomputed values: the camera coordinate frame
-    // ------------------------------------------------------------------
-    linear3f frame;
-    frame.vx = normalize(dir);
-    frame.vy = normalize(cross(frame.vx, up));
-    frame.vz = cross(frame.vx, frame.vy);
-
-    ispc::PanoramicCamera_set(getIE(),
-                              (const ispc::vec3f&)pos,
-                              (const ispc::LinearSpace3f&)frame);
   }
 
   OSP_REGISTER_CAMERA(PanoramicCamera,panoramic);

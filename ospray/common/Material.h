@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -72,22 +72,13 @@ namespace ospray {
       in either ospray proper or any already loaded module. For
       material types specified in special modules, make sure to call
       ospLoadModule first. */
-    static Material *createMaterial(const char *identifier);
-    static void registerMaterial(const char *identifier, Material *(*creator)());
+    static Material *createInstance(const char *renderer_type,
+                                    const char *material_type);
+    static void registerInstance(const char *identifier, Material *(*creator)());
   };
 
-
-  /*! \brief registers a internal ospray::'ClassName' material under
-      the externally accessible name "external_name"
-
-      \internal This currently works by defining a extern "C" function
-      with a given predefined name that creates a new instance of this
-      material. By having this symbol in the shared lib ospray can
-      lateron always get a handle to this fct and create an instance
-      of this material.
-  */
-#define OSP_REGISTER_MATERIAL(InternalClass, external_name) \
+#define OSP_REGISTER_MATERIAL(renderer_name, InternalClass, external_name)     \
   OSP_REGISTER_OBJECT(::ospray::Material, material, \
-                      InternalClass, external_name)
+                      InternalClass, renderer_name##__##external_name)
 
 } // ::ospray

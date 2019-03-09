@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -32,21 +32,28 @@ namespace ospray {
       return "ospray::sg::StreamLines";
     }
 
-    box3f StreamLines::bounds() const
+    box3f StreamLines::computeBounds() const
     {
-      box3f bounds = empty;
+      box3f bbox = bounds();
+
+      if (bbox != box3f(empty))
+        return bbox;
+
       auto vtx = child("vertex").nodeAs<DataBuffer>()->baseAs<vec3fa>();
       auto idx = child("index").nodeAs<DataBuffer>();
       // TODO: radius varies potentially per vertex
       auto radius = child("radius").valueAs<float>();
       for (uint32_t e = 0; e < idx->size(); e++) {
         int i = idx->get<int>(e);
-        bounds.extend(vtx[i] - radius);
-        bounds.extend(vtx[i] + radius);
-        bounds.extend(vtx[i+1] - radius);
-        bounds.extend(vtx[i+1] + radius);
+        bbox.extend(vtx[i] - radius);
+        bbox.extend(vtx[i] + radius);
+        bbox.extend(vtx[i+1] - radius);
+        bbox.extend(vtx[i+1] + radius);
       }
-      return bounds;
+
+      child("bounds") = bbox;
+
+      return bbox;
     }
 
     void StreamLines::preCommit(RenderContext &ctx)

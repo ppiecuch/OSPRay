@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -112,6 +112,7 @@ inline vec3f fresnelConductor(float cosI, spectrum eta, spectrum k)
 struct Fresnel;
 
 typedef vec3f (*Fresnel_EvalFunc)(const Fresnel* uniform self, float cosI);
+// TODO change into member variable vec3f and implement for *all* Fresnels!
 typedef vec3f (*Fresnel_EvalAvgFunc)(const Fresnel* uniform self);
 
 struct Fresnel
@@ -312,7 +313,7 @@ inline Fresnel* uniform FresnelConductorArtistic_create(ShadingContext* uniform 
   const vec3f k2 = (sqr(n + 1.f) * r - sqr(n - 1.f)) / (1.f - r);
   
   self->eta = n;
-  self->k = sqrt(k2);
+  self->k = sqrt_safe(k2); // prevent NaN if k2==-0.0f (happens if r==0.0f)
 
   self->r = r;
   self->g = g;

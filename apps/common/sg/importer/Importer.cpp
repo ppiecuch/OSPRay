@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,8 +18,8 @@
 #include "ospcommon/utility/StringManip.h"
 // ospray::sg
 #include "Importer.h"
-#include "common/sg/SceneGraph.h"
-#include "common/sg/geometry/TriangleMesh.h"
+#include "sg/SceneGraph.h"
+#include "sg/geometry/TriangleMesh.h"
 
 /*! \file sg/module/Importer.cpp Defines the interface for writing
   file importers for the ospray::sg */
@@ -95,7 +95,7 @@ namespace ospray {
 
     // for now, let's hardcode the importers - should be moved to a
     // registry at some point ...
-    void importFileType_points(std::shared_ptr<Node> &world,
+    void importFileType_points(const std::shared_ptr<Node> &world,
                                const FileName &url);
 
 
@@ -145,6 +145,7 @@ namespace ospray {
         fu = nullptr;
       }
 
+      std::cout << "loading... " << fileName.str() << std::endl;
       if (fu) {
         importURL(wsg, fileName, *fu);
       } else if (utility::beginsWith(fileName, "--import:")) {
@@ -153,13 +154,15 @@ namespace ospray {
         auto file = splitValues[2];
         importRegistryFileLoader(wsg, type, FileName(file));
       } else {
+        std::cout << "default load...\n";
         importDefaultExtensions(wsg, fileName);
       }
+      std::cout << "loaded\n";
 
       loadedFileName = fileName.str();
     }
 
-    void Importer::importURL(std::shared_ptr<Node> world,
+    void Importer::importURL(const std::shared_ptr<Node> &world,
                              const FileName &fileName,
                              const FormatURL &fu) const
     {
@@ -175,18 +178,16 @@ namespace ospray {
       }
     }
 
-    void Importer::importRegistryFileLoader(std::shared_ptr<Node> world,
+    void Importer::importRegistryFileLoader(const std::shared_ptr<Node> &world,
                                             const std::string &type,
                                             const FileName &fileName) const
     {
-      using importFunction = void(*)(std::shared_ptr<Node>, const FileName &);
-
-      static std::map<std::string, importFunction> symbolRegistry;
+      static std::map<std::string, ImporterFunction> symbolRegistry;
 
       if (symbolRegistry.count(type) == 0) {
         std::string creationFunctionName = "ospray_sg_import_" + type;
         symbolRegistry[type] =
-            (importFunction)getSymbol(creationFunctionName);
+            (ImporterFunction)getSymbol(creationFunctionName);
       }
 
       auto fcn = symbolRegistry[type];
@@ -206,45 +207,81 @@ namespace ospray {
           != importerForExtension.end();
     }
 
-    void Importer::importDefaultExtensions(std::shared_ptr<Node> world,
-                                           const FileName &fileName) const
+    void Importer::importDefaultExtensions(const std::shared_ptr<Node> &world,
+                                           const FileName &fileNamen)
     {
-      auto ext = fileName.ext();
+      std::cout << "importDefaultExtensions \"" << fileNamen.str() << "\"" << std::endl;
+      std::vector<FileName> files;
+      //check for multiple files
+      if (fileNamen.str().find(",") != std::string::npos) {
+        std::cout << "parsing import file series" << std::endl;
+        // file series
+        std::string filestr = fileNamen.str();
+        std::replace(filestr.begin(),filestr.end(),',',' ');
+        std::stringstream ss(filestr);
+        std::string file;
+        while (ss >> file)
+          files.push_back(FileName(file));
 
-      if (hasImporterForExtension(ext)) {
-        std::cout << "#sg: found importer for extension '" << ext << "'"
-                  << std::endl;
-        ImporterFunction importer = importerForExtension[ext];
-        importer(world,fileName);
-      } else if (ext == "obj") {
-        sg::importOBJ(world, fileName);
-      } else if (ext == "ply") {
-        sg::importPLY(world, fileName);
-      } else if (ext == "osg" || ext == "osp") {
-        sg::loadOSP(world, fileName);
-      } else if (ext == "osx") {
-        sg::importOSX(world, fileName);
-      } else if (ext == "xml") {
-        sg::importRIVL(world, fileName);
-      } else if (ext == "x3d") {
-        sg::importX3D(world, fileName);
-      } else if (ext == "xyz" || ext == "xyz2" || ext == "xyz3") {
-        sg::importXYZ(world, fileName);
+        if (files.size() > 0) {
+          auto ext = files[0].ext(); //TODO: check that they are all homogeneous
+          createChild("selector", "Selector");
 #ifdef OSPRAY_APPS_SG_VTK
-      } else if (ext == "vtu" || ext == "vtk" || ext == "off") {
-        sg::importUnstructuredVolume(world, fileName);
-      } else if (ext == "vtp") {
-        sg::importVTKPolyData(world, fileName);
-      } else if (ext == "vti") {
-        sg::importVTI(world, fileName);
+          if (ext == "vti") {
+            sg::importVTIs(child("selector").shared_from_this(), files);
+            return;
+          }
+#endif
+        }
+      } else {
+        std::cout << "single file import" << std::endl;
+        files.push_back(fileNamen);
+      }
+
+      //load files individually
+      for (auto fileName : files)
+      {
+        auto ext = fileName.ext();
+
+        if (hasImporterForExtension(ext)) {
+          std::cout << "#sg: found importer for extension '" << ext << "'"
+                    << std::endl;
+          ImporterFunction importer = importerForExtension[ext];
+          importer(world,fileName);
+        } else if (ext == "obj") {
+          sg::importOBJ(world, fileName);
+        } else if (ext == "ply") {
+          sg::importPLY(world, fileName);
+        } else if (ext == "osg" || ext == "osp") {
+          sg::loadOSP(world, fileName);
+        } else if (ext == "osx") {
+          sg::importOSX(world, fileName);
+        } else if (ext == "xml") {
+          sg::importRIVL(world, fileName);
+        } else if (ext == "x3d") {
+          sg::importX3D(world, fileName);
+        } else if (ext == "xyz" || ext == "xyz2" || ext == "xyz3") {
+          sg::importXYZ(world, fileName);
+#ifdef OSPRAY_APPS_SG_VTK
+        } else if (ext == "vtu" || ext == "vtk" || ext == "off"
+           #ifdef OSPRAY_APPS_SG_VTK_XDMF
+                   || ext == "xdmf"
+           #endif
+                   ) {
+          sg::importUnstructuredVolume(world, fileName);
+        } else if (ext == "vtp") {
+          sg::importVTKPolyData(world, fileName);
+        } else if (ext == "vti") {
+          sg::importVTI(world, fileName);
 #endif
 #ifdef OSPRAY_APPS_SG_CHOMBO
-      } else if (ext == "hdf5") {
-        sg::importCHOMBO(world, fileName);
+        } else if (ext == "hdf5") {
+          sg::importCHOMBO(world, fileName);
 #endif
-      } else {
-        std::cout << "unsupported file format\n";
-        return;
+        } else {
+          std::cout << "unsupported file format\n";
+          return;
+        }
       }
     }
 

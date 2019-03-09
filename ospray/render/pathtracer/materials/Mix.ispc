@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -40,7 +40,7 @@ const varying BSDF* varying Mix_getBSDF(const uniform PathTraceMaterial* uniform
   const Mix* uniform self = (const Mix* uniform)super;
   varying BSDF* uniform bsdf = MultiBSDF_create(ctx);
 
-  float factor = self->factor * clamp(get1f(self->map_factor, dg.st, 1.f));
+  float factor = self->factor * clamp(get1f(self->map_factor, dg, 1.f));
 
   if (self->mat1)
     MultiBSDF_add(bsdf, self->mat1->getBSDF(self->mat1, ctx, dg, ray, currentMedium), 1.0f - factor, 1.0f - factor);
@@ -66,7 +66,7 @@ vec3f Mix_getTransparency(const uniform PathTraceMaterial* uniform super,
   if (self->mat2)
     t2 = self->mat2->getTransparency(self->mat2, dg, ray, currentMedium);
 
-  float factor = self->factor * clamp(get1f(self->map_factor, dg.st, 1.f));
+  float factor = self->factor * clamp(get1f(self->map_factor, dg, 1.f));
   return lerp(factor, t1, t2);
 }
 

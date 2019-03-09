@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -27,7 +27,7 @@
 #include "ospray/ospray_cpp/Renderer.h"
 #include "ospray/ospray_cpp/TransferFunction.h"
 // pico_bench
-#include "apps/bench/pico_bench/pico_bench.h"
+#include "pico_bench.h"
 // stl
 #include <random>
 
@@ -206,17 +206,13 @@ namespace ospRandSphereTest {
                            });
   }
 
-  extern "C" int main(int ac, const char **av)
+  void run_benchmark()
   {
     using namespace std::chrono;
-
-    parseCommandLine(ac, av);
-
-    initialize_ospray();
-
     ospray::cpp::Model model;
     auto spheres = makeSpheres();
     model.addGeometry(spheres.first);
+    model.set("id", mpicommon::world.rank);
     model.commit();
 
     auto camera = ospray::cpp::Camera("perspective");
@@ -281,7 +277,16 @@ namespace ospRandSphereTest {
       std::cout << "\noutput: 'randomSphereTestLocal.ppm'" << std::endl;
 
     }
+  }
 
+  extern "C" int main(int ac, const char **av)
+  {
+    parseCommandLine(ac, av);
+
+    initialize_ospray();
+    run_benchmark();
+
+    ospShutdown();
     return 0;
   }
 

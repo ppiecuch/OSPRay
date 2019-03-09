@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -37,7 +37,7 @@ namespace mpicommon {
     /*! send exact number of bytes - the fabric can do that through
       multiple smaller messages, but all bytes have to be
       delivered */
-    virtual void   send(void *mem, size_t size) override;
+    virtual void send(const void *mem, size_t size) override;
 
     /*! receive some block of data - whatever the sender has sent -
       and give us size and pointer to this data */

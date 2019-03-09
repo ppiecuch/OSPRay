@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -47,7 +47,7 @@ namespace ospray {
       box3f(empty) */
     box3f Instance::computeBounds() const
     {
-      box3f cbounds = child("model").bounds();
+      box3f cbounds = child("model").nodeAs<Model>()->computeBounds();
       if (cbounds.empty())
         return cbounds;
       const vec3f lo = cbounds.lower;
@@ -141,8 +141,7 @@ namespace ospray {
       updateTransform(ctx);
       cachedTransform=ctx.currentTransform;
 
-      if (ospInstance)
-        ospRelease(ospInstance);
+      ospRelease(ospInstance);
       ospInstance = nullptr;
 
       auto model = child("model").valueAs<OSPModel>();

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -64,7 +64,7 @@ namespace ospray {
     struct RenderContext;
 
     //! map the given file to memory and return that pointer
-    const unsigned char* mapFile(const std::string &fileName);
+    OSPSG_INTERFACE const unsigned char* mapFile(const std::string &fileName);
 
   } // ::ospray::sg
 } // ::ospray

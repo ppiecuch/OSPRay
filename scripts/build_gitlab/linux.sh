@@ -1,6 +1,6 @@
 #!/bin/bash
 ## ======================================================================== ##
-## Copyright 2015-2018 Intel Corporation                                    ##
+## Copyright 2015-2019 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -21,6 +21,8 @@ cd build
 cmake \
   -D OSPRAY_BUILD_ISA=ALL \
   -D OSPRAY_ENABLE_TESTING=ON \
+  -D OSPRAY_AUTO_DOWNLOAD_TEST_IMAGES=OFF \
+  -D OSPRAY_MODULE_BILINEAR_PATCH=ON \
   -D OSPRAY_SG_CHOMBO=OFF \
   -D OSPRAY_SG_OPENIMAGEIO=OFF \
   -D OSPRAY_SG_VTK=OFF \

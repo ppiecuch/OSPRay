@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -34,8 +34,7 @@ namespace ospray {
       virtual std::string toString() const override;
 
       void renderFrame(std::shared_ptr<FrameBuffer> fb,
-                       int flags = 0,
-                       bool verifyCommit = true);
+                       int flags = OSP_FB_COLOR | OSP_FB_ACCUM);
 
       virtual void traverse(RenderContext &ctx,
                             const std::string& operation) override;
@@ -56,12 +55,17 @@ namespace ospray {
 
     private:
 
+      friend struct Frame;
+
+      // Helper functions //
+
+      void updateRenderer();
+
       // Data members //
 
       OSPRenderer ospRenderer {nullptr};
       OSPData lightsData {nullptr};
       TimeStamp lightsBuildTime;
-      TimeStamp frameMTime;
       float variance {inf};
       std::string createdType = "none";
     };

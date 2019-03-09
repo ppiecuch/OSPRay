@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -30,7 +30,7 @@ namespace ospray {
       /*! \brief returns a std::string with the c++ name of this class */
       std::string toString() const override;
 
-      box3f bounds() const override;
+      box3f computeBounds() const override;
 
       void preCommit(RenderContext& ctx) override;
     };

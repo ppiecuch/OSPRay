@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -17,9 +17,17 @@
 #pragma once
 
 #include "common/Managed.h"
-#include "common/Ray.h"
 
 namespace ospray {
+
+  struct OSPRAY_SDK_INTERFACE ProjectedPoint {
+    //! The screen space position and depth
+    vec3f screenPos;
+    //! The radius of the projected disk, in the case of depth of field
+    float radius;
+
+    ProjectedPoint(const vec3f &pos, float radius);
+  };
 
   //! base camera class abstraction
   /*! the base class itself does not do anything useful; look into
@@ -32,7 +40,9 @@ namespace ospray {
 
     virtual void commit() override;
 
-    virtual vec2f projectPoint(const vec3f &p) const;
+    // Project the world space point to the screen, and return the screen-space
+    // point (in normalized screen-space coordinates) along with the depth
+    virtual ProjectedPoint projectPoint(const vec3f &p) const;
 
     static Camera *createInstance(const char *identifier);
 

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -31,7 +31,8 @@
 vec4f SciVisRenderer_computeGeometrySample(SciVisRenderer *uniform self,
                                            const varying vec3i &sampleID,
                                            varying Ray &ray,
-                                           const varying float &rayOffset)
+                                           const varying float &rayOffset,
+                                           vec3f &normal, vec3f &albedo)
 {
   vec3f color = make_vec3f(0.f);
 
@@ -61,7 +62,13 @@ vec4f SciVisRenderer_computeGeometrySample(SciVisRenderer *uniform self,
   if (info.local_opacity > self->super.minContribution) { // worth shading?
     shadeAO(self, sampleID, dg, info, color);
     integrateOverLights(self, ray, dg, info, color, rayOffset,sampleID, 0.5f);
+    // assume this is the first/dominant hit
+    normal = info.shadingNormal;
+    albedo = info.albedo;
   }
+
+  // already advance segment
+  ray.t0 = ray.t + dg.epsilon;
 
   return make_vec4f(color, info.local_opacity);
 }
@@ -72,7 +79,8 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
                               const varying float &rayOffset,
                               const varying vec3i &sampleID,
                               varying vec4f &color,
-                              varying float &depth)
+                              varying float &depth,
+                              vec3f &normal, vec3f &albedo)
 {
   // Original tMax for ray interval
   const float tMax = ray.t;
@@ -86,7 +94,6 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
 
   // Get first intersected volume for each ray and set the ray bounds.
   Volume *volume = SciVisRenderer_intersectVolumes(renderer, ray, rayOffset);
-
   // Provide ray offset for use with isosurface geometries (this value
   // ignored elsewhere).
   if (volume != NULL)
@@ -96,8 +103,8 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
   vec4f geometryColor = SciVisRenderer_computeGeometrySample(renderer,
                                                              sampleID,
                                                              geometryRay,
-                                                             rayOffset);
-
+                                                             rayOffset,
+                                                             normal, albedo);
   // Depth is the first volume bounding box or geometry hit
   depth = min(ray.t0, geometryRay.t);
 
@@ -116,9 +123,6 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
         volume = SciVisRenderer_intersectVolumes(renderer, ray, rayOffset);
 
       } else {
-
-        if (any(volume == NULL))
-          print("ACCESSING NULL VOLUME HERE!\n");
 
         // Compute the volume sample at the current position and advance the ray
         vec4f volumeColor;
@@ -144,7 +148,8 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
         // Reset geometry ray.
         // TODO WILL: Because the compute geom sample is now going
         // to set t to infinity, this ray is going to be sent off the back!
-        geometryRay.t0 = geometryRay.t + renderer->super.epsilon;
+
+        // geometryRay.t0 is alreay updated in computeGeometrySample
         geometryRay.t = tMax; //!< end of valid ray interval for traceRay()
         geometryRay.primID = -1;
         geometryRay.geomID = -1;
@@ -159,7 +164,8 @@ void SciVisRenderer_intersect(uniform SciVisRenderer *uniform renderer,
         geometryColor = SciVisRenderer_computeGeometrySample(renderer,
                                                              sampleID,
                                                              geometryRay,
-                                                             rayOffset);
+                                                             rayOffset,
+                                                             normal, albedo);
       }
 
     }
@@ -172,13 +178,13 @@ void SciVisRenderer_renderSample(uniform Renderer *uniform _self,
                                  void *uniform perFrameData,
                                  varying ScreenSample &sample)
 {
-  SciVisRenderer *uniform renderer
-    = (SciVisRenderer *uniform) _self;
+  SciVisRenderer *uniform renderer = (SciVisRenderer *uniform) _self;
 
   // Ray offset for this sample, as a fraction of the nominal step size.
   float rayOffset = precomputedHalton2(sample.sampleID.z);
   int ix = sample.sampleID.x % 4;
   int iy = sample.sampleID.y % 4;
+
   int patternID = ix + 4 * iy;
   rayOffset += precomputedHalton3(patternID);
 
@@ -187,14 +193,16 @@ void SciVisRenderer_renderSample(uniform Renderer *uniform _self,
   // Provide the renderer to the intersector as it contains all
   // volumes, geometries, etc.
   vec4f color = make_vec4f(0.0f);
-  float depth = infinity;
+  float depth = inf;
+  sample.normal = make_vec3f(0.0f);
+  sample.albedo = make_vec3f(0.0f);
 
   SciVisRenderer_intersect(renderer, sample.ray, rayOffset,
-                           sample.sampleID, color, depth);
+                           sample.sampleID, color, depth,
+                           sample.normal, sample.albedo);
 
   // blend with background
   color = color + (1.0f - color.w) * renderer->super.bgColor;
-
   // Store the result in the sample.
   sample.rgb = make_vec3f(color);
   sample.alpha = color.w;
@@ -208,7 +216,7 @@ SciVisRenderer_beginFrame(uniform Renderer *uniform _self,
   uniform SciVisRenderer *uniform self = (uniform SciVisRenderer *uniform)_self;
   self->super.fb = fb;
   Model *uniform model = self->super.model;
-  self->volumeEpsilon = self->super.epsilon;
+  self->volumeEpsilon = ulpEpsilon;
 
   if (model->volumeCount) {
     // Ray epsilon based on bounding box of all volumes.
@@ -250,7 +258,6 @@ export void SciVisRenderer_set(void *uniform _self,
   self->numLights = numLights;
   self->oneSidedLighting = oneSidedLighting;
 
-
   // pre-computations:
   self->needToDoAO
     =  (self->aoSamples > 0)
@@ -264,7 +271,7 @@ export void *uniform SciVisRenderer_create(void *uniform cppE)
   Renderer_Constructor(&self->super,cppE);
   self->super.renderSample = SciVisRenderer_renderSample;
   self->super.beginFrame = SciVisRenderer_beginFrame;
-  SciVisRenderer_set(self, false, 4, infinity, make_vec3f(0.25f), false, NULL, 0, true);
+  SciVisRenderer_set(self, false, 4, inf, make_vec3f(0.25f), false, NULL, 0, true);
 
   return self;
 }

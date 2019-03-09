@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -25,19 +25,24 @@ namespace ospray {
     struct OSPSG_INTERFACE FrameBuffer : public sg::Node
     {
       /*! constructor allocates an OSP frame buffer object */
-      FrameBuffer(vec2i size = vec2i(300,300));
+      FrameBuffer(vec2i size = vec2i(1024, 768));
 
       // no destructor since we release the framebuffer object in Node::~Node()
 
-      const unsigned char *map();
+      const void *map(OSPFrameBufferChannel = OSP_FB_COLOR);
       void unmap(const void *mem);
 
       void clear();
-
       void clearAccum();
 
       vec2i size() const;
+      OSPFrameBufferFormat format() const;
+      bool toneMapped() const;
+#ifdef OSPRAY_APPS_ENABLE_DENOISER
+      bool auxBuffers() const;
+#endif
 
+      virtual void postTraverse(RenderContext &, const std::string&) override;
       virtual void postCommit(RenderContext &ctx) override;
 
       /*! \brief returns a std::string with the c++ name of this class */
@@ -45,15 +50,24 @@ namespace ospray {
 
       OSPFrameBuffer handle() const;
 
-      // create the ospray framebuffer for this class
-      void createFB();
-
-      // destroy the ospray framebuffer created via createFB()
-      void destroyFB();
+     private:
+      // create/update the ospray framebuffer for this class
+      void updateFB();
 
       OSPFrameBuffer ospFrameBuffer {nullptr};
-      OSPPixelOp toneMapper {nullptr};
+      vec2i committed_size {0};
+      OSPFrameBufferFormat committed_format {OSP_FB_NONE};
+      std::vector<std::pair<std::string, OSPFrameBufferFormat>> colorFormats {
+        {"sRGB",  OSP_FB_SRGBA},
+        {"RGBA8", OSP_FB_RGBA8},
+        {"float", OSP_FB_RGBA32F},
+        {"none",  OSP_FB_NONE}
+      };
       std::string displayWallStream;
+      bool toneMapperActive {false};
+#ifdef OSPRAY_APPS_ENABLE_DENOISER
+      bool useDenoiser {false};
+#endif
     };
 
   } // ::ospray::sg

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -31,8 +31,7 @@ namespace ospray {
     alloc'ed in TILE_SIZE pixels */
   struct TileDesc
   {
-    TileDesc(DistributedFrameBuffer *dfb,
-             const vec2i &begin,
+    TileDesc(const vec2i &begin,
              size_t tileID,
              size_t ownerID);
 
@@ -42,7 +41,6 @@ namespace ospray {
         node's tiles */
     virtual bool mine() const { return false; }
 
-    DistributedFrameBuffer *dfb;
     vec2i   begin;
     size_t  tileID, ownerID;
   };
@@ -60,6 +58,8 @@ namespace ospray {
              size_t tileID,
              size_t ownerID);
 
+    virtual ~TileData() override = default;
+
     /*! called exactly once at the beginning of each frame */
     virtual void newFrame() = 0;
 
@@ -71,16 +71,23 @@ namespace ospray {
         written into / composited into this dfb tile */
     virtual void process(const ospray::Tile &tile) = 0;
 
+    // WILL debugging
+    virtual bool isComplete() const { return false; }
+
     void accumulate(const ospray::Tile &tile);
 
+    DistributedFrameBuffer *dfb;
     float error; // estimated variance of this tile
     // TODO: dynamically allocate to save memory when no ACCUM or VARIANCE
-    ospray::Tile __aligned(64) accum;
+    // even more TODO: Tile contains much more data (e.g. AUX), but using only
+    // the color buffer here ==> much wasted memory
+    ospray::Tile __aligned(64) accum; // also hold accumulated normal&albedo
     ospray::Tile __aligned(64) variance;
     /* iw: TODO - have to change this. right now, to be able to give
        the 'postaccum' pixel op a readily normalized tile we have to
        create a local copy (the tile stores only the accum value,
        and we cannot change this) */
+    // also holds normalized normal&albedo in AOS format
     ospray::Tile  __aligned(64) final;
 
     //! the rbga32-converted colors
@@ -92,9 +99,8 @@ namespace ospray {
   // -------------------------------------------------------
   /*! specialized tile for plain sort-first rendering, but where the same tile
       region could be computed multiple times (with different accumId). */
-  class WriteMultipleTile : public TileData
+  struct WriteMultipleTile : public TileData
   {
-   public:
     WriteMultipleTile(DistributedFrameBuffer *dfb
         , const vec2i &begin
         , size_t tileID
@@ -165,6 +171,8 @@ namespace ospray {
         written into / composited into this dfb tile */
     void process(const ospray::Tile &tile) override;
 
+    bool isComplete() const override { return missingInCurrentGeneration == 0; }
+
     struct BufferedTile
     {
       ospray::Tile tile;
@@ -176,6 +184,7 @@ namespace ospray {
       float sortOrder;
     };
 
+  private:
     std::vector<BufferedTile *> bufferedTile;
     int currentGeneration;
     int expectedInNextGeneration;

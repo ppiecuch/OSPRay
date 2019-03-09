@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -84,7 +84,7 @@ inline void RobustThinDielectric_Constructor(varying RobustThinDielectric* unifo
                                              const varying linear3f* uniform frame,
                                              float eta, vec3f attenuation)
 {
-  BSDF_Constructor(&self->super, BSDF_SPECULAR,
+  BSDF_Constructor(&self->super, expf(attenuation), BSDF_SPECULAR,
                    RobustThinDielectric_eval, RobustThinDielectric_sample,
                    frame);
   self->eta = eta;

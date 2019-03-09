@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -41,7 +41,7 @@ static inline const vec3f getAttenuation(const ThinGlass* uniform self,
     + logf(make_vec3f(dg.color)) * self->attenuationScale;
 
   if (valid(self->map_attenuationColor)) {
-    vec3f attenuationColor = get3f(self->map_attenuationColor, dg.st);
+    vec3f attenuationColor = get3f(self->map_attenuationColor, dg);
     attenuation = attenuation + logf(attenuationColor) * self->attenuationScale;
   }
 

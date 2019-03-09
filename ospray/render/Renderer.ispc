@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -43,7 +43,7 @@ Renderer_default_beginFrame(uniform Renderer *uniform self,
   return NULL;
 }
 
-static unmasked void Renderer_default_endFrame(uniform Renderer *uniform self, 
+static unmasked void Renderer_default_endFrame(uniform Renderer *uniform self,
                                                void *uniform perFrameData)
 {
   if (self->fb) self->fb = NULL;
@@ -59,133 +59,78 @@ unmasked void Renderer_default_renderTile(uniform Renderer *uniform self,
 
   const uniform int32 spp = self->spp;
 
-  if (spp >= 1) {
-    ScreenSample screenSample;
-    screenSample.z = inf;
-    screenSample.alpha = 0.f;
+  ScreenSample screenSample;
+  screenSample.z = inf;
+  screenSample.alpha = 0.f;
 
-    CameraSample cameraSample;
+  CameraSample cameraSample;
 
-    const uniform float spp_inv = 1.f / spp;
+  const uniform int begin = taskIndex * RENDERTILE_PIXELS_PER_JOB;
+  const uniform int end   = begin     + RENDERTILE_PIXELS_PER_JOB;
+  const uniform int startSampleID = max(tile.accumID, 0)*spp;
 
-    const uniform int begin = taskIndex * RENDERTILE_PIXELS_PER_JOB;
-    const uniform int end   = begin     + RENDERTILE_PIXELS_PER_JOB;
-    const uniform int startSampleID = max(tile.accumID, 0)*spp;
+  for (uniform uint32 i = begin; i < end; i += programCount) {
+    const uint32 index = i + programIndex;
+    screenSample.sampleID.x        = tile.region.lower.x + z_order.xs[index];
+    screenSample.sampleID.y        = tile.region.lower.y + z_order.ys[index];
 
-    for (uniform uint32 i = begin; i < end; i += programCount) {
-      const uint32 index = i + programIndex;
-      screenSample.sampleID.x        = tile.region.lower.x + z_order.xs[index];
-      screenSample.sampleID.y        = tile.region.lower.y + z_order.ys[index];
+    if ((screenSample.sampleID.x >= fb->size.x) |
+        (screenSample.sampleID.y >= fb->size.y))
+      continue;
 
-      if ((screenSample.sampleID.x >= fb->size.x) |
-          (screenSample.sampleID.y >= fb->size.y))
-        continue;
+    float tMax = inf;
+    // set ray t value for early ray termination if we have a maximum depth
+    // texture
+    if (self->maxDepthTexture) {
+      // always sample center of pixel
+      vec2f depthTexCoord;
+      depthTexCoord.x = (screenSample.sampleID.x + 0.5f) * fb->rcpSize.x;
+      depthTexCoord.y = (screenSample.sampleID.y + 0.5f) * fb->rcpSize.y;
 
-      float tMax = infinity;
-      // set ray t value for early ray termination if we have a maximum depth
-      // texture
-      if (self->maxDepthTexture) {
-        // always sample center of pixel
-        vec2f depthTexCoord;
-        depthTexCoord.x = (screenSample.sampleID.x + 0.5f) * fb->rcpSize.x;
-        depthTexCoord.y = (screenSample.sampleID.y + 0.5f) * fb->rcpSize.y;
-
-        tMax = min(get1f(self->maxDepthTexture, depthTexCoord), infinity);
-      }
-      vec3f col = make_vec3f(0.f);
-      float alpha = 0.f;
-      const uint32 pixel = z_order.xs[index] + (z_order.ys[index] * TILE_SIZE);
-      for (uniform uint32 s = 0; s < spp; s++) {
-        const float pixel_du = precomputedHalton2(startSampleID+s);
-        const float pixel_dv = precomputedHalton3(startSampleID+s);
-        screenSample.sampleID.z = startSampleID+s;
-
-        cameraSample.screen.x = (screenSample.sampleID.x + pixel_du)
-                                * fb->rcpSize.x;
-        cameraSample.screen.y = (screenSample.sampleID.y + pixel_dv)
-                                * fb->rcpSize.y;
-
-        // TODO: fix correlations / better RNG
-        cameraSample.lens.x = precomputedHalton3(startSampleID+s);
-        cameraSample.lens.y = precomputedHalton5(startSampleID+s);
-
-        camera->initRay(camera,screenSample.ray,cameraSample);
-        screenSample.ray.t = min(screenSample.ray.t, tMax);
-
-        self->renderSample(self,perFrameData,screenSample);
-        col = col + screenSample.rgb;
-        alpha += screenSample.alpha;
-      }
-      col = col * (spp_inv);
-      alpha *= spp_inv;
-      setRGBAZ(tile,pixel,col,alpha,screenSample.z);
+      DifferentialGeometry lookup;
+      initDgFromTexCoord(lookup, depthTexCoord);
+      tMax = min(get1f(self->maxDepthTexture, lookup), inf);
     }
-  } else {
-    const float pixel_du = precomputedHalton2(tile.accumID);
-    const float pixel_dv = precomputedHalton3(tile.accumID);
-
-    ScreenSample screenSample;
-    screenSample.sampleID.z = tile.accumID;
-    screenSample.z = inf;
-    screenSample.alpha = 0.f;
-
-    CameraSample cameraSample;
-    // TODO: fix correlations / better RNG
-    cameraSample.lens.x = precomputedHalton3(tile.accumID);
-    cameraSample.lens.y = precomputedHalton5(tile.accumID);
-
-    const uniform int blocks = tile.accumID > 0
-                               || spp > 0 ? 1 : min(1 << -2 * spp,
-                                                    TILE_SIZE*TILE_SIZE);
-
-    const uniform int begin = taskIndex * RENDERTILE_PIXELS_PER_JOB;
-    const uniform int end   = min(begin + RENDERTILE_PIXELS_PER_JOB,
-                                  TILE_SIZE*TILE_SIZE/blocks);
-
-    for (uint32 i = begin + programIndex; i < end; i+=programCount) {
-      screenSample.sampleID.x = tile.region.lower.x + z_order.xs[i*blocks];
-      screenSample.sampleID.y = tile.region.lower.y + z_order.ys[i*blocks];
-      if ((screenSample.sampleID.x >= fb->size.x) |
-          (screenSample.sampleID.y >= fb->size.y)) {
-        continue;
-      }
+    vec3f col = make_vec3f(0.f);
+    float alpha = 0.f;
+    vec3f normal = make_vec3f(0.f);
+    vec3f albedo = make_vec3f(0.f);
+    const uint32 pixel = z_order.xs[index] + (z_order.ys[index] * TILE_SIZE);
+    for (uniform uint32 s = 0; s < spp; s++) {
+      const float pixel_du = precomputedHalton2(startSampleID+s);
+      const float pixel_dv = precomputedHalton3(startSampleID+s);
+      screenSample.sampleID.z = startSampleID+s;
 
       cameraSample.screen.x = (screenSample.sampleID.x + pixel_du)
-                              * fb->rcpSize.x;
+        * fb->rcpSize.x;
       cameraSample.screen.y = (screenSample.sampleID.y + pixel_dv)
-                              * fb->rcpSize.y;
+        * fb->rcpSize.y;
+
+      // TODO: fix correlations / better RNG
+      cameraSample.lens.x = precomputedHalton3(startSampleID+s);
+      cameraSample.lens.y = precomputedHalton5(startSampleID+s);
 
       camera->initRay(camera,screenSample.ray,cameraSample);
-
-      // set ray t value for early ray termination if we have a maximum depth
-      // texture
-      if (self->maxDepthTexture) {
-        // always sample center of pixel
-        vec2f depthTexCoord;
-        depthTexCoord.x = (screenSample.sampleID.x + 0.5f) * fb->rcpSize.x;
-        depthTexCoord.y = (screenSample.sampleID.y + 0.5f) * fb->rcpSize.y;
-
-        const float tMax = get1f(self->maxDepthTexture, depthTexCoord);
-        screenSample.ray.t = min(screenSample.ray.t, tMax);
-      }
+      screenSample.ray.t = min(screenSample.ray.t, tMax);
 
       self->renderSample(self,perFrameData,screenSample);
-
-      for (uniform int p = 0; p < blocks; p++) {
-        const uint32 pixel = z_order.xs[i*blocks+p]
-                             + (z_order.ys[i*blocks+p] * TILE_SIZE);
-        assert(pixel < TILE_SIZE*TILE_SIZE);
-        setRGBAZ(tile,pixel,screenSample.rgb,screenSample.alpha,screenSample.z);
-      }
+      col = col + screenSample.rgb;
+      alpha += screenSample.alpha;
+      normal = normal + screenSample.normal;
+      albedo = albedo + screenSample.albedo;
     }
+    const float rspp = rcpf(spp);
+    screenSample.rgb = col * rspp;
+    screenSample.alpha = alpha * rspp;
+    screenSample.normal = normal * rspp;
+    screenSample.albedo = albedo * rspp;
+    setTile(tile, pixel, screenSample);
   }
 }
 
 export void Renderer_set(void *uniform _self
     , void *uniform _model
     , void *uniform _camera
-    , const uniform bool autoEpsilon
-    , const uniform float epsilon
     , const uniform int32 spp
     , const uniform int32 maxDepth
     , const uniform float minContribution
@@ -202,7 +147,8 @@ void Renderer_Constructor(uniform Renderer *uniform self,
   self->beginFrame   = Renderer_default_beginFrame;
   self->endFrame     = Renderer_default_endFrame;
   self->fb = NULL;
-  Renderer_set(self, NULL, NULL, true, 1e-6f, 1, 20, 0.001f, make_vec4f(0.f), NULL);
+  Renderer_set(self, NULL, NULL, 1, 20, 0.001f, make_vec4f(0.f), NULL);
+  precomputedHalton_create();
 }
 
 void Renderer_Constructor(uniform Renderer *uniform self,
@@ -247,8 +193,6 @@ export void Renderer_endFrame(void *uniform _self, void *uniform perFrameData)
 export void Renderer_set(void *uniform _self
     , void *uniform _model
     , void *uniform _camera
-    , const uniform bool autoEpsilon
-    , const uniform float epsilon
     , const uniform int32 spp
     , const uniform int32 maxDepth
     , const uniform float minContribution
@@ -259,8 +203,6 @@ export void Renderer_set(void *uniform _self
   uniform Renderer *uniform self = (uniform Renderer *uniform)_self;
   self->model  = (uniform Model *uniform)_model;
   self->camera = (uniform Camera *uniform)_camera;
-  self->autoEpsilon = autoEpsilon;
-  self->epsilon = epsilon;
   self->spp = spp;
   self->maxDepth = maxDepth;
   self->minContribution = minContribution;
@@ -295,7 +237,9 @@ export void Renderer_pick(void *uniform _self,
     // always sample center of pixel
     const vec2f pixel = floor(screenPos * make_vec2f(fb->size.x, fb->size.y));
     const vec2f depthTexCoord = (pixel + 0.5f) * fb->rcpSize;
-    const float tMax = get1f(self->maxDepthTexture, depthTexCoord);
+    DifferentialGeometry lookup;
+    initDgFromTexCoord(lookup, depthTexCoord);
+    const float tMax = get1f(self->maxDepthTexture, lookup);
     ray.t = min(ray.t, tMax);
   }
 

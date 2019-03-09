@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -373,10 +373,7 @@ namespace ospray {
 
     // MPIDevice definitions //////////////////////////////////////////////////
 
-    MPIOffloadDevice::MPIOffloadDevice()
-    {
-      maml::init();
-    }
+    MPIOffloadDevice::MPIOffloadDevice() {}
 
     MPIOffloadDevice::~MPIOffloadDevice()
     {
@@ -437,6 +434,16 @@ namespace ospray {
         }
       }
 
+      auto OSPRAY_FORCE_COMPRESSION =
+        utility::getEnvVar<int>("OSPRAY_FORCE_COMPRESSION");
+      // Turning on the compression past 64 ranks seems to be a good
+      // balancing point for cost of compressing vs. performance gain
+      auto enableCompression =
+        OSPRAY_FORCE_COMPRESSION.value_or(
+            mpicommon::numGlobalRanks() >= OSP_MPI_COMPRESSION_THRESHOLD);
+
+      maml::init(enableCompression);
+
       /* set up fabric and stuff - by now all the communicators should
          be properly set up */
       mpiFabric   = make_unique<MPIBcastFabric>(mpi::worker, MPI_ROOT, 0);
@@ -461,6 +468,17 @@ namespace ospray {
 
       auto preAllocatedTiles =
           OSPRAY_PREALLOCATED_TILES.value_or(getParam<int>("preAllocatedTiles",4));
+
+      auto OSPRAY_MPI_OFFLOAD_WRITE_BUFFER_SCALE =
+          utility::getEnvVar<float>("OSPRAY_MPI_OFFLOAD_WRITE_BUFFER_SCALE");
+
+      auto writeBufferSize =
+          OSPRAY_MPI_OFFLOAD_WRITE_BUFFER_SCALE.value_or(getParam<float>("writeBufferScale", 1.f));
+
+      size_t bufferSize = 1024 * size_t(writeBufferSize * 1024);
+
+      writeStream->flush();
+      writeStream = make_unique<networking::BufferedWriteStream>(*mpiFabric, bufferSize);
 
       work::SetLoadBalancer slbWork(ObjectHandle(),
                                     useDynamicLoadBalancer,
@@ -487,11 +505,7 @@ namespace ospray {
       ObjectHandle handle = (const ObjectHandle &)_fb;
       FrameBuffer *fb = (FrameBuffer *)handle.lookup();
 
-      switch (channel) {
-      case OSP_FB_COLOR: return fb->mapColorBuffer();
-      case OSP_FB_DEPTH: return fb->mapDepthBuffer();
-      default: return nullptr;
-      }
+      return fb->mapBuffer(channel);
     }
 
     /*! unmap previously mapped frame buffer */
@@ -518,7 +532,7 @@ namespace ospray {
     {
       const ObjectHandle handle = (const ObjectHandle&)_object;
       work::CommitObject work(handle);
-      processWork(work, true);
+      processWork(work);
     }
 
     /*! add a new geometry to a model */
@@ -729,11 +743,11 @@ namespace ospray {
     }
 
     /*! have given renderer create a new material */
-    OSPMaterial MPIOffloadDevice::newMaterial(OSPRenderer _renderer,
-                                              const char *type)
+    OSPMaterial MPIOffloadDevice::newMaterial(OSPRenderer renderer,
+                                              const char *material_type)
     {
       ObjectHandle handle = allocateHandle();
-      work::NewMaterial work(type, _renderer, handle);
+      work::NewMaterial work(renderer, material_type, handle);
       processWork(work);
       return (OSPMaterial)(int64)handle;
     }
@@ -759,20 +773,10 @@ namespace ospray {
     }
 
     /*! have given renderer create a new Light */
-    OSPLight MPIOffloadDevice::newLight(OSPRenderer _renderer, const char *type)
+    OSPLight MPIOffloadDevice::newLight(const char *type)
     {
       ObjectHandle handle = allocateHandle();
-      work::NewLight work(type, _renderer, handle);
-      processWork(work);
-      return (OSPLight)(int64)handle;
-    }
-
-    /*! have given renderer create a new Light */
-    OSPLight MPIOffloadDevice::newLight(const char *renderer_type,
-                                        const char *light_type)
-    {
-      ObjectHandle handle = allocateHandle();
-      work::NewLight2 work(renderer_type, light_type, handle);
+      work::NewLight work(type, handle);
       processWork(work);
       return (OSPLight)(int64)handle;
     }
@@ -846,13 +850,12 @@ namespace ospray {
     }
 
     /*! create a new Texture2D object */
-    OSPTexture2D MPIOffloadDevice::newTexture2D(const vec2i &sz,
-        const OSPTextureFormat type, void *data, const uint32 flags)
+    OSPTexture MPIOffloadDevice::newTexture(const char *type)
     {
       ObjectHandle handle = allocateHandle();
-      work::NewTexture2d work(handle, sz, type, data, flags);
+      work::NewTexture work(type, handle);
       processWork(work);
-      return (OSPTexture2D)(int64)handle;
+      return (OSPTexture)(int64)handle;
     }
 
     int MPIOffloadDevice::getString(OSPObject _object,

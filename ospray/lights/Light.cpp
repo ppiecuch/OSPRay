@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -35,7 +35,7 @@ namespace ospray {
     return "ospray::Light";
   }
 
-  Light *Light::createLight(const char *type)
+  Light *Light::createInstance(const char *type)
   {
     return createInstanceHelper<Light, OSP_LIGHT>(type);
   }

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -15,7 +15,6 @@
 // ======================================================================== //
 
 #include "SciVisRenderer.h"
-#include "SciVisMaterial.h"
 // ospray
 #include "common/Data.h"
 #include "lights/Light.h"
@@ -25,6 +24,13 @@
 
 namespace ospray {
   namespace scivis {
+
+    SciVisRenderer::SciVisRenderer()
+    {
+      setParam<std::string>("externalNameFromAPI", "scivis");
+
+      ispcEquivalent = ispc::SciVisRenderer_create(this);
+    }
 
     void SciVisRenderer::commit()
     {
@@ -73,18 +79,8 @@ namespace ospray {
                                oneSidedLighting);
     }
 
-    SciVisRenderer::SciVisRenderer()
-    {
-      ispcEquivalent = ispc::SciVisRenderer_create(this);
-    }
-
-    Material *SciVisRenderer::createMaterial(const char *)
-    {
-      return new SciVisMaterial;
-    }
-
-    OSP_REGISTER_RENDERER(SciVisRenderer, raytracer);
     OSP_REGISTER_RENDERER(SciVisRenderer, rt);
+    OSP_REGISTER_RENDERER(SciVisRenderer, raytracer);
     OSP_REGISTER_RENDERER(SciVisRenderer, scivis);
     OSP_REGISTER_RENDERER(SciVisRenderer, sv);
     OSP_REGISTER_RENDERER(SciVisRenderer, obj);

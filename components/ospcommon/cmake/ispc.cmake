@@ -1,5 +1,5 @@
 ## ======================================================================== ##
-## Copyright 2009-2018 Intel Corporation                                    ##
+## Copyright 2009-2019 Intel Corporation                                    ##
 ##                                                                          ##
 ## Licensed under the Apache License, Version 2.0 (the "License");          ##
 ## you may not use this file except in compliance with the License.         ##
@@ -15,30 +15,35 @@
 ## ======================================================================== ##
 
 # ISPC versions to look for, in decending order (newest first)
-SET(ISPC_VERSION_WORKING "1.9.2" "1.9.1")
+SET(ISPC_VERSION_WORKING "1.10.0" "1.9.2" "1.9.1")
 LIST(GET ISPC_VERSION_WORKING -1 ISPC_VERSION_REQUIRED)
 SET(ISPC_VERSION_RECOMMENDED_KNC "1.9.0")
 
 IF (NOT ISPC_EXECUTABLE)
   # try sibling folder as hint for path of ISPC
   IF (APPLE)
-    SET(ISPC_DIR_SUFFIX "osx")
+    SET(ISPC_DIR_SUFFIX "osx" "Darwin")
   ELSEIF(WIN32)
-    SET(ISPC_DIR_SUFFIX "windows")
+    SET(ISPC_DIR_SUFFIX "windows" "win32")
     IF (MSVC_VERSION LESS 1900)
       MESSAGE(WARNING "MSVC 12 2013 is not supported anymore.")
     ELSE()
       LIST(APPEND ISPC_DIR_SUFFIX "windows-vs2015")
     ENDIF()
   ELSE()
-    SET(ISPC_DIR_SUFFIX "linux")
+    SET(ISPC_DIR_SUFFIX "linux" "Linux")
   ENDIF()
 
   LIST(APPEND ISPC_DIR_HINT ${PROJECT_SOURCE_DIR}/deps/ispc)
-  FOREACH(ver ${ISPC_VERSION_WORKING})
+
+  FOREACH(v "" "v")
+   FOREACH(ver ${ISPC_VERSION_WORKING})
     FOREACH(suffix ${ISPC_DIR_SUFFIX})
-      LIST(APPEND ISPC_DIR_HINT ${PROJECT_SOURCE_DIR}/../ispc-v${ver}-${suffix})
+     FOREACH(d "" "/bin")
+      LIST(APPEND ISPC_DIR_HINT ${PROJECT_SOURCE_DIR}/../ispc-${v}${ver}-${suffix}${d})
+     ENDFOREACH()
     ENDFOREACH()
+   ENDFOREACH()
   ENDFOREACH()
 
   FIND_PROGRAM(ISPC_EXECUTABLE ispc ispc-v${ISPC_VERSION_REQUIRED}-${ISPC_DIR_SUFFIX} PATHS ${ISPC_DIR_HINT} DOC "Path to the ISPC executable.")
@@ -68,6 +73,15 @@ IF(NOT ISPC_VERSION)
   SET(ISPC_VERSION ${ISPC_VERSION} CACHE STRING "ISPC Version")
   MARK_AS_ADVANCED(ISPC_VERSION)
   MARK_AS_ADVANCED(ISPC_EXECUTABLE)
+ENDIF()
+
+SET(OSPRAY_ISPC_ADDRESSING 32 CACHE INT "32 vs 64 bit addressing in ispc")
+SET_PROPERTY(CACHE OSPRAY_ISPC_ADDRESSING PROPERTY STRINGS 32 64)
+MARK_AS_ADVANCED(OSPRAY_ISPC_ADDRESSING)
+
+IF (NOT (OSPRAY_ISPC_ADDRESSING STREQUAL "32" OR
+         OSPRAY_ISPC_ADDRESSING STREQUAL "64"))
+  MESSAGE(FATAL_ERROR "OSPRAY_ISPC_ADDRESSSING must be set to either '32' or '64'!")
 ENDIF()
 
 GET_FILENAME_COMPONENT(ISPC_DIR ${ISPC_EXECUTABLE} PATH)
@@ -185,7 +199,7 @@ MACRO (OSPRAY_ISPC_COMPILE)
       -I ${CMAKE_CURRENT_SOURCE_DIR}
       ${ISPC_INCLUDE_DIR_PARMS}
       --arch=${ISPC_ARCHITECTURE}
-      --addressing=32
+      --addressing=${OSPRAY_ISPC_ADDRESSING}
       ${ISPC_OPT_FLAGS}
       --target=${ISPC_TARGET_ARGS}
       --woff

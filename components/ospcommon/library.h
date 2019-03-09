@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -19,6 +19,7 @@
 #include "common.h"
 // std
 #include <map>
+#include <memory>
 #include <string>
 
 namespace ospcommon {
@@ -28,13 +29,16 @@ namespace ospcommon {
     public:
       /* opens a shared library */
       Library(const std::string& name);
+      ~Library();
 
       /* returns address of a symbol from the library */
       void* getSymbol(const std::string& sym) const;
 
     private:
       Library(void* const lib);
+      std::string libraryName;
       void *lib;
+      bool freeLibOnDelete{true};
       friend class LibraryRepository;
   };
 
@@ -42,6 +46,9 @@ namespace ospcommon {
   {
     public:
       static LibraryRepository* getInstance();
+      static void cleanupInstance();
+
+      ~LibraryRepository();
 
       /* add a library to the repo */
       void add(const std::string& name);
@@ -55,8 +62,8 @@ namespace ospcommon {
       bool libraryExists(const std::string &name) const;
 
     private:
-      static LibraryRepository* instance;
-      LibraryRepository();
+      static std::unique_ptr<LibraryRepository> instance;
+      LibraryRepository() = default;
       std::map<std::string, Library*> repo;
   };
 }

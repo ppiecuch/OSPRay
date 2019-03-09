@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -58,7 +58,7 @@ namespace ospray {
     RTCScene embreeSceneHandle = model->embreeSceneHandle;
 
     vertexData = getParamData("vertex");
-    normalData = getParamData("vertex.normal");
+    normalData = getParamData("vertex.normal",getParamData("normal"));
     colorData  = getParamData("vertex.color");
     texcoordData = getParamData("vertex.texcoord");
     indexData  = getParamData("index");

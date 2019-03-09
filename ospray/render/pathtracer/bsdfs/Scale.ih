@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -51,7 +51,7 @@ inline BSDF_SampleRes Scale_sample(const varying BSDF* uniform super,
 inline void Scale_Constructor(varying Scale* uniform self, const varying linear3f* uniform frame,
     const varying BSDF* uniform base, float factor)
 {
-  BSDF_Constructor(&self->super, base->type, Scale_eval, Scale_sample, frame);
+  BSDF_Constructor(&self->super, base->albedo * factor, base->type, Scale_eval, Scale_sample, frame);
   self->base = base;
   self->factor = factor;
 }

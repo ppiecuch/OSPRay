@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -75,12 +75,13 @@ namespace ospray {
           coatThickness.factor, coatThickness.map ? coatThickness.map->getIE() : nullptr, (const ispc::AffineSpace2f&)coatThickness.xform,
           coatRoughness.factor, coatRoughness.map ? coatRoughness.map->getIE() : nullptr, (const ispc::AffineSpace2f&)coatRoughness.xform,
           coatNormal.factor, coatNormal.map ? coatNormal.map->getIE() : nullptr, (const ispc::AffineSpace2f&)coatNormal.xform, (const ispc::LinearSpace2f&)coatNormal.rot,
-          
+
           (const ispc::vec3f&)flipflopColor.factor, flipflopColor.map ? flipflopColor.map->getIE() : nullptr, (const ispc::AffineSpace2f&)flipflopColor.xform,
           flipflopFalloff.factor, flipflopFalloff.map ? flipflopFalloff.map->getIE() : nullptr, (const ispc::AffineSpace2f&)flipflopFalloff.xform);
       }
     };
 
-    OSP_REGISTER_MATERIAL(CarPaint,PathTracer_CarPaint);
+    OSP_REGISTER_MATERIAL(pathtracer, CarPaint, CarPaint);
+    OSP_REGISTER_MATERIAL(pt, CarPaint, CarPaint);
   }
 }

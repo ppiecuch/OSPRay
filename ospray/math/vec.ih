@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -627,10 +627,12 @@ __lift_unary_fct(logf)
 __lift_unary_fct(floor)
 __lift_unary_fct(abs)
 __lift_unary_fct(rcp)
+__lift_unary_fct(rcp_safe)
 __lift_unary_fct(exp)
 __lift_unary_fct(frac)
 __lift_unary_fct(sqr)
 __lift_unary_fct(sqrt)
+__lift_unary_fct(sqrt_safe)
 
 #undef __lift_unary_fct
 

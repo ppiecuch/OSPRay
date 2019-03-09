@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -73,22 +73,10 @@ namespace ospray {
     /*! \brief called by the load balancer to render one tile of "samples" */
     virtual void renderTile(void *perFrameData, Tile &tile, size_t jobID) const;
 
-    /*! \brief create a material of given type */
-    virtual Material *createMaterial(const char *type);
-
-    /*! \brief create a light of given type */
-    virtual Light *createLight(const char *type);
-
     virtual OSPPickResult pick(const vec2f &screenPos);
 
     Model *model {nullptr};
     FrameBuffer *currentFB {nullptr};
-
-    /*! \brief parameter to automatically prevent self-intersection issues */
-    bool autoEpsilon {true};
-
-    /*! \brief parameter to prevent self-intersection issues, will be scaled with diameter of the scene */
-    float epsilon {1e-6f};
 
     /*! \brief number of samples to be used per pixel in a tile */
     int32 spp {1};
@@ -106,20 +94,6 @@ namespace ospray {
       (OSP_TEXTURE_FILTER_NEAREST). */
     Ref<Texture2D> maxDepthTexture;
   };
-
-  // Inlined function definitions /////////////////////////////////////////////
-
-  inline Material *Renderer::createMaterial(const char *type)
-  {
-    UNUSED(type);
-    return nullptr;
-  }
-
-  inline Light *Renderer::createLight(const char *type)
-  {
-    UNUSED(type);
-    return nullptr;
-  }
 
   /*! \brief registers a internal ospray::<ClassName> renderer under
       the externally accessible name "external_name"

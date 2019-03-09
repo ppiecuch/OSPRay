@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -35,7 +35,16 @@ struct ScreenSample {
   vec3f rgb;
   float alpha;
   float z;
+  vec3f normal;
+  vec3f albedo;
 };
+
+inline void setTile(uniform Tile &tile, const varying uint32 pixel,
+    const varying ScreenSample screenSample)
+{
+  setRGBAZ(tile, pixel, screenSample.rgb, screenSample.alpha, screenSample.z);
+  setNormalAlbedo(tile, pixel, screenSample.normal, screenSample.albedo);
+}
 
 /*! Render a given screen sample (as specified in sampleID), and
   returns the radiance in 'retVal'. sampleID.x and .y refer to the
@@ -75,8 +84,6 @@ struct Renderer {
                      frame */
   Model       *uniform model;
   Camera      *camera;
-  bool         autoEpsilon; // flag whether to compute epsilon automatically/adaptively
-  float        epsilon; // parameter to prevent self-intersection issues, will be scaled with diameter of the scene
   int32        spp; // number of samples per pixel; negative values mean subsampling, i.e. render only every 2^-spp pixel in x and y for the first frame
   vec4f bgColor;// background color and alpha
   Texture2D *maxDepthTexture; // optional maximum depth texture used for early ray termination

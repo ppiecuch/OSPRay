@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -705,6 +705,20 @@ namespace ospcommon {
   inline vec_t<T, N, A> safe_normalize(const vec_t<T, N, A> &v)
   {
     return v * rsqrt(max(1e-6f, dot(v, v)));
+  }
+
+  // -------------------------------------------------------
+  // interpolation
+  // -------------------------------------------------------
+
+  // barycentric interpolation
+  template <typename T, int N, bool A>
+  inline vec_t<T, N, A> interpolate_uv(const vec_t<float, 3> &f,
+                                       const vec_t<T, N, A> &a,
+                                       const vec_t<T, N, A> &b,
+                                       const vec_t<T, N, A> &c)
+  {
+    return f.x*a + f.y*b + f.z*c;
   }
 
   // -------------------------------------------------------

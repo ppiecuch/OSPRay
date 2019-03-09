@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -48,7 +48,8 @@ inline void Conductor_Constructor(varying Conductor* uniform self,
                                   const varying linear3f* uniform frame,
                                   Fresnel* uniform fresnel)
 {
-  BSDF_Constructor(&self->super, BSDF_SPECULAR_REFLECTION,
+  BSDF_Constructor(&self->super, fresnel->evalAvg(fresnel),
+                   BSDF_SPECULAR_REFLECTION,
                    Conductor_eval, Conductor_sample,
                    frame);
   self->fresnel = fresnel;

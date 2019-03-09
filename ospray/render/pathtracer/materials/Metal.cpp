@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -88,6 +88,7 @@ namespace ospray {
       }
     };
 
-    OSP_REGISTER_MATERIAL(Metal,PathTracer_Metal);
+    OSP_REGISTER_MATERIAL(pathtracer, Metal, Metal);
+    OSP_REGISTER_MATERIAL(pt, Metal, Metal);
   }
 }

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -373,7 +373,8 @@ namespace ospray {
 
     // Import HDF5 CHOMBO files ///////////////////////////////////////////////
 
-    void importCHOMBO(std::shared_ptr<Node> world, const FileName &fileName)
+    void importCHOMBO(const std::shared_ptr<Node> &world,
+                      const FileName &fileName)
     {
       auto node = sg::createNode("amr", "AMRVolume")->nodeAs<sg::AMRVolume>();
       parseAMRChomboFile(node, fileName);

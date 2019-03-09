@@ -16,6 +16,15 @@ variables:
   script:
     - scripts/build_gitlab/linux.sh # default script
 
+.job_template: &build_job_docker_modules
+  stage: build
+  tags:
+    - docker
+    - modules
+  image: ospray/docker-images:centos6-mod
+  script:
+    - scripts/build_gitlab/linux.sh
+
 .job_template: &build_job_shell
   stage: build
   tags:
@@ -31,16 +40,14 @@ variables:
   only:
     - devel
     - master
-    - release-1.6.x
+    - /^release-.*$/
 
 .job_template: &test_job
   stage: test-build
   tags:
     - docker
   script:
-    - cd $CI_PROJECT_DIR/build
-    - make ospray_test_data
-    - ../scripts/tests/run_tests.sh
+    - scripts/tests/run_tests.sh
   artifacts:
     paths:
       - $CI_PROJECT_DIR/build/tests.xml
@@ -51,7 +58,7 @@ variables:
 .job_template: &test_job_windows
   <<: *test_job
   script:
-    - cmd call /c 'scripts\tests\run_tests.bat'
+    - scripts\tests\run_tests.bat
   artifacts:
     paths:
       - tests.xml
@@ -103,40 +110,45 @@ build-ubuntu1404-gcc:
     expire_in: 3 day
 
 build-centos6-gcc:
-  <<: *build_job_docker
-  image: ospray/docker-images:centos6
+  <<: *build_job_docker_modules
+  script:
+    - module load cmake
+    - module load gcc/4.8.2
+    - module load embree
+    - module load tbb
+    - module load ispc
+    - export CC=gcc
+    - export CXX=g++
+    - scripts/build_gitlab/linux.sh
   artifacts:
     paths:
       - $CI_PROJECT_DIR
-    expire_in: 3 day
 
 build-centos6-icc:
-  <<: *build_job_shell
+  <<: *build_job_docker_modules
   script:
+    - module load cmake
     - module load gcc/4.8.2
     - module load intel
-    - module load embree/3.1.0
+    - module load embree
     - module load tbb
+    - module load ispc
     - export CC=icc
     - export CXX=icpc
     - scripts/build_gitlab/linux.sh
-  tags:
-    - centos6
-    - icc
 
 build-centos6-icc15:
-  <<: *build_job_shell
+  <<: *build_job_docker_modules
   script:
+    - module load cmake
     - module load gcc/4.8.2
     - module load intel/2015
-    - module load embree/3.1.0
+    - module load embree
     - module load tbb
+    - module load ispc
     - export CC=icc
     - export CXX=icpc
     - scripts/build_gitlab/linux.sh
-  tags:
-    - centos6
-    - icc
 
 build-centos7-gcc:
   <<: *build_job_docker
@@ -167,37 +179,40 @@ build-osx-clang:
 build-windows-msvc14:
   <<: *build_job_shell
   script:
-    - cmd call /c 'scripts\build_gitlab\win.bat ^"Visual Studio 14 2015 Win64^" ^"v140^" ^"OSPRAY_MODULE_MPI=ON^"'
+    - scripts\build_gitlab\win.bat "Visual Studio 14 2015 Win64" "v140" "ON"
   tags:
     - msvc14
     - win7
   artifacts:
     paths:
-      - build
+      - build/Release
+      - build/regression_tests
     expire_in: 3 day
 
 build-windows-msvc15:
   <<: *build_job_shell
   script:
-    - cmd call /c 'scripts\build_gitlab\win.bat ^"Visual Studio 15 2017 Win64^" ^"v141^" ^"OSPRAY_MODULE_MPI=OFF^"'
+    - scripts\build_gitlab\win.bat "Visual Studio 15 2017 Win64" "v141" "OFF"
   tags:
     - msvc15
     - win7
   artifacts:
     paths:
-      - build
+      - build/Release
+      - build/regression_tests
     expire_in: 3 day
 
 build-windows-icc:
   <<: *build_job_shell
   script:
-    - cmd call /c 'scripts\build_gitlab\win.bat ^"Visual Studio 14 2015 Win64^" ^"Intel C++ Compiler 18.0^" ^"OSPRAY_MODULE_MPI=ON^"'
+    - scripts\build_gitlab\win.bat "Visual Studio 14 2015 Win64" "Intel C++ Compiler 18.0" "ON"
   tags:
     - icc18
     - win7
   artifacts:
     paths:
-      - build
+      - build/Release
+      - build/regression_tests
     expire_in: 3 day
 
 build-scan-kw:
@@ -205,6 +220,7 @@ build-scan-kw:
   image: ospray-kw-centos7
   script:
     - /tmp/build-scan-kw.sh
+    - test -s $CI_PROJECT_DIR/kw_build_number
   tags:
     - kw-scan-docker
   artifacts:
@@ -237,17 +253,20 @@ test-centos7-gcc:
 
 test-centos6-gcc:
   <<: *test_job
-  image: ospray/docker-images:centos6
+  image: ospray/docker-images:centos6-mod
   dependencies:
     - build-centos6-gcc
+  script:
+    - module load tbb
+    - scripts/tests/run_tests.sh
+  tags:
+    - modules
 
 test-ubuntu1404-gcc:
   <<: *test_job
   image: ospray/docker-images:ubuntu14.04
   script:
-    - cd $CI_PROJECT_DIR/build
-    - make ospray_test_data
-    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/ ../scripts/tests/run_tests.sh
+    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/ scripts/tests/run_tests.sh
   dependencies:
     - build-ubuntu1404-gcc
 
@@ -255,9 +274,7 @@ test-ubuntu1604-gcc:
   <<: *test_job
   image: ospray/docker-images:ubuntu16.04
   script:
-    - cd $CI_PROJECT_DIR/build
-    - make ospray_test_data
-    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/ ../scripts/tests/run_tests.sh
+    - LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/ scripts/tests/run_tests.sh
   dependencies:
     - build-ubuntu1604-gcc
 
@@ -347,7 +364,7 @@ pdf:
     - make pdf
   only:
     - devel
-    - release-1.6.x
+    - /^release-.*$/
     - master
   artifacts:
     paths:
@@ -375,7 +392,6 @@ release-linux-icc:
     - module load cmake
     - module load gcc/4.8.2
     - module load intel
-    - module load embree/3.1.0
     - export CC=icc
     - export CXX=icpc
     - scripts/release/linux.sh
@@ -405,7 +421,7 @@ release-osx-clang:
 release-windows:
   <<: *release_job
   script:
-    - cmd call /c 'scripts\release\win.bat'
+    - scripts\release\win.bat
   tags:
     - msvc
     - win7

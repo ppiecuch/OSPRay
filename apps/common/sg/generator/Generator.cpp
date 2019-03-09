@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,8 +18,8 @@
 #include "ospcommon/utility/StringManip.h"
 // ospray::sg
 #include "Generator.h"
-#include "common/sg/SceneGraph.h"
-#include "common/sg/geometry/TriangleMesh.h"
+#include "sg/SceneGraph.h"
+#include "sg/geometry/TriangleMesh.h"
 
 #include "../visitor/PrintNodes.h"
 
@@ -50,10 +50,8 @@ namespace ospray {
       std::cout << "generating data with '" << lastType << "' generator"
                 << std::endl;
 
-      child("bounds") = box3f(empty);
-
       remove("data");
-      auto wsg = createChild("data", "Transform").shared_from_this();
+      auto wsg = createChild("data", "Instance")["model"].shared_from_this();
 
       importRegistryGenerator(wsg, lastType, lastParams);
     }

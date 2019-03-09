@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2017-2018 Intel Corporation                                    //
+// Copyright 2017-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -18,6 +18,8 @@
 
 using OSPRayTestScenes::Sierpinski;
 using OSPRayTestScenes::Torus;
+using OSPRayTestScenes::TextureVolume;
+using OSPRayTestScenes::DepthCompositeVolume;
 
 TEST_P(Sierpinski, simple) {
   PerformRenderTest();
@@ -37,3 +39,14 @@ TEST_P(Torus, simple) {
 
 INSTANTIATE_TEST_CASE_P(Renderers, Torus, ::testing::Values("scivis", "pathtracer"));
 
+TEST_P(TextureVolume, simple) {
+  PerformRenderTest();
+}
+
+INSTANTIATE_TEST_CASE_P(Renderers, TextureVolume, ::testing::Values("scivis"));
+
+TEST_P(DepthCompositeVolume, simple) {
+ PerformRenderTest();
+}
+
+INSTANTIATE_TEST_CASE_P(Renderers, DepthCompositeVolume, ::testing::Values("scivis"));

@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -101,21 +101,26 @@ namespace ospray {
         );
   }
 
-  vec2f PerspectiveCamera::projectPoint(const vec3f &p) const {
+  ProjectedPoint PerspectiveCamera::projectPoint(const vec3f &p) const {
     // We find the intersection of the ray through the point with the virtual
     // film plane, then find the vector to this point from the origin of the
     // film plane (screenDir) and project this point onto the x/y axes of
     // the plane.
-    const vec3f r = normalize(p - pos);
+    const vec3f v = p - pos;
+    const vec3f r = normalize(v);
     const float denom = dot(-r, -dir);
     if (denom == 0.0) {
-      return vec2f(-1);
+      return ProjectedPoint(vec3f(-1, -1,
+                                  std::numeric_limits<float>::infinity()), -1);
     }
     const float t = 1.0 / denom;
 
     const vec3f screenDir = r * t - dir_00;
-    return vec2f(dot(screenDir, normalize(dir_du)),
-                 dot(screenDir, normalize(dir_dv))) / imgPlaneSize;
+    const vec2f sp = vec2f(dot(screenDir, normalize(dir_du)),
+                           dot(screenDir, normalize(dir_dv))) / imgPlaneSize;
+    const float depth = sign(t) * length(v);
+    // TODO: Depth of field radius
+    return ProjectedPoint(vec3f(sp.x, sp.y, depth), 0);
   }
 
   OSP_REGISTER_CAMERA(PerspectiveCamera,perspective);

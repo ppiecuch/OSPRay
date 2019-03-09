@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -28,6 +28,6 @@
 #include "ospray_cpp/Model.h"
 #include "ospray_cpp/PixelOp.h"
 #include "ospray_cpp/Renderer.h"
-#include "ospray_cpp/Texture2D.h"
+#include "ospray_cpp/Texture.h"
 #include "ospray_cpp/TransferFunction.h"
 #include "ospray_cpp/Volume.h"

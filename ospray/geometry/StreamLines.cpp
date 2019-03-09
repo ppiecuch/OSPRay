@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -52,7 +52,7 @@ namespace ospray {
     vertex = (vec3fa*)vertexData->data;
     numVertices = vertexData->numItems;
     if (vertexData->type == OSP_FLOAT4) {
-      radius.reset((const float*)vertex + 3, 4);
+      radius.reset((const float*)vertex + 3, sizeof(vec4f));
       useCurve = true;
     }
 

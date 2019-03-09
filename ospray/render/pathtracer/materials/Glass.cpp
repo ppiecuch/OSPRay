@@ -1,5 +1,5 @@
 // ======================================================================== //
-// Copyright 2009-2018 Intel Corporation                                    //
+// Copyright 2009-2019 Intel Corporation                                    //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License");          //
 // you may not use this file except in compliance with the License.         //
@@ -34,31 +34,33 @@ namespace ospray {
         }
 
         const float etaInside = getParamf("etaInside", getParamf("eta", 1.5f));
-        
+
         const float etaOutside = getParamf("etaOutside", 1.f);
-        
+
         const vec3f& attenuationColorInside =
           getParam3f("attenuationColorInside",
           getParam3f("attenuationColor",
           getParam3f("color", vec3f(1.f))));
-        
+
         const vec3f& attenuationColorOutside =
           getParam3f("attenuationColorOutside", vec3f(1.f));
-        
+
         const float attenuationDistance =
           getParamf("attenuationDistance", getParamf("distance", 1.0f));
 
         ispc::PathTracer_Glass_set(
           ispcEquivalent,
-          etaInside, 
+          etaInside,
           (const ispc::vec3f&)attenuationColorInside,
-          etaOutside, 
+          etaOutside,
           (const ispc::vec3f&)attenuationColorOutside,
           attenuationDistance);
       }
     };
 
-    OSP_REGISTER_MATERIAL(Glass,PathTracer_Glass);
-    OSP_REGISTER_MATERIAL(Glass,PathTracer_Dielectric);
+    OSP_REGISTER_MATERIAL(pathtracer, Glass, Glass);
+    OSP_REGISTER_MATERIAL(pathtracer, Glass, Dielectric);
+    OSP_REGISTER_MATERIAL(pt, Glass, Glass);
+    OSP_REGISTER_MATERIAL(pt, Glass, Dielectric);
   }
 }
