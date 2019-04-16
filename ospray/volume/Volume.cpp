@@ -21,8 +21,6 @@
 #include "common/Data.h"
 #include "Volume_ispc.h"
 
-#define creatorFct volCreatorFct
-
 namespace ospray {
 
   bool Volume::isDataDistributed() const
@@ -146,5 +144,3 @@ namespace ospray {
   }
 
 } // ::ospray
-
-#undef creatorFct

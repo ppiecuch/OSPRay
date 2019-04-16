@@ -24,11 +24,6 @@
 
 namespace ospray {
 
-  inline bool inRange(int64 i, int64 i0, int64 i1)
-  {
-    return i >= i0 && i < i1;
-  }
-
   TriangleMesh::TriangleMesh()
   {
     this->ispcEquivalent = ispc::TriangleMesh_create(this);
@@ -126,6 +121,8 @@ namespace ospray {
       throw std::runtime_error("unsupported trianglemesh.vertex.normal data type");
     }
 
+    typedef struct ispc::RTCGeometryTy* RTCGeometry;
+
     auto eMeshGeom = rtcNewGeometry(ispc_embreeDevice(),RTC_GEOMETRY_TYPE_TRIANGLE);
     rtcSetSharedGeometryBuffer(eMeshGeom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,
                                indexData->data,0,numCompsInTri*sizeof(int),numTris);
@@ -147,7 +144,7 @@ namespace ospray {
     }
 
     ispc::TriangleMesh_set(getIE(),model->getIE(),
-                           eMeshGeom,
+                           (RTCGeometry)eMeshGeom,
                            eMeshID,
                            numTris,
                            numCompsInTri,

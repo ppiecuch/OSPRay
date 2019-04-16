@@ -19,8 +19,6 @@
 #include "common/Util.h"
 #include "TransferFunction_ispc.h"
 
-#define creatorFct trnCreatorFct
-
 namespace ospray {
 
   void TransferFunction::commit()
@@ -41,5 +39,3 @@ namespace ospray {
   }
 
 } // ::ospray
-
-#undef creatorFct

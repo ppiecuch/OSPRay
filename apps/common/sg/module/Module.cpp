@@ -37,10 +37,9 @@ namespace ospray {
 
       alreadyLoaded.insert(moduleName);
       
-#ifndef OSPRAY_ENABLE_STATIC_LIB
       const std::string libName = "ospray_module_sg_"+moduleName;
       ospcommon::loadLibrary(libName);
-#endif
+
       const std::string symName = "ospray_sg_"+moduleName+"_init";
       void *sym = ospcommon::getSymbol(symName);
       if (!sym)

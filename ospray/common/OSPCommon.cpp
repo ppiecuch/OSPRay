@@ -294,10 +294,9 @@ namespace ospray {
 
   OSPError loadLocalModule(const std::string &name)
   {
-#ifndef OSPRAY_ENABLE_STATIC_LIB
     std::string libName = "ospray_module_" + name;
     loadLibrary(libName);
-#endif
+
     std::string initSymName = "ospray_init_module_" + name;
     void*initSym = getSymbol(initSymName);
     if (!initSym) {

@@ -19,8 +19,6 @@
 #include "common/Util.h"
 #include "Light_ispc.h"
 
-#define creatorFct litCreatorFct
-
 namespace ospray {
 
   void Light::commit()
@@ -41,5 +39,3 @@ namespace ospray {
   }
 
 }
-
-#undef creatorFct

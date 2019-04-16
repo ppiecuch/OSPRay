@@ -56,11 +56,9 @@ namespace ospray {
       //             ospInit() to do it), then we need to check if there's a
       //             valid library for core ospray in our main symbol lookup
       //             table.
-#ifndef OSPRAY_ENABLE_STATIC_LIB
       auto &repo = *LibraryRepository::getInstance();
       if (!repo.libraryExists("ospray")) {
         repo.addDefaultLibrary();
-#endif
         // also load the local device, otherwise ospNewDevice("default") fails
         repo.add("ospray_module_ispc");
       }

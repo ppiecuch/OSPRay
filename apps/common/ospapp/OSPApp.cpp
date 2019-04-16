@@ -183,9 +183,8 @@ usage --> "--generate:type[:parameter1=value,parameter2=value,...]"
         return result;
 
       // access/load symbols/sg::Nodes dynamically
-#ifndef OSPRAY_ENABLE_STATIC_LIB
       loadLibrary("ospray_sg");
-#endif
+
       parseGeneralCommandLine(argc, argv);
 
       auto rootPtr = sg::createNode("frame0", "Frame")->nodeAs<sg::Frame>();

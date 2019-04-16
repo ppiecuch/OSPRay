@@ -21,8 +21,6 @@
 // ISPC exports
 #include "Geometry_ispc.h"
 
-#define creatorFct geoCreatorFct
-
 namespace ospray {
 
   Geometry::Geometry()
@@ -92,5 +90,3 @@ namespace ospray {
   }
 
 } // ::ospray
-
-#undef creatorFct

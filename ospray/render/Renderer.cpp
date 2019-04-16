@@ -22,8 +22,6 @@
 // ospray
 #include "LoadBalancer.h"
 
-#define creatorFct rdrCreatorFct
-
 namespace ospray {
 
   std::string Renderer::toString() const 
@@ -121,5 +119,3 @@ namespace ospray {
   }
 
 } // ::ospray
-
-#undef creatorFct

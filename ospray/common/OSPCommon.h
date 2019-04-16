@@ -57,17 +57,17 @@ typedef int ssize_t;
 #  define OSPRAY_INTERFACE
 #  define OSPRAY_DLLEXPORT
 #else
-#ifdef _WIN32
+# ifdef _WIN32
 #  ifdef ospray_EXPORTS
 #    define OSPRAY_INTERFACE __declspec(dllexport)
 #  else
 #    define OSPRAY_INTERFACE __declspec(dllimport)
 #  endif
 #  define OSPRAY_DLLEXPORT __declspec(dllexport)
-#else
+# else
 #  define OSPRAY_INTERFACE
 #  define OSPRAY_DLLEXPORT
-#endif
+# endif
 #endif // OSPRAY_ENABLE_STATIC_LIB
 #define OSPRAY_CORE_INTERFACE OSPRAY_INTERFACE
 

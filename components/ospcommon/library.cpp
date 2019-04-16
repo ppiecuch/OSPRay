@@ -214,7 +214,18 @@ namespace ospcommon {
   {
     std::string file = name;
     std::string errorMsg;
-#ifdef _WIN32
+#ifdef OSPRAY_ENABLE_STATIC_LIB
+
+# ifdef _WIN32
+    extern "C" IMAGE_DOS_HEADER __ImageBase;
+    lib = (void*)&__ImageBase;
+# else
+    lib = dlopen(NULL, RTLD_LAZY);
+# endif
+
+#else // OSPRAY_ENABLE_STATIC_LIB
+
+# ifdef _WIN32
     std::string fullName = library_location() + file + ".dll";
     lib                  = LoadLibrary(fullName.c_str());
     if (lib == nullptr) {
@@ -234,25 +245,25 @@ namespace ospcommon {
 
       LocalFree(lpMsgBuf);
     }
-#else
-#if defined(__MACOSX__) || defined(__APPLE__)
+# else
+# if defined(__MACOSX__) || defined(__APPLE__)
     std::string fullName = library_location() + "lib" + file + ".dylib";
-#else
+# else
     std::string fullName = library_location() + "lib" + file + ".so";
-#endif
+# endif
     lib                  = dlopen(fullName.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (lib == nullptr) {
       errorMsg = dlerror();  // remember original error
       // retry with SOVERSION in case symlinks are missing
       std::string soversion(TOSTRING(OSPRAY_SOVERSION));
-#if defined(__MACOSX__) || defined(__APPLE__)
+# if defined(__MACOSX__) || defined(__APPLE__)
       fullName = "lib" + file + "." + soversion + ".dylib";
-#else
+# else
       fullName += "." + soversion;
-#endif
+# endif
       lib      = dlopen(fullName.c_str(), RTLD_NOW | RTLD_GLOBAL);
     }
-#endif
+# endif
 
     // do NOT try to find the library in another location
     // if you want that use LD_LIBRARY_PATH or equivalents
@@ -270,6 +281,7 @@ namespace ospcommon {
       throw std::runtime_error("could not open module lib " + name + ": " +
                                errorMsg);
     }
+#endif // OSPRAY_ENABLE_STATIC_LIB
   }
 
   Library::~Library()
@@ -290,6 +302,7 @@ namespace ospcommon {
 
   void *Library::getSymbol(const std::string &sym) const
   {
+    // https://stackoverflow.com/questions/40733918/how-to-get-a-function-address-from-current-executable
 #ifdef _WIN32
     return GetProcAddress((HMODULE)lib, sym.c_str());
 #else

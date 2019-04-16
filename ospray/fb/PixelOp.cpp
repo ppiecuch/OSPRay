@@ -18,8 +18,6 @@
 #include "PixelOp.h"
 #include "common/Util.h"
 
-#define creatorFct popCreatorFct
-
 namespace ospray {
 
   PixelOp *PixelOp::createInstance(const char *type)
@@ -32,5 +30,3 @@ namespace ospray {
     return "ospray::PixelOp(base class)";
   }
 }
-
-#undef creatorFct
